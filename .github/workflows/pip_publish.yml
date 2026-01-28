@@ -1,0 +1,90 @@
+
+# This workflows will upload a Python Package using build system from pyproject.toml - when version
+# tag is pushed and CI workflow is successful.
+#
+# To push the tag use `inv ver-release/feature/bag`.
+#
+# Put you pypi credentials (PYPI_USERNAME, PYPI_PASSWORD) into the github repository secrets
+
+name: Upload Python Package
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches:
+      - master
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  check_tag:
+    runs-on: ubuntu-latest
+    outputs:
+      has_tag: ${{ steps.check_tag.outputs.has_tag }}
+      version_tag: ${{ steps.check_tag.outputs.version_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for version tag
+        id: check_tag
+        run: |
+          # Only accept semver tags like v1.2.3
+          TAG=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)
+          if [ -n "$TAG" ]; then
+            echo "has_tag=true" >> $GITHUB_OUTPUT
+            # Strip leading 'v' for use in the workflow
+            echo "version_tag=${TAG#v}" >> $GITHUB_OUTPUT
+          else
+            echo "has_tag=false" >> $GITHUB_OUTPUT
+          fi
+
+  publish:
+    needs: check_tag
+    # Skip entire job unless a valid semver tag was found
+    if: needs.check_tag.outputs.has_tag == 'true'
+    env:
+      RELEASE_VERSION: ${{ needs.check_tag.outputs.version_tag }}
+      PRIMARY_PYTHON_VERSION: '3.12'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+
+
+      - name: Install uv environment
+        uses: andgineer/uv-venv@v3
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: ${{ secrets.PYPI_USERNAME }}
+          password: ${{ secrets.PYPI_PASSWORD }}
+          packages-dir: dist
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ env.RELEASE_VERSION }}
+
+          body: https://pypi.org/project/ibkr-porez/${{ env.RELEASE_VERSION }}/
+          draft: false
+          prerelease: false

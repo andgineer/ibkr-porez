@@ -1,0 +1,58 @@
+[build-system]
+requires = [ "hatchling",]
+build-backend = "hatchling.build"
+
+[project]
+name = "ibkr-porez"
+dynamic = [ "version",]
+description = "Automated PPDG-3R tax reports for Interactive Brokers. It automatically pulls your data and generates a ready-to-upload XML file with all prices converted to RSD."
+keywords = [ "one", "two", ]
+classifiers = [ "Programming Language :: Python :: 3", "License :: OSI Approved :: MIT License", "Operating System :: OS Independent",]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.2.0",
+    "rich-click>=1.8.8",
+]
+[[project.authors]]
+name = "Andrey Sorokin"
+email = "andrey@sorokin.engineer"
+
+[project.license]
+file = "LICENSE.txt"
+
+[project.urls]
+Homepage = "https://andgineer.github.io/ibkr-porez/"
+Documentation = "https://andgineer.github.io/ibkr-porez/"
+
+[tool.setuptools]
+packages = "find:"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.manifest]
+include = [ "README.md", "LICENSE.txt",]
+
+[tool.ruff]
+line-length = 99
+
+[tool.hatch.version]
+path = "src/ibkr_porez/__about__.py"
+
+[tool.uv]
+dev-dependencies = [
+    "allure-pytest>=2.14.2",
+    "invoke>=2.2.0",
+    "mkdocs-awesome-pages-plugin>=2.10.1",
+    "mkdocs-material>=9.6.13",
+    "mkdocstrings[python]>=0.29.1",
+    "mypy>=1.15.0",
+    "pre-commit>=4.2.0",
+    "pymdown-extensions>=10.15",
+    "pytest-cov>=6.1.1",
+    "pytest>=8.3.5",
+]
+
+[project.scripts]
+ibkr-porez = "ibkr_porez.main:ibkr_porez"

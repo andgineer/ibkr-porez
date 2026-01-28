@@ -1,0 +1,61 @@
+
+# build docs from docstrings and markdown-file in folder docs
+# publish them as github pages
+#
+#note for myself
+#
+# Do not forget to set git branch `gh-pages` as source for github pages.
+# This branch auto-updated by `mkdocs gh-deploy`
+#
+name: docs
+on:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    env:
+      PRIMARY_PYTHON_VERSION: '3.12'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout gh-pages to backup Allure test reports
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+        continue-on-error: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION  }}
+
+
+      - name: Install uv environment
+        uses: andgineer/uv-venv@v3
+
+      - name: Install dependencies
+        run: |
+          uv sync --frozen
+          uv pip install ghp-import
+
+      - run: ./scripts/build-docs.sh
+      - run: |
+          ghp-import --no-jekyll --push --force site
+
+      - name: Restore Allure test reports folder
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: gh-pages/builds
+          destination_dir: builds
