@@ -83,8 +83,8 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_VERSION }}
           name: Release ${{ env.RELEASE_VERSION }}
-
           body: https://pypi.org/project/ibkr-porez/${{ env.RELEASE_VERSION }}/
           draft: false
           prerelease: false
