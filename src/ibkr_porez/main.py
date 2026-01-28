@@ -20,9 +20,7 @@ def ibkr_porez(input_file: str, output_file: str, force: bool) -> None:
     `INPUT_FILE` to `OUTPUT_FILE`.
     """
     output_path = (
-        Path(output_file)
-        if output_file
-        else Path(input_file).parent / f"{OUTPUT_FILE_DEFAULT}.txt"
+        Path(output_file) if output_file else Path(input_file).parent / f"{OUTPUT_FILE_DEFAULT}.txt"
     )
     if output_path.exists() and not force:
         click.echo(f"Output file {output_path} already exists. Use --force to overwrite.")

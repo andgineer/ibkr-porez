@@ -1,4 +1,7 @@
-"""Automated PPDG-3R tax reports for Interactive Brokers. It automatically pulls your data and generates a ready-to-upload XML file with all prices converted to RSD.
+"""Automated PPDG-3R tax reports for Interactive Brokers.
+
+It automatically pulls your data and generates a ready-to-upload XML file
+with all prices converted to RSD.
 
 The file is mandatory for build system to find the package.
 """

@@ -57,9 +57,6 @@ repos:
         args: [
           --line-length=100
         ]
-
-
-
   - repo: https://github.com/facebook/pyrefly-pre-commit
     rev: 0.45.0
     hooks:
@@ -72,9 +69,3 @@ repos:
           "--project-excludes=tests",
           "--python-interpreter-path=.venv/bin/python"
         ]
-
-
-  - repo: local
-    hooks:
-
-

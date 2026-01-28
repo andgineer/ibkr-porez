@@ -2,7 +2,7 @@
 [![Coverage](https://raw.githubusercontent.com/andgineer/ibkr-porez/python-coverage-comment-action-data/badge.svg)](https://htmlpreview.github.io/?https://github.com/andgineer/ibkr-porez/blob/python-coverage-comment-action-data/htmlcov/index.html)
 # ibkr-porez
 
-Automated PPDG-3R tax reports for Interactive Brokers. It automatically pulls your data and generates a ready-to-upload XML file with all prices converted to RSD. 
+Automated PPDG-3R tax reports for Interactive Brokers. It automatically pulls your data and generates a ready-to-upload XML file with all prices converted to RSD.
 
 # Documentation
 

@@ -9,6 +9,6 @@ def test_version():
 
 def test_version_option():
     runner = CliRunner()
-    result = runner.invoke(ibkr_porez, ['--version'])
+    result = runner.invoke(ibkr_porez, ["--version"])
     assert result.exit_code == 0
     assert __version__ in result.output
