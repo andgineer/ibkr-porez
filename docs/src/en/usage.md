@@ -31,6 +31,9 @@ You will be prompted for:
 *   **Personal ID**: (JMBG for tax forms)
 *   **Full Name**: (For tax forms)
 *   **Address**: (For tax forms)
+*   **City Code**: (Municipality code, e.g. 223 or 1)
+*   **Phone**: (Contact phone)
+*   **Email**: (Contact email)
 
 ## 1. Fetch Data (`get`)
 

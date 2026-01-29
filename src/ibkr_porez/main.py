@@ -42,6 +42,9 @@ def config():
     personal_id = click.prompt("Personal Search ID (JMBG)", default=current_config.personal_id)
     full_name = click.prompt("Full Name", default=current_config.full_name)
     address = click.prompt("Address", default=current_config.address)
+    city_code = click.prompt("City/Municipality Code (e.g. 223)", default=current_config.city_code)
+    phone = click.prompt("Phone Number", default=current_config.phone)
+    email = click.prompt("Email", default=current_config.email)
 
     new_config = UserConfig(
         ibkr_token=ibkr_token,
@@ -49,6 +52,9 @@ def config():
         personal_id=personal_id,
         full_name=full_name,
         address=address,
+        city_code=city_code,
+        phone=phone,
+        email=email,
     )
 
     config_manager.save_config(new_config)
@@ -364,25 +370,64 @@ def show(year: int | None, ticker: str | None, month: str | None):
 
 
 @ibkr_porez.command()
-@click.option("--year", type=int, required=True, help="Year to report (e.g. 2023)")
-@click.option("--half", type=click.Choice(["1", "2"]), required=True, help="Half-year (1 or 2)")
-def report(year: int, half: str):
+@click.option("--half", required=False, help="Half-year to report (e.g. 2023-1, 20231)")
+def report(half: str | None):
     """Generate PPDG-3R XML report."""
     from rich.console import Console
+    from datetime import date, datetime
+    import re
 
     console = Console()
 
-    from ibkr_porez.report import XMLGenerator
+    # Determine Period
+    target_year = None
+    target_half = None
 
-    # Calculate Period
-    if half == "1":
-        start_date = date(year, 1, 1)
-        end_date = date(year, 6, 30)
+    if half:
+        # Parse Argument
+        # Formats: 2023-2, 20232
+        m_dash = re.match(r"^(\d{4})-(\d)$", half)
+        m_compact = re.match(r"^(\d{4})(\d)$", half)
+        
+        if m_dash:
+            target_year = int(m_dash.group(1))
+            target_half = int(m_dash.group(2))
+        elif m_compact:
+            target_year = int(m_compact.group(1))
+            target_half = int(m_compact.group(2))
+        else:
+            console.print(f"[red]Invalid format: {half}. Use YYYY-H (e.g. 2023-2) or YYYYH (e.g. 20232)[/red]")
+            return
+            
+        if target_half not in [1, 2]:
+            console.print("[red]Half-year must be 1 or 2.[/red]")
+            return
     else:
-        start_date = date(year, 7, 1)
-        end_date = date(year, 12, 31)
+        # Default: Last COMPLETE half-year
+        now = datetime.now()
+        current_year = now.year
+        current_month = now.month
+        
+        if current_month < 7:
+            # Current is H1 (incomplete), so Last Complete is Previous Year H2
+            target_year = current_year - 1
+            target_half = 2
+        else:
+            # Current is H2 (incomplete), so Last Complete is Current Year H1
+            target_year = current_year
+            target_half = 1
+            
+    # Calculate Dates
+    if target_half == 1:
+        start_date = date(target_year, 1, 1)
+        end_date = date(target_year, 6, 30)
+    else:
+        start_date = date(target_year, 7, 1)
+        end_date = date(target_year, 12, 31)
 
-    console.print(f"[bold blue]Generating Report for {start_date} to {end_date}[/bold blue]")
+    console.print(f"[bold blue]Generating Report for {target_year} H{target_half} ({start_date} to {end_date})[/bold blue]")
+
+    from ibkr_porez.report import XMLGenerator
 
     cfg = config_manager.load_config()
     storage = Storage()
@@ -391,16 +436,24 @@ def report(year: int, half: str):
     xml_gen = XMLGenerator(cfg)
 
     # Get Transactions (DataFrame)
-    df_transactions = storage.get_transactions(start_date, end_date)
-
+    # Load ALL to ensure FIFO context
+    df_transactions = storage.get_transactions()
+    
     if df_transactions.empty:
         console.print(
-            "[yellow]No transactions found for this period. Run `ibkr-porez get` first.[/yellow]",
+            "[yellow]No transactions found. Run `ibkr-porez get` first.[/yellow]",
         )
         return
 
-    # Process
-    entries = tax_calc.process_trades(df_transactions)
+    # Process FIFO for all
+    all_entries = tax_calc.process_trades(df_transactions)
+    
+    # Filter for Period
+    entries = []
+    for e in all_entries:
+        if start_date <= e.sale_date <= end_date:
+            entries.append(e)
+
     if not entries:
         console.print("[yellow]No taxable sales found in this period.[/yellow]")
         return
@@ -408,12 +461,52 @@ def report(year: int, half: str):
     # Generate XML
     xml_content = xml_gen.generate_xml(entries, start_date, end_date)
 
-    filename = f"ppdg3r_{year}_H{half}.xml"
+    filename = f"ppdg3r_{target_year}_H{target_half}.xml"
     with open(filename, "w") as f:
         f.write(xml_content)
 
     console.print(f"[bold green]Report generated: {filename}[/bold green]")
     console.print(f"Total Entries: {len(entries)}")
+
+    # Print Detailed Table for Manual Entry
+    from rich.table import Table
+    table = Table(title="Manual Entry Helpers (Part 4)", box=None)
+    
+    table.add_column("No.", justify="right")
+    table.add_column("Ticker (Naziv)", justify="left")
+    table.add_column("Sale Date (4.3)", justify="left")
+    table.add_column("Qty (4.5/4.9)", justify="right")
+    table.add_column("Sale Price RSD (4.6)", justify="right") # Prodajna Cena
+    table.add_column("Buy Date (4.7)", justify="left")
+    table.add_column("Buy Price RSD (4.10)", justify="right") # Nabavna Cena
+    table.add_column("Gain RSD", justify="right") 
+    table.add_column("Loss RSD", justify="right")
+
+    i = 1
+    for e in entries:
+        gain = e.capital_gain_rsd
+        g_str = f"{gain:.2f}" if gain >= 0 else "0.00"
+        l_str = f"{abs(gain):.2f}" if gain < 0 else "0.00"
+        
+        table.add_row(
+            str(i),
+            e.ticker,
+            e.sale_date.strftime("%Y-%m-%d"),
+            f"{e.quantity:.2f}",
+            f"{e.sale_value_rsd:.2f}",
+            e.purchase_date.strftime("%Y-%m-%d"),
+            f"{e.purchase_value_rsd:.2f}",
+            g_str,
+            l_str
+        )
+        i += 1
+        
+    console.print(table)
+    console.print("[dim]Use these values to cross-check with the portal or fill manually if needed.[/dim]")
+    
+    console.print("\n[bold red]ATTENTION: Step 8 (Upload)[/bold red]")
+    console.print("The XML includes a placeholder for Part 8 (Evidence).")
+    console.print("[bold]You MUST manually upload your IBKR Activity Report (PDF) in 'Deo 8' on the ePorezi portal.[/bold]")
 
 
 if __name__ == "__main__":  # pragma: no cover

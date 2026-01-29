@@ -58,3 +58,17 @@ Enable the following sections and check **Select All** columns to ensure compati
 2.  Note the **Query ID** (a number usually appearing next to the query name in the list).
 
 You will use the **Token** and **Query ID** to configure `ibkr-porez`.
+
+## 4. Confirmation Document (For Tax Filing)
+
+For **Part 8 (Dokazi uz priјаvu / Attachments)** of the tax return, you need a PDF Activity Report from IBKR. `ibkr-porez` generates the XML with a file placeholder, but you must manually download the proof file and upload it to the ePorezi portal.
+
+How to download the correct report:
+
+1.  In IBKR go to **Performance & Reports** > **Statements** > **Activity**.
+2.  **Period**: Select **Custom Date Range**.
+3.  Specify dates matching your tax period (e.g., `01-01-2024` to `30-06-2024` for H1).
+4.  **Format**: **PDF**.
+5.  Click **Run**.
+6.  Download the **PDF**.
+7.  On the ePorezi portal, in section **8. Doкazi uz priјаvu**, delete the placeholder entry (if present) and upload this file.
