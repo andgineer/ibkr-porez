@@ -70,4 +70,6 @@ extra:
 
 nav:
   - index.md
+  - usage.md
+  - setup_ibkr.md
   - installation.md
