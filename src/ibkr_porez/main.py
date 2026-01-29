@@ -128,12 +128,18 @@ def get(force: bool):
 
 
 @ibkr_porez.command()
-def show():
-    """Show monthly statistics."""
+@click.option("--year", type=int, help="Filter by year (e.g. 2023)")
+@click.option("-t", "--ticker", type=str, help="Show detailed breakdown for specific ticker")
+@click.option("-m", "--month", type=str, help="Show detailed breakdown for specific month (YYYY-MM, YYYYMM, or MM)")
+def show(year: int | None, ticker: str | None, month: str | None):
+    """Show tax report (Sales only)."""
     from collections import defaultdict
-
     from rich.console import Console
     from rich.table import Table
+    from decimal import Decimal
+    import re
+    import pandas as pd
+    from datetime import datetime
 
     console = Console()
 
@@ -141,46 +147,186 @@ def show():
     nbs = NBSClient(storage)
     tax_calc = TaxCalculator(nbs)
 
-    df_transactions = storage.get_transactions()
+    # Load transactions
+    # Note: We must load ALL transactions to ensure FIFO context is correct.
+    # We will filter for display later.
+    df_transactions = storage.get_transactions() 
+    
     if df_transactions.empty:
         console.print("[yellow]No transactions found. Run `ibkr-porez get`.[/yellow]")
         return
 
+    # Process Taxable Sales (FIFO)
+    sales_entries = tax_calc.process_trades(df_transactions)
+    
+    target_year = year
+    target_month = None
+
+    # Parse Month Argument if provided
+    if month:
+        # Validate format
+        # 1. YYYY-MM
+        m_dash = re.match(r"^(\d{4})-(\d{1,2})$", month)
+        # 2. YYYYMM
+        m_compact = re.match(r"^(\d{4})(\d{2})$", month)
+        # 3. MM or M
+        m_only = re.match(r"^(\d{1,2})$", month)
+
+        if m_dash:
+            target_year = int(m_dash.group(1))
+            target_month = int(m_dash.group(2))
+        elif m_compact:
+            target_year = int(m_compact.group(1))
+            target_month = int(m_compact.group(2))
+        elif m_only:
+            target_month = int(m_only.group(1))
+            if not target_year:
+                # Find latest year with data for this month
+                years_with_data = set()
+                for e in sales_entries:
+                    if e.sale_date.month == target_month:
+                        years_with_data.add(e.sale_date.year)
+                
+                # Also check dividends? 
+                # Ideally yes, but let's stick to sales for the detailed view context or generally present data.
+                # Let's check dividends too.
+                if "type" in df_transactions.columns:
+                     divs_check = df_transactions[df_transactions["type"] == "DIVIDEND"]
+                     for d in pd.to_datetime(divs_check["date"]).dt.date:
+                         if d.month == target_month:
+                             years_with_data.add(d.year)
+
+                if years_with_data:
+                    target_year = max(years_with_data)
+                else:
+                    # Default to current year or error?
+                    # Let's pick current year if no data found, so user sees empty.
+                    target_year = datetime.now().year
+        else:
+            console.print(f"[red]Invalid month format: {month}. Use YYYY-MM, YYYYMM, or MM.[/red]")
+            return
+
+    # Determine Mode: Detailed List vs Monthly Summary
+    # If a TICKER is specified, we almost certainly want the Detailed List of executions.
+    # If only Month is specified, user might want a Monthly Summary (filtered), OR detailed list.
+    # User feedback suggests they want "detailed calculation" when they specify ticker/month.
+    
+    show_detailed_list = False
+    if ticker:
+        show_detailed_list = True
+        
+    # If detailed list is requested:
+    if show_detailed_list:
+        # Filter entries
+        filtered_entries = []
+        for e in sales_entries:
+            if ticker and e.ticker != ticker:
+                continue
+            if target_year and e.sale_date.year != target_year:
+                continue
+            if target_month and e.sale_date.month != target_month:
+                continue
+            filtered_entries.append(e)
+            
+        if not filtered_entries:
+            msg = "[yellow]No sales found matching criteria"
+            if ticker: msg += f" ticker={ticker}"
+            if target_year: msg += f" year={target_year}"
+            if target_month: msg += f" month={target_month}"
+            msg += "[/yellow]"
+            console.print(msg)
+            return
+
+        title_parts = []
+        if ticker: title_parts.append(ticker)
+        if target_year:
+            if target_month:
+                title_parts.append(f"{target_year}-{target_month:02d}")
+            else:
+                title_parts.append(str(target_year))
+        
+        table_title = f"Detailed Report: {' - '.join(title_parts)}"
+        table = Table(title=table_title, box=None) # Cleaner look
+        
+        table.add_column("Sale Date", justify="left")
+        table.add_column("Qty", justify="right")
+        table.add_column("Sale Price", justify="right")
+        table.add_column("Sale Rate", justify="right")
+        table.add_column("Sale Val (RSD)", justify="right") # ADDED
+        
+        table.add_column("Buy Date", justify="left")
+        table.add_column("Buy Price", justify="right")
+        table.add_column("Buy Rate", justify="right")
+        table.add_column("Buy Val (RSD)", justify="right") # ADDED
+        
+        table.add_column("Gain (RSD)", justify="right")
+
+        total_pnl = Decimal(0)
+
+        for e in filtered_entries:
+            total_pnl += e.capital_gain_rsd
+            table.add_row(
+                str(e.sale_date),
+                f"{e.quantity:.2f}",
+                f"{e.sale_price:.2f}",
+                f"{e.sale_exchange_rate:.4f}",
+                f"{e.sale_value_rsd:,.0f}", # No decimals for large RSD values usually cleaner, or .2f
+                str(e.purchase_date),
+                f"{e.purchase_price:.2f}",
+                f"{e.purchase_exchange_rate:.4f}",
+                f"{e.purchase_value_rsd:,.0f}",
+                f"[bold]{e.capital_gain_rsd:,.2f}[/bold]"
+            )
+            
+        console.print(table)
+        console.print(f"[bold]Total P/L: {total_pnl:,.2f} RSD[/bold]")
+        return
+
+    # Fallback to Aggregated View (Summary)
     # Group by Month-Year and Ticker
     # Structure: { "YYYY-MM": { "TICKER": { "divs": 0, "sales_count": 0, "pnl": 0 } } }
     stats = defaultdict(lambda: defaultdict(lambda: {"divs": 0, "sales_count": 0, "pnl": 0}))
 
-    # Process Taxable Sales
-    sales_entries = tax_calc.process_trades(df_transactions)
-
-    for entry in sales_entries:
+    for entry in sales_entries: # Already filtered by year (if --year passed, but maybe not by -m)
+        if target_year and entry.sale_date.year != target_year:
+            continue
+        if target_month and entry.sale_date.month != target_month:
+            continue
+        if ticker and entry.ticker != ticker: # Should be handled by Detail view usually, but keeping logic safely
+            continue
+            
         month_key = entry.sale_date.strftime("%Y-%m")
-        ticker = entry.ticker
-        stats[month_key][ticker]["sales_count"] += 1
-        stats[month_key][ticker]["pnl"] += entry.capital_gain_rsd
+        t = entry.ticker
+        stats[month_key][t]["sales_count"] += 1
+        stats[month_key][t]["pnl"] += entry.capital_gain_rsd
 
     # Process Dividends
     if "type" in df_transactions.columns:
         divs = df_transactions[df_transactions["type"] == "DIVIDEND"].copy()
-
-        # Pre-fetch rates for dividends logic?
-        # Re-use existing simple logic but fix iteration
+        
         for _, row in divs.iterrows():
-            d = row["date"]  # date object
+            d = row["date"] # date object
+            if target_year and d.year != target_year:
+                continue
+            if target_month and d.month != target_month:
+                 continue
+            
+            t = row["symbol"]
+            if ticker and t != ticker:
+                continue
+                
             curr = row["currency"]
             amt = float(row["amount"])
-            ticker = row["symbol"]
-
+            
             # Rate
             from ibkr_porez.models import Currency
-
             try:
                 c_enum = Currency(curr)
                 rate = nbs.get_rate(d, c_enum)
                 if rate:
                     val = amt * float(rate)
                     month_key = d.strftime("%Y-%m")
-                    stats[month_key][ticker]["divs"] += val
+                    stats[month_key][t]["divs"] += val
             except ValueError:
                 pass
 
@@ -192,38 +338,25 @@ def show():
     table.add_column("Sales Count", justify="right")
     table.add_column("Realized P/L (RSD)", justify="right")
 
-    # Flatten and Sort
-    # List of (Month, Ticker, Stats)
     rows = []
-    for month, tickers in stats.items():
-        for ticker, data in tickers.items():
-            rows.append((month, ticker, data))
-
-    # Sort by Month DESC, Ticker ASC
-    rows.sort(
-        key=lambda x: (x[0], x[1]), reverse=True
-    )  # Sort logic slightly tricky with mixed direction?
-    # Actually User requested "Month -> different papers inside".
-    # Sort by Month DESC is good. Ticker ASC inside.
-
-    rows.sort(key=lambda x: x[0], reverse=True)  # Sort by Month Desc
-    # Then sort stable? No, python sort is stable.
-    # To get Month DESC + Ticker ASC:
-    # Sort by Ticker ASC first, then Month DESC.
-    rows.sort(key=lambda x: x[1])  # Ticker ASC
-    rows.sort(key=lambda x: x[0], reverse=True)  # Month DESC
+    for m, tickers in stats.items():
+        for t, data in tickers.items():
+            rows.append((m, t, data))
+            
+    rows.sort(key=lambda x: x[1]) # Ticker ASC
+    rows.sort(key=lambda x: x[0], reverse=True) # Month DESC
 
     current_month = None
-    for month, ticker, data in rows:
-        if current_month != month:
+    for m, t, data in rows:
+        if current_month != m:
             table.add_section()
-            current_month = month
-
+            current_month = m
+            
         table.add_row(
-            month,
-            ticker,
+            m,
+            t,
             f"{data['divs']:,.2f}",
-            str(data["sales_count"]),
+            str(data['sales_count']),
             f"{data['pnl']:,.2f}",
         )
 
