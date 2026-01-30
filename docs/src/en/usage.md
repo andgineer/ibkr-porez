@@ -1,20 +1,31 @@
 # Usage Guide
 
 ## Installation
+Install using [`pipx`](https://pypa.github.io/pipx/) for isolated environments, which prevents interference
+with your system's Python packages:
 
-Prerequisites:
-*   Python 3.10+
-*   `uv` or `pip`
+=== "MacOS"
+    ```bash
+    brew install pipx
+    pipx ensurepath
+    ```
+
+=== "Linux"
+    ```bash
+    python3 -m pip install --user pipx
+    python3 -m pipx ensurepath
+    ```
+
+=== "Windows"
+    ```bash
+    # If you installed python using the app-store, replace `python` with `python3` in the next line.
+    python -m pip install --user pipx
+    ```
+
+**Final Step**: Once `pipx` is set up, install `ibkr-porez`:
 
 ```bash
-# Clone the repository
-git clone https://github.com/andgineer/ibkr-porez.git
-cd ibkr-porez
-
-# Install
-uv sync
-# OR
-pip install .
+pipx install ibkr-porez
 ```
 
 ## Configuration
@@ -53,7 +64,25 @@ ibkr-porez get --force
 *   **Default**: Incrementally fetches only new data (since your last transaction).
 *   **--force**: use this if you want to refresh older data.
 
-## 2. Show Statistics (`show`)
+## 2. Import Historical Data (`import`)
+
+Use this command to load transaction history older than 365 days (which cannot be fetched via Flex Query).
+
+1.  Download a **Custom Statement** from IBKR (Activity Statement -> Custom -> Format: CSV) covering the missing period.
+2.  Import it:
+
+```bash
+ibkr-porez import /path/to/activity_statement.csv
+```
+
+### Data Synchronization Logic (`import` + `get`)
+When you mix CSV data (Import) and XML data (Get), the system handles overlaps automatically:
+*   **XML Supremacy**: Official XML data (`get`) is the source of truth. It overwrites CSV data for any matching dates.
+*   **Updated**: If an XML record matches a CSV record semantically (same Date, Symbol, Price, Quantity), it counts as an **Update** (upgrading to the official ID).
+*   **New**: If XML structure differs (e.g. Split Orders vs Bundled CSV), the old CSV record is replaced by new XML records. These appear as **New**.
+*   **Identical**: If records are identical, they are skipped.
+
+## 3. Show Statistics (`show`)
 
 Displays a summary of your portfolio activity grouped by month.
 

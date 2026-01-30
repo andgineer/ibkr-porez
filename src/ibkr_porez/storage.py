@@ -118,7 +118,10 @@ class Storage:
             d = "" if pd.isna(raw_date) else str(pd.to_datetime(raw_date).date())
 
             s = str(row.get("symbol", ""))
-            t = str(row.get("type", ""))
+
+            raw_type = row.get("type", "")
+            t = str(raw_type.value) if hasattr(raw_type, "value") else str(raw_type)
+
             q = abs(float(row.get("quantity", 0)))
             p = round(float(row.get("price", 0)), 4)
             return (d, s, t, q, p)
@@ -170,12 +173,12 @@ class Storage:
 
             k = self._make_transaction_key(row)
             if existing_keys[k] > 0:
-                self._handle_semantic_match(row, k, dedup_index, results)
+                updates_count += self._handle_semantic_match(row, k, dedup_index, results)
             else:
                 self._handle_no_match(row, official_existing_dates, to_add)
 
         # Determine "inserted" (truly new) count
-        # Total added - updates (ID matches)
+        # Total added - updates (ID matches OR Semantic Upgrades)
         # Note: semantic match upgrades are technically new IDs, so they count as inserts here?
         # User wants to know if "Database grew".
         # If I replace CSV "csv-1" with XML "xml-1", that's 1 insert, 1 delete. Net 0.
@@ -196,7 +199,12 @@ class Storage:
                     dates.add(d_str)
         return dates
 
-    def _handle_semantic_match(self, row, k, dedup_index, results):
+    def _handle_semantic_match(self, row, k, dedup_index, results) -> int:
+        """
+        Handle semantic match logic.
+        Returns:
+            int: 1 if this counts as an 'Update' (Upgrade), 0 otherwise.
+        """
         existing_keys, existing_id_map = dedup_index
         to_add, ids_to_remove = results
 
@@ -210,18 +218,21 @@ class Storage:
             ids_to_remove.add(matched_existing_id)
             to_add.append(row)
             self._consume_match(existing_keys, existing_id_map, k)
+            return 1  # Count as UPDATE
 
-        elif is_new_csv and not is_old_csv:
+        if is_new_csv and not is_old_csv:
             # Skip: New CSV trying to duplicate existing XML
             self._consume_match(existing_keys, existing_id_map, k)
+            return 0
 
-        elif not is_new_csv and not is_old_csv:
+        if not is_new_csv and not is_old_csv:
             # XML vs XML with different IDs (Split Orders). Add, do not consume.
             to_add.append(row)
+            return 0  # New split part -> Insert
 
-        else:
-            # CSV vs CSV. Assume duplicate.
-            self._consume_match(existing_keys, existing_id_map, k)
+        # CSV vs CSV. Assume duplicate.
+        self._consume_match(existing_keys, existing_id_map, k)
+        return 0
 
     def _handle_no_match(self, row, official_existing_dates, to_add):
         new_id = row["transaction_id"]

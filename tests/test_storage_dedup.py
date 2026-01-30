@@ -68,9 +68,10 @@ def test_dedup_xml_upgrades_csv(storage):
     # Wait, user sees it as "1 new"?
     # Ideally "Updated". But for now let's assert what logical code does.
     # Upgrade = New Record (technically).
+    # Update: Logic changed to count Upgrade as Update for user clarity.
     inserted, updated = storage.save_transactions([t_xml])
-    assert inserted == 1
-    assert updated == 0
+    assert inserted == 0
+    assert updated == 1
 
     stored = storage.get_transactions()
     assert len(stored) == 1
@@ -112,8 +113,8 @@ def test_dedup_split_orders_counter(storage):
     # Save 1 XML - should replace 1 CSV, leave 1 CSV
     # (Assuming we process 1 by 1 or batch? Storage logic handles batch)
     inserted, updated = storage.save_transactions([t_xml_1])
-    assert inserted == 1
-    assert updated == 0
+    assert inserted == 0
+    assert updated == 1
 
     stored = storage.get_transactions()
     # XML Supremacy: 1 XML overwrites ALL CSVs for that day.
