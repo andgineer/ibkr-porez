@@ -1,4 +1,3 @@
-import contextlib
 import json
 from datetime import date
 from decimal import Decimal
@@ -65,8 +64,10 @@ class Storage:
         # 1. Load Existing
         existing_df = pd.DataFrame()
         if file_path.exists():
-            with contextlib.suppress(ValueError):
+            try:
                 existing_df = pd.read_json(file_path, orient="records")
+            except ValueError as e:
+                print(f"[WARNING] Failed to load existing partition {file_path.name}: {e}")
 
         if existing_df.empty:
             return self._write_df(new_df, file_path)
@@ -119,6 +120,17 @@ class Storage:
         ids_to_remove = set()
         existing_ids = set(existing_df["transaction_id"])
 
+        # Pre-calculate dates that have OFFICIAL records
+        # An official record is one whose ID does NOT start with "csv-"
+        official_dates = set()
+        for _, row in existing_df.iterrows():
+            if not str(row["transaction_id"]).startswith("csv-"):
+                # Store string date key to match row format
+                raw_date = row.get("date")
+                d_str = str(pd.to_datetime(raw_date).date()) if not pd.isna(raw_date) else ""
+                if d_str:
+                    official_dates.add(d_str)
+
         for _, row in new_df.iterrows():
             new_id = row["transaction_id"]
 
@@ -148,8 +160,19 @@ class Storage:
                 else:
                     self._consume_match(existing_keys, existing_id_map, k)
             else:
-                # No match, completely new
-                to_add.append(row)
+                # No semantic match.
+                # Coverage Protection:
+                is_new_csv = str(new_id).startswith("csv-")
+
+                raw_date = row.get("date")
+                d_str = str(pd.to_datetime(raw_date).date()) if not pd.isna(raw_date) else ""
+
+                if is_new_csv and d_str in official_dates:
+                    # Skip CSV because date is covered by XML (Source of Truth)
+                    # print(f"Skipping CSV record {new_id} (Date {d_str} covered by XML)")
+                    pass
+                else:
+                    to_add.append(row)
 
         return to_add, ids_to_remove
 
@@ -165,6 +188,9 @@ class Storage:
         new_ids = set(new_subset_df["transaction_id"])
         existing_kept = existing_kept[~existing_kept["transaction_id"].isin(new_ids)]
 
+        # Align headers to silence FutureWarning and keep data clean
+        new_subset_df = new_subset_df.dropna(axis=1, how="all")
+        existing_kept = existing_kept.dropna(axis=1, how="all")
         return pd.concat([existing_kept, new_subset_df], ignore_index=True)
 
     def _write_df(self, df: pd.DataFrame, file_path: Path, return_count: int | None = None) -> int:

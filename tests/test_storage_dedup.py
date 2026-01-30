@@ -107,3 +107,28 @@ def test_dedup_split_orders_counter(storage):
     ids = set(stored["transaction_id"])
     assert "xml-1" in ids
     assert "xml-2" in ids
+
+
+def test_dedup_bundle_vs_split_coverage(storage):
+    # Scenario: XML has split trades (e.g. 77 and 11 qty) on 2025-12-23
+    # CSV has aggregated bundled trade (88 qty) on same date
+    # Result: CSV should be skipped because XML is present for this date.
+
+    # 1. Existing XML (Split)
+    t_xml_1 = make_tx("xml-1", "2025-12-23", "IJH", "77", "50")
+    t_xml_2 = make_tx("xml-2", "2025-12-23", "IJH", "11", "50")
+    storage.save_transactions([t_xml_1, t_xml_2])
+
+    # 2. Incoming CSV (Bundle) - different quantity, so no semantic match!
+    t_csv_bundle = make_tx("csv-bundle", "2025-12-23", "IJH", "88", "50")
+
+    # Save CSV
+    storage.save_transactions([t_csv_bundle])
+
+    # Verify: Should ONLY have XML records. CSV bundle skipped due to date coverage.
+    stored = storage.get_transactions()
+    assert len(stored) == 2
+    ids = set(stored["transaction_id"])
+    assert "xml-1" in ids
+    assert "xml-2" in ids
+    assert "csv-bundle" not in ids
