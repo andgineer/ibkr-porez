@@ -112,10 +112,10 @@ def get(force: bool):
             transactions = ibkr.parse_report(xml_content)
 
             # 3. Save
-            new_count = storage.save_transactions(transactions)
-            console.print(
-                f"[green]Fetched {len(transactions)} transactions. ({new_count} new)[/green]",
-            )
+            count_inserted, count_updated = storage.save_transactions(transactions)
+            msg = f"Fetched {len(transactions)} transactions."
+            stats = f"({count_inserted} new, {count_updated} updated)"
+            console.print(f"[green]{msg} {stats}[/green]")
 
             # 4. Sync Rates (Priming Cache)
             console.print("[blue]Syncing NBS exchange rates...[/blue]")
@@ -162,10 +162,10 @@ def import_file(file_path: Path):
             console.print("[yellow]No valid transactions found in file.[/yellow]")
             return
 
-        new_count = storage.save_transactions(transactions)
-        console.print(
-            f"[green]Parsed {len(transactions)} transactions. ({new_count} new)[/green]",
-        )
+        count_inserted, count_updated = storage.save_transactions(transactions)
+        msg = f"Parsed {len(transactions)} transactions."
+        stats = f"({count_inserted} new, {count_updated} updated)"
+        console.print(f"[green]{msg} {stats}[/green]")
 
         # Sync Rates
         console.print("[blue]Syncing NBS exchange rates for imported data...[/blue]")

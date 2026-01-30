@@ -33,32 +33,38 @@ class Storage:
         with open(path, mode) as f:
             f.write(content)
 
-    def save_transactions(self, transactions: list[Transaction]) -> int:
+    def save_transactions(self, transactions: list[Transaction]) -> tuple[int, int]:
+        """
+        Save transactions to storage.
+        Returns:
+            tuple[int, int]: (count_inserted, count_updated)
+        """
         if not transactions:
-            return 0
+            return 0, 0
 
-        # Convert to DataFrame
-        data = [t.model_dump(mode="json") for t in transactions]
-        df_new = pd.DataFrame(data)
+        df = pd.DataFrame([t.__dict__ for t in transactions])
 
-        # Ensure date columns are datetime
-        df_new["date"] = pd.to_datetime(df_new["date"]).dt.date
+        # Ensure date format
+        df["date"] = pd.to_datetime(df["date"]).dt.date
 
-        # Calculate partition key (Year-H1/H2)
-        df_new["_year"] = pd.to_datetime(df_new["date"]).dt.year
-        df_new["_half"] = pd.to_datetime(df_new["date"]).dt.month.apply(
-            lambda x: 1 if x <= 6 else 2,  # noqa: PLR2004
-        )
+        # Partition data by year and half
+        june_month = 6
+        df["year"] = df["date"].apply(lambda d: d.year)
+        df["half"] = df["date"].apply(lambda d: 1 if d.month <= june_month else 2)
 
-        total_new_saved = 0
-        # Group by partition to save
-        for (year, half), group_df in df_new.groupby(["_year", "_half"]):
-            saved_count = self._save_partition(int(year), int(half), group_df)
-            total_new_saved += saved_count
+        grouped = df.groupby(["year", "half"])
 
-        return total_new_saved
+        total_inserted = 0
+        total_updated = 0
 
-    def _save_partition(self, year: int, half: int, new_df: pd.DataFrame) -> int:
+        for (year, half), group in grouped:
+            inserted, updated = self._save_partition(year, half, group)
+            total_inserted += inserted
+            total_updated += updated
+
+        return total_inserted, total_updated
+
+    def _save_partition(self, year: int, half: int, new_df: pd.DataFrame) -> tuple[int, int]:
         file_path = self._partition_dir / f"transactions_{year}_H{half}.json"
 
         # 1. Load Existing
@@ -72,7 +78,8 @@ class Storage:
                 print(f"[WARNING] Failed to load existing partition {file_path.name}: {e}")
 
         if existing_df.empty:
-            return self._write_df(new_df, file_path)
+            count = self._write_df(new_df, file_path)
+            return count, 0
 
         # 2. Smart Deduplication
         from collections import Counter
@@ -89,7 +96,7 @@ class Storage:
             existing_id_map[k].append(row["transaction_id"])
 
         # Process NEW transactions
-        to_add, ids_to_remove = self._identify_updates(
+        to_add, ids_to_remove, inserted, updated = self._identify_updates(
             new_df,
             existing_df,
             existing_keys,
@@ -97,12 +104,13 @@ class Storage:
         )
 
         if not to_add and not ids_to_remove:
-            return 0
+            return 0, 0
 
         # Construct Final DF
         final_df = self._construct_final_df(existing_df, pd.DataFrame(to_add), ids_to_remove)
 
-        return self._write_df(final_df, file_path, return_count=len(to_add))
+        self._write_df(final_df, file_path)
+        return inserted, updated
 
     def _make_transaction_key(self, row):
         try:
@@ -139,10 +147,25 @@ class Storage:
         dedup_index = (existing_keys, existing_id_map)
         results = (to_add, ids_to_remove)
 
+        updates_count = 0
+
+        # Build index for fast lookup of existing rows to check for exact duplicates
+        existing_df_indexed = existing_df.set_index("transaction_id")
+
         for _, row in new_df.iterrows():
             new_id = row["transaction_id"]
             if new_id in existing_ids:
+                # Check for exact content match to avoid noisy "updates"
+                try:
+                    existing_row = existing_df_indexed.loc[new_id]
+                    if self._is_identical_record(row, existing_row):
+                        continue
+                except (KeyError, ValueError, TypeError):
+                    # In case of duplicate IDs index error or type mismatch, fall back to update
+                    pass
+
                 to_add.append(row)
+                updates_count += 1
                 continue
 
             k = self._make_transaction_key(row)
@@ -151,7 +174,16 @@ class Storage:
             else:
                 self._handle_no_match(row, official_existing_dates, to_add)
 
-        return to_add, ids_to_remove
+        # Determine "inserted" (truly new) count
+        # Total added - updates (ID matches)
+        # Note: semantic match upgrades are technically new IDs, so they count as inserts here?
+        # User wants to know if "Database grew".
+        # If I replace CSV "csv-1" with XML "xml-1", that's 1 insert, 1 delete. Net 0.
+        # But separating "New" (Inserts) from "Updated" (ID Match) is clear enough.
+        # "68 new" vs "0 new, 68 updated".
+        inserted_count = len(to_add) - updates_count
+
+        return to_add, ids_to_remove, inserted_count, updates_count
 
     def _get_official_dates(self, df: pd.DataFrame) -> set[str]:
         """Return set of date strings that have official (XML) records."""
@@ -202,6 +234,49 @@ class Storage:
             pass
         else:
             to_add.append(row)
+
+    def _is_identical_record(self, row_new, row_existing) -> bool:
+        """
+        Compare two rows to see if they are effectively identical.
+        Handles type differences (Decimal vs float, str vs date, etc).
+        Returns True if identical.
+        """
+        try:
+            # 1. Date
+            d1 = str(pd.to_datetime(row_new.get("date")).date())
+            d2 = str(pd.to_datetime(row_existing.get("date")).date())
+            if d1 != d2:
+                return False
+
+            # 2. Key Numeric Fields
+            # Use rounding to ignore floating point noise
+            fields = ["quantity", "price", "amount"]
+            float_tolerance = 0.0001
+            for f in fields:
+                v1 = float(row_new.get(f, 0) or 0)
+                v2 = float(row_existing.get(f, 0) or 0)
+                if abs(v1 - v2) > float_tolerance:
+                    return False
+
+            # 3. Strings
+            str_fields = ["symbol", "type", "currency", "description"]
+            for f in str_fields:
+                v1 = row_new.get(f, "")
+                if hasattr(v1, "value"):
+                    s1 = str(v1.value).strip().upper()
+                else:
+                    s1 = str(v1).strip().upper()
+
+                s2 = str(row_existing.get(f, "")).strip().upper()
+
+                if s1 != s2:
+                    return False
+
+            return True
+
+        except (ValueError, TypeError):
+            # If comparison fails due to weird data, assume different
+            return False
 
     def _consume_match(self, keys, id_map, k):
         keys[k] -= 1

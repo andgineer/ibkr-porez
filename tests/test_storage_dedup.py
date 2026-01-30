@@ -35,10 +35,14 @@ def test_dedup_strict_id_match(storage):
     t1_updated = make_tx("ID1", "2023-01-01", "AAPL", "10", "150.0")
     t1_updated.description = "Updated"
 
-    storage.save_transactions([t1])
-    assert len(storage.get_transactions()) == 1
+    inserted, updated = storage.save_transactions([t1])
+    assert inserted == 1
+    assert updated == 0
 
-    storage.save_transactions([t1_updated])
+    # Save same - strict match
+    inserted, updated = storage.save_transactions([t1_updated])
+    assert inserted == 0
+    assert updated == 1
     stored = storage.get_transactions()
     assert len(stored) == 1
     assert stored.iloc[0]["description"] == "Updated"
@@ -48,13 +52,25 @@ def test_dedup_xml_upgrades_csv(storage):
     # Scenario A: New XML (get) meets Existing CSV (import)
     # Existing CSV has synthesized ID
     t_csv = make_tx("csv-AAPL-...", "2023-01-05", "AAPL", "5", "100.00001")
-    storage.save_transactions([t_csv])
+    inserted, updated = storage.save_transactions([t_csv])
+    assert inserted == 1
+    assert updated == 0
 
     # New XML has official ID and matchable semantic data (fuzzy price)
     t_xml = make_tx("OFFICIAL_ID", "2023-01-05", "AAPL", "5", "100.0")
 
     # Save XML - should REPLACE CSV
-    storage.save_transactions([t_xml])
+    # Upgrade adds to `to_add` AND `ids_to_remove`.
+    # `updates_count` only increments on STRICT ID match.
+    # So `inserted_count` = len(to_add) - updates_count.
+    # len(to_add) is 1. updates_count is 0.
+    # So inserted is 1. Updated is 0.
+    # Wait, user sees it as "1 new"?
+    # Ideally "Updated". But for now let's assert what logical code does.
+    # Upgrade = New Record (technically).
+    inserted, updated = storage.save_transactions([t_xml])
+    assert inserted == 1
+    assert updated == 0
 
     stored = storage.get_transactions()
     assert len(stored) == 1
@@ -64,12 +80,16 @@ def test_dedup_xml_upgrades_csv(storage):
 def test_dedup_csv_skips_xml(storage):
     # Scenario B: New CSV (import) meets Existing XML (get)
     t_xml = make_tx("OFFICIAL_ID", "2023-01-05", "AAPL", "5", "100.0")
-    storage.save_transactions([t_xml])
+    inserted, updated = storage.save_transactions([t_xml])
+    assert inserted == 1
+    assert updated == 0
 
     t_csv = make_tx("csv-AAPL-...", "2023-01-05", "AAPL", "5", "100.00001")
 
     # Save CSV - should be SKIPPED
-    storage.save_transactions([t_csv])
+    inserted, updated = storage.save_transactions([t_csv])
+    assert inserted == 0
+    assert updated == 0
 
     stored = storage.get_transactions()
     assert len(stored) == 1
@@ -81,7 +101,9 @@ def test_dedup_split_orders_counter(storage):
     t_csv_1 = make_tx("csv-1", "2023-02-01", "IBKR", "10", "50")
     t_csv_2 = make_tx("csv-2", "2023-02-01", "IBKR", "10", "50")
 
-    storage.save_transactions([t_csv_1, t_csv_2])
+    inserted, updated = storage.save_transactions([t_csv_1, t_csv_2])
+    assert inserted == 2
+    assert updated == 0
     assert len(storage.get_transactions()) == 2
 
     # New XML come in (official IDs)
@@ -89,7 +111,9 @@ def test_dedup_split_orders_counter(storage):
 
     # Save 1 XML - should replace 1 CSV, leave 1 CSV
     # (Assuming we process 1 by 1 or batch? Storage logic handles batch)
-    storage.save_transactions([t_xml_1])
+    inserted, updated = storage.save_transactions([t_xml_1])
+    assert inserted == 1
+    assert updated == 0
 
     stored = storage.get_transactions()
     # XML Supremacy: 1 XML overwrites ALL CSVs for that day.
@@ -100,7 +124,9 @@ def test_dedup_split_orders_counter(storage):
 
     # Save 2nd XML
     t_xml_2 = make_tx("xml-2", "2023-02-01", "IBKR", "10", "50")
-    storage.save_transactions([t_xml_2])
+    inserted, updated = storage.save_transactions([t_xml_2])
+    assert inserted == 1
+    assert updated == 0
 
     stored = storage.get_transactions()
     assert len(stored) == 2
@@ -117,13 +143,17 @@ def test_dedup_bundle_vs_split_coverage(storage):
     # 1. Existing XML (Split)
     t_xml_1 = make_tx("xml-1", "2025-12-23", "IJH", "77", "50")
     t_xml_2 = make_tx("xml-2", "2025-12-23", "IJH", "11", "50")
-    storage.save_transactions([t_xml_1, t_xml_2])
+    inserted, updated = storage.save_transactions([t_xml_1, t_xml_2])
+    assert inserted == 2
+    assert updated == 0
 
     # 2. Incoming CSV (Bundle) - different quantity, so no semantic match!
     t_csv_bundle = make_tx("csv-bundle", "2025-12-23", "IJH", "88", "50")
 
     # Save CSV
-    storage.save_transactions([t_csv_bundle])
+    inserted, updated = storage.save_transactions([t_csv_bundle])
+    assert inserted == 0
+    assert updated == 0
 
     # Verify: Should ONLY have XML records. CSV bundle skipped due to date coverage.
     stored = storage.get_transactions()
@@ -142,7 +172,9 @@ def test_xml_supremacy_reverse_order(storage):
 
     # 1. Import CSV (Bundle)
     t_csv = make_tx("csv-bundle", "2025-12-23", "IJH", "88", "50")
-    storage.save_transactions([t_csv])
+    inserted, updated = storage.save_transactions([t_csv])
+    assert inserted == 1
+    assert updated == 0
 
     # Verify CSV is there
     stored = storage.get_transactions()
@@ -153,7 +185,9 @@ def test_xml_supremacy_reverse_order(storage):
     t_xml_1 = make_tx("xml-1", "2025-12-23", "IJH", "77", "50")
     t_xml_2 = make_tx("xml-2", "2025-12-23", "IJH", "11", "50")
 
-    storage.save_transactions([t_xml_1, t_xml_2])
+    inserted, updated = storage.save_transactions([t_xml_1, t_xml_2])
+    assert inserted == 2
+    assert updated == 0
 
     # Verify: CSV is GONE. XMLs are present.
     stored = storage.get_transactions()
@@ -196,12 +230,33 @@ def test_dedup_id_type_mismatch(storage):
     t_new = make_tx("12345", "2025-01-01", "AAPL", "10", "100")
 
     # 3. Save
-    count = storage.save_transactions([t_new])
+    inserted, updated = storage.save_transactions([t_new])
 
-    # Expect 1 "new" (technically update) because strict ID match adds to list.
-    # But crucially, total stored must be 1 (no duplicates).
-    # assert count == 1  # Logic counts updates as new
+    # Expect 0 inserted, 1 updated (strict ID match)
+    assert inserted == 0
+    assert updated == 1
     stored = storage.get_transactions()
     assert len(stored) == 1
     # pd.read_json might reload "12345" as int, but as long as it's deduplicated (len=1), we are good.
     assert str(stored.iloc[0]["transaction_id"]) == "12345"
+
+
+def test_dedup_identical_skip(storage):
+    # Scenario: Exact duplicate processing
+    # If we save t1, then save t1 again (unchanged), it should be skipped ENTIRELY.
+    # Count: 0 inserted, 0 updated.
+
+    t1 = make_tx("ID_PERFECT", "2023-01-01", "AAPL", "10", "150.0")
+
+    # 1. First Save
+    inserted, updated = storage.save_transactions([t1])
+    assert inserted == 1
+    assert updated == 0
+
+    # 2. Second Save (Identical)
+    inserted, updated = storage.save_transactions([t1])
+    assert inserted == 0
+    assert updated == 0  # Should be 0, not 1!
+
+    stored = storage.get_transactions()
+    assert len(stored) == 1
