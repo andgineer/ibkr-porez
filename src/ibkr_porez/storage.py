@@ -66,6 +66,8 @@ class Storage:
         if file_path.exists():
             try:
                 existing_df = pd.read_json(file_path, orient="records")
+                if "transaction_id" in existing_df.columns:
+                    existing_df["transaction_id"] = existing_df["transaction_id"].astype(str)
             except ValueError as e:
                 print(f"[WARNING] Failed to load existing partition {file_path.name}: {e}")
 
@@ -120,61 +122,86 @@ class Storage:
         ids_to_remove = set()
         existing_ids = set(existing_df["transaction_id"])
 
-        # Pre-calculate dates that have OFFICIAL records
-        # An official record is one whose ID does NOT start with "csv-"
-        official_dates = set()
-        for _, row in existing_df.iterrows():
-            if not str(row["transaction_id"]).startswith("csv-"):
-                # Store string date key to match row format
-                raw_date = row.get("date")
-                d_str = str(pd.to_datetime(raw_date).date()) if not pd.isna(raw_date) else ""
-                if d_str:
-                    official_dates.add(d_str)
+        # XML Supremacy: Dates that will be covered by new OFFICIAL records
+        official_new_dates = self._get_official_dates(new_df)
+
+        # 1. Identify Existing CSVs to remove due to XML Supremacy
+        if official_new_dates:
+            for _, row in existing_df.iterrows():
+                if str(row["transaction_id"]).startswith("csv-"):
+                    raw_date = row.get("date")
+                    d_str = str(pd.to_datetime(raw_date).date()) if not pd.isna(raw_date) else ""
+                    if d_str in official_new_dates:
+                        ids_to_remove.add(row["transaction_id"])
+
+        # 2. Process New Rows
+        official_existing_dates = self._get_official_dates(existing_df)
+        dedup_index = (existing_keys, existing_id_map)
+        results = (to_add, ids_to_remove)
 
         for _, row in new_df.iterrows():
             new_id = row["transaction_id"]
-
-            # 1. Strict ID Logic overrides everything
             if new_id in existing_ids:
                 to_add.append(row)
                 continue
 
             k = self._make_transaction_key(row)
-
-            # 2. Semantic Match Check
             if existing_keys[k] > 0:
-                is_new_csv = str(new_id).startswith("csv-")
-                matched_existing_id = existing_id_map[k][0]
-                is_old_csv = str(matched_existing_id).startswith("csv-")
-
-                if not is_new_csv and is_old_csv:
-                    # Upgrade: XML replacing CSV
-                    ids_to_remove.add(matched_existing_id)
-                    to_add.append(row)
-                    self._consume_match(existing_keys, existing_id_map, k)
-
-                elif is_new_csv and not is_old_csv:
-                    # Skip: New CSV trying to duplicate existing XML
-                    self._consume_match(existing_keys, existing_id_map, k)
-
-                else:
-                    self._consume_match(existing_keys, existing_id_map, k)
+                self._handle_semantic_match(row, k, dedup_index, results)
             else:
-                # No semantic match.
-                # Coverage Protection:
-                is_new_csv = str(new_id).startswith("csv-")
-
-                raw_date = row.get("date")
-                d_str = str(pd.to_datetime(raw_date).date()) if not pd.isna(raw_date) else ""
-
-                if is_new_csv and d_str in official_dates:
-                    # Skip CSV because date is covered by XML (Source of Truth)
-                    # print(f"Skipping CSV record {new_id} (Date {d_str} covered by XML)")
-                    pass
-                else:
-                    to_add.append(row)
+                self._handle_no_match(row, official_existing_dates, to_add)
 
         return to_add, ids_to_remove
+
+    def _get_official_dates(self, df: pd.DataFrame) -> set[str]:
+        """Return set of date strings that have official (XML) records."""
+        dates = set()
+        for _, row in df.iterrows():
+            if not str(row["transaction_id"]).startswith("csv-"):
+                raw_date = row.get("date")
+                d_str = str(pd.to_datetime(raw_date).date()) if not pd.isna(raw_date) else ""
+                if d_str:
+                    dates.add(d_str)
+        return dates
+
+    def _handle_semantic_match(self, row, k, dedup_index, results):
+        existing_keys, existing_id_map = dedup_index
+        to_add, ids_to_remove = results
+
+        new_id = row["transaction_id"]
+        is_new_csv = str(new_id).startswith("csv-")
+        matched_existing_id = existing_id_map[k][0]
+        is_old_csv = str(matched_existing_id).startswith("csv-")
+
+        if not is_new_csv and is_old_csv:
+            # Upgrade: XML replacing CSV
+            ids_to_remove.add(matched_existing_id)
+            to_add.append(row)
+            self._consume_match(existing_keys, existing_id_map, k)
+
+        elif is_new_csv and not is_old_csv:
+            # Skip: New CSV trying to duplicate existing XML
+            self._consume_match(existing_keys, existing_id_map, k)
+
+        elif not is_new_csv and not is_old_csv:
+            # XML vs XML with different IDs (Split Orders). Add, do not consume.
+            to_add.append(row)
+
+        else:
+            # CSV vs CSV. Assume duplicate.
+            self._consume_match(existing_keys, existing_id_map, k)
+
+    def _handle_no_match(self, row, official_existing_dates, to_add):
+        new_id = row["transaction_id"]
+        is_new_csv = str(new_id).startswith("csv-")
+        raw_date = row.get("date")
+        d_str = str(pd.to_datetime(raw_date).date()) if not pd.isna(raw_date) else ""
+
+        if is_new_csv and d_str in official_existing_dates:
+            # Skip CSV because date is covered by XML (Source of Truth)
+            pass
+        else:
+            to_add.append(row)
 
     def _consume_match(self, keys, id_map, k):
         keys[k] -= 1

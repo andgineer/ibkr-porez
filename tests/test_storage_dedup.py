@@ -92,11 +92,11 @@ def test_dedup_split_orders_counter(storage):
     storage.save_transactions([t_xml_1])
 
     stored = storage.get_transactions()
-    assert len(stored) == 2
-    ids = set(stored["transaction_id"])
-    assert "xml-1" in ids
-    # One of the csv IDs should remain
-    assert ("csv-1" in ids) or ("csv-2" in ids)
+    # XML Supremacy: 1 XML overwrites ALL CSVs for that day.
+    # So we expect 1 record (the XML one).
+    stored = storage.get_transactions()
+    assert len(stored) == 1
+    assert stored.iloc[0]["transaction_id"] == "xml-1"
 
     # Save 2nd XML
     t_xml_2 = make_tx("xml-2", "2023-02-01", "IBKR", "10", "50")
@@ -132,3 +132,76 @@ def test_dedup_bundle_vs_split_coverage(storage):
     assert "xml-1" in ids
     assert "xml-2" in ids
     assert "csv-bundle" not in ids
+
+
+def test_xml_supremacy_reverse_order(storage):
+    # Scenario: "Reverse Order"
+    # 1. User Imports CSV first (bundled trade)
+    # 2. User then runs GET (XML split trades)
+    # Result: The XML should DETECT that it covers the date, and DELETE the CSV record.
+
+    # 1. Import CSV (Bundle)
+    t_csv = make_tx("csv-bundle", "2025-12-23", "IJH", "88", "50")
+    storage.save_transactions([t_csv])
+
+    # Verify CSV is there
+    stored = storage.get_transactions()
+    assert len(stored) == 1
+    assert stored.iloc[0]["transaction_id"] == "csv-bundle"
+
+    # 2. Sync XML (Split) - Official Data arrives
+    t_xml_1 = make_tx("xml-1", "2025-12-23", "IJH", "77", "50")
+    t_xml_2 = make_tx("xml-2", "2025-12-23", "IJH", "11", "50")
+
+    storage.save_transactions([t_xml_1, t_xml_2])
+
+    # Verify: CSV is GONE. XMLs are present.
+    stored = storage.get_transactions()
+    assert len(stored) == 2
+    ids = set(stored["transaction_id"])
+    assert "xml-1" in ids
+    assert "xml-2" in ids
+    assert "csv-bundle" not in ids
+
+
+def test_dedup_id_type_mismatch(storage):
+    # Scenario: DataFrame loads ID as int, new ID is str.
+    # Without fix, "123" (str) in [123 (int)] is False, causing duplication.
+    # With fix, storage converts loaded IDs to strings.
+
+    # 1. Create a file with INT ids
+    import pandas as pd
+
+    # We must ensure we write a CLEAN int file
+    df = pd.DataFrame(
+        [
+            {
+                "transaction_id": 12345,
+                "date": "2025-01-01",
+                "type": "BUY",
+                "symbol": "AAPL",
+                "quantity": 10,
+                "price": 100,
+                "amount": 1000,
+                "currency": "USD",
+            }
+        ]
+    )
+
+    p = storage._partition_dir / "transactions_2025_H1.json"
+    p.parent.mkdir(exist_ok=True, parents=True)
+    df.to_json(p, orient="records")
+
+    # 2. Try to save SAME transaction but with string ID
+    t_new = make_tx("12345", "2025-01-01", "AAPL", "10", "100")
+
+    # 3. Save
+    count = storage.save_transactions([t_new])
+
+    # Expect 1 "new" (technically update) because strict ID match adds to list.
+    # But crucially, total stored must be 1 (no duplicates).
+    # assert count == 1  # Logic counts updates as new
+    stored = storage.get_transactions()
+    assert len(stored) == 1
+    # pd.read_json might reload "12345" as int, but as long as it's deduplicated (len=1), we are good.
+    assert str(stored.iloc[0]["transaction_id"]) == "12345"
