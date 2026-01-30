@@ -1,3 +1,4 @@
+import contextlib
 import json
 from datetime import date
 from decimal import Decimal
@@ -61,39 +62,120 @@ class Storage:
     def _save_partition(self, year: int, half: int, new_df: pd.DataFrame) -> int:
         file_path = self._partition_dir / f"transactions_{year}_H{half}.json"
 
-        combined_df = new_df
-        new_items_count = len(new_df)
-
+        # 1. Load Existing
+        existing_df = pd.DataFrame()
         if file_path.exists():
-            try:
-                # Load existing
+            with contextlib.suppress(ValueError):
                 existing_df = pd.read_json(file_path, orient="records")
 
-                # Check duplicates based on transaction_id
-                existing_ids = set(existing_df["transaction_id"])
-                current_new_ids = set(new_df["transaction_id"])
+        if existing_df.empty:
+            return self._write_df(new_df, file_path)
 
-                # Calculate how many are ACTUALLY new (not present before)
-                # (Note: we still Upsert/Overwrite if present, but for User Report we care
-                # about *new* IDs usually)
-                # Or maybe "Modified or New"?
-                # Let's report "New" as "Not in existing".
-                truly_new = current_new_ids - existing_ids
-                new_items_count = len(truly_new)
+        # 2. Smart Deduplication
+        from collections import Counter
 
-                # Upsert Logic:
-                # Filter out existing IDs that are in new_df (to be replaced)
-                existing_df = existing_df[~existing_df["transaction_id"].isin(current_new_ids)]
-                combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-            except ValueError:
-                # Malformed file? Overwrite with new.
-                pass
+        # Build Counter of EXISTING transactions
+        existing_keys = Counter()
+        existing_id_map = {}
 
-        # Save
-        cols_to_save = [c for c in combined_df.columns if not c.startswith("_")]
-        combined_df[cols_to_save].to_json(file_path, orient="records", date_format="iso", indent=4)
+        for _, row in existing_df.iterrows():
+            k = self._make_transaction_key(row)
+            existing_keys[k] += 1
+            if k not in existing_id_map:
+                existing_id_map[k] = []
+            existing_id_map[k].append(row["transaction_id"])
 
-        return new_items_count
+        # Process NEW transactions
+        to_add, ids_to_remove = self._identify_updates(
+            new_df,
+            existing_df,
+            existing_keys,
+            existing_id_map,
+        )
+
+        if not to_add and not ids_to_remove:
+            return 0
+
+        # Construct Final DF
+        final_df = self._construct_final_df(existing_df, pd.DataFrame(to_add), ids_to_remove)
+
+        return self._write_df(final_df, file_path, return_count=len(to_add))
+
+    def _make_transaction_key(self, row):
+        try:
+            raw_date = row.get("date")
+            d = "" if pd.isna(raw_date) else str(pd.to_datetime(raw_date).date())
+
+            s = str(row.get("symbol", ""))
+            t = str(row.get("type", ""))
+            q = abs(float(row.get("quantity", 0)))
+            p = round(float(row.get("price", 0)), 4)
+            return (d, s, t, q, p)
+        except (ValueError, TypeError):
+            return ("ERR",)
+
+    def _identify_updates(self, new_df, existing_df, existing_keys, existing_id_map):
+        to_add = []
+        ids_to_remove = set()
+        existing_ids = set(existing_df["transaction_id"])
+
+        for _, row in new_df.iterrows():
+            new_id = row["transaction_id"]
+
+            # 1. Strict ID Logic overrides everything
+            if new_id in existing_ids:
+                to_add.append(row)
+                continue
+
+            k = self._make_transaction_key(row)
+
+            # 2. Semantic Match Check
+            if existing_keys[k] > 0:
+                is_new_csv = str(new_id).startswith("csv-")
+                matched_existing_id = existing_id_map[k][0]
+                is_old_csv = str(matched_existing_id).startswith("csv-")
+
+                if not is_new_csv and is_old_csv:
+                    # Upgrade: XML replacing CSV
+                    ids_to_remove.add(matched_existing_id)
+                    to_add.append(row)
+                    self._consume_match(existing_keys, existing_id_map, k)
+
+                elif is_new_csv and not is_old_csv:
+                    # Skip: New CSV trying to duplicate existing XML
+                    self._consume_match(existing_keys, existing_id_map, k)
+
+                else:
+                    self._consume_match(existing_keys, existing_id_map, k)
+            else:
+                # No match, completely new
+                to_add.append(row)
+
+        return to_add, ids_to_remove
+
+    def _consume_match(self, keys, id_map, k):
+        keys[k] -= 1
+        id_map[k].pop(0)
+
+    def _construct_final_df(self, existing_df, new_subset_df, ids_to_remove):
+        if new_subset_df.empty:
+            return existing_df[~existing_df["transaction_id"].isin(ids_to_remove)]
+
+        existing_kept = existing_df[~existing_df["transaction_id"].isin(ids_to_remove)]
+        new_ids = set(new_subset_df["transaction_id"])
+        existing_kept = existing_kept[~existing_kept["transaction_id"].isin(new_ids)]
+
+        return pd.concat([existing_kept, new_subset_df], ignore_index=True)
+
+    def _write_df(self, df: pd.DataFrame, file_path: Path, return_count: int | None = None) -> int:
+        cols_to_save = [c for c in df.columns if not c.startswith("_")]
+        df[cols_to_save].to_json(
+            file_path,
+            orient="records",
+            date_format="iso",
+            indent=4,
+        )
+        return return_count if return_count is not None else len(df)
 
     def get_transactions(  # noqa: C901,PLR0912
         self,
