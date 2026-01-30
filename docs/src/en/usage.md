@@ -31,7 +31,7 @@ You will be prompted for:
 *   **Personal ID**: (JMBG for tax forms)
 *   **Full Name**: (For tax forms)
 *   **Address**: (For tax forms)
-*   **City Code**: (Municipality code, e.g. 223 or 1)
+*   **City Code**: The 3-digit municipality code (Šifra opštine). Example: `223` (Novi Sad). You can find the code in the [list](https://www.apml.gov.rs/uploads/useruploads/Documents/1533_1_pravilnik-javni_prihodi_prilog-3.pdf) (see column "Šifra"). The code is also available in the dropdown on the ePorezi portal.
 *   **Phone**: (Contact phone)
 *   **Email**: (Contact email)
 

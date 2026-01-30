@@ -23,7 +23,8 @@ class NBSClient:
         # This avoids 404s/Timeouts for known non-working days.
         import holidays
 
-        rs_holidays = holidays.RS()
+        # rs_holidays = holidays.RS() # DEPRECATED/REMOVED
+        rs_holidays = holidays.country_holidays("RS")
 
         target_date = date_obj
         # Look back up to 10 days to be safe (Orthodox Easter + May 1st overlap could be long)
@@ -40,7 +41,8 @@ class NBSClient:
                 return cached.rate
 
             # If it's a weekend or holiday, skip fetching and move back
-            is_weekend = target_date.weekday() >= 5  # 5=Sat, 6=Sun
+            saturday = 5
+            is_weekend = target_date.weekday() >= saturday
             is_holiday = target_date in rs_holidays
 
             if is_weekend or is_holiday:
@@ -64,7 +66,7 @@ class NBSClient:
                             ExchangeRate(date=date_obj, currency=currency, rate=rate_val),
                         )
                     return rate_val
-            except Exception:
+            except Exception:  # noqa: S110,BLE001
                 # Real error even on working day? Or maybe unexpected holiday?
                 # Continue looking back just in case, but log debug.
                 # print(f"DEBUG: Failed to fetch working day {target_date}: {e}")

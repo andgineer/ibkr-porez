@@ -20,14 +20,14 @@ class ConfigManager:
 
     def load_config(self) -> UserConfig:
         if not self._config_file.exists():
-            return UserConfig()
+            return UserConfig(full_name="", address="")
 
         try:
             with open(self._config_file) as f:
                 data = json.load(f)
                 return UserConfig(**data)
         except (json.JSONDecodeError, OSError):
-            return UserConfig()
+            return UserConfig(full_name="", address="")
 
     def save_config(self, config: UserConfig):
         with open(self._config_file, "w") as f:

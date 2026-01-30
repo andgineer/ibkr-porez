@@ -33,12 +33,11 @@ class Storage:
         with open(path, mode) as f:
             f.write(content)
 
-    def save_transactions(self, transactions: list[Transaction]):
+    def save_transactions(self, transactions: list[Transaction]) -> int:
         if not transactions:
-            return
+            return 0
 
         # Convert to DataFrame
-        # Pydantic -> Dict -> DF
         data = [t.model_dump(mode="json") for t in transactions]
         df_new = pd.DataFrame(data)
 
@@ -46,53 +45,60 @@ class Storage:
         df_new["date"] = pd.to_datetime(df_new["date"]).dt.date
 
         # Calculate partition key (Year-H1/H2)
-        # H1: Month <= 6 -> 1, else 2
         df_new["_year"] = pd.to_datetime(df_new["date"]).dt.year
         df_new["_half"] = pd.to_datetime(df_new["date"]).dt.month.apply(
-            lambda x: 1 if x <= 6 else 2
+            lambda x: 1 if x <= 6 else 2,  # noqa: PLR2004
         )
 
+        total_new_saved = 0
         # Group by partition to save
         for (year, half), group_df in df_new.groupby(["_year", "_half"]):
-            self._save_partition(int(year), int(half), group_df)
+            saved_count = self._save_partition(int(year), int(half), group_df)
+            total_new_saved += saved_count
 
-    def _save_partition(self, year: int, half: int, new_df: pd.DataFrame):
+        return total_new_saved
+
+    def _save_partition(self, year: int, half: int, new_df: pd.DataFrame) -> int:
         file_path = self._partition_dir / f"transactions_{year}_H{half}.json"
 
         combined_df = new_df
+        new_items_count = len(new_df)
 
         if file_path.exists():
             try:
                 # Load existing
-                # read_json with orient='records' might lose explicit types, but we handle basic strings.
-                # For consistency we might need to cast transaction_id to str if pandas guesses int.
                 existing_df = pd.read_json(file_path, orient="records")
 
-                # Merge: Upsert on transaction_id
-                # Strategy: Concat both, drop duplicates keeping LAST (which is new_df if appended 2nd)
-                # But to ensure new overwrites old cleanly:
+                # Check duplicates based on transaction_id
+                existing_ids = set(existing_df["transaction_id"])
+                current_new_ids = set(new_df["transaction_id"])
 
-                # Filter out existing IDs that are in new_df
-                new_ids = set(new_df["transaction_id"])
-                existing_df = existing_df[~existing_df["transaction_id"].isin(new_ids)]
+                # Calculate how many are ACTUALLY new (not present before)
+                # (Note: we still Upsert/Overwrite if present, but for User Report we care
+                # about *new* IDs usually)
+                # Or maybe "Modified or New"?
+                # Let's report "New" as "Not in existing".
+                truly_new = current_new_ids - existing_ids
+                new_items_count = len(truly_new)
 
+                # Upsert Logic:
+                # Filter out existing IDs that are in new_df (to be replaced)
+                existing_df = existing_df[~existing_df["transaction_id"].isin(current_new_ids)]
                 combined_df = pd.concat([existing_df, new_df], ignore_index=True)
             except ValueError:
                 # Malformed file? Overwrite with new.
                 pass
 
         # Save
-        # Remove temporary partition columns? Or keep them?
-        # Let's remove them to keep file clean.
         cols_to_save = [c for c in combined_df.columns if not c.startswith("_")]
-
-        # Ensure date serialization is string
-        # to_json handles dates usually as timestamps or strings depending on settings.
-        # date_format='iso' is safest.
         combined_df[cols_to_save].to_json(file_path, orient="records", date_format="iso", indent=4)
 
-    def get_transactions(
-        self, start_date: date | None = None, end_date: date | None = None
+        return new_items_count
+
+    def get_transactions(  # noqa: C901,PLR0912
+        self,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> pd.DataFrame:
         """Load transactions into a DataFrame."""
 
@@ -178,7 +184,7 @@ class Storage:
             try:
                 parts = f.stem.split("_")
                 return (int(parts[1]), int(parts[2][1:]))  # (Year, Half)
-            except:
+            except (ValueError, IndexError):
                 return (0, 0)
 
         sorted_files = sorted(all_files, key=parse_file_key, reverse=True)
@@ -191,14 +197,13 @@ class Storage:
                     # Ensure date is date object
                     df["date"] = pd.to_datetime(df["date"]).dt.date
                     local_max = df["date"].max()
-                    if local_max:
-                        if max_date is None or local_max > max_date:
-                            max_date = local_max
-                            # Since we iterate descending, the first valid max found in the newest partition
-                            # MIGHT be the global max, provided partitions are strictly time-ordered.
-                            # But a transaction from Jan could be in H2 file if mis-saved? No, we shard by date.
-                            # So yes, the max date in the newest non-empty partition is the global max.
-                            return max_date
+                    if local_max and (max_date is None or local_max > max_date):
+                        # Since we iterate descending, the first valid max found in
+                        # the newest partition MIGHT be the global max, provided partitions
+                        # are strictly time-ordered. But a transaction from Jan could be in H2
+                        # file if mis-saved? No, we shard by date.
+                        # So yes, the max date in the newest non-empty partition is the global max.
+                        return local_max
             except ValueError:
                 continue
 

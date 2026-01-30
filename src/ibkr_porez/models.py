@@ -89,6 +89,6 @@ class UserConfig(BaseModel):
     personal_id: str = ""  # JMBG
     full_name: str
     address: str
-    city_code: str = "223" # Default or required?
+    city_code: str = "223"
     phone: str = "0600000000"
     email: str = "email@example.com"

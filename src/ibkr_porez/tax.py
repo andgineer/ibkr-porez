@@ -12,7 +12,7 @@ class TaxCalculator:
     def __init__(self, nbs_client: NBSClient):
         self.nbs = nbs_client
 
-    def process_trades(self, df: pd.DataFrame) -> list[TaxReportEntry]:
+    def process_trades(self, df: pd.DataFrame) -> list[TaxReportEntry]:  # noqa: C901
         """
         Process trades using FIFO matching to calculate capital gains.
 
@@ -65,7 +65,7 @@ class TaxCalculator:
                             "price": price,
                             "quantity": qty,
                             "currency": currency,
-                        }
+                        },
                     )
                 elif qty < 0:
                     # SELL: Consume from inventory FIFO
@@ -86,19 +86,19 @@ class TaxCalculator:
                             matched_qty = sale_qty_remaining
                             purchase_date = sale_date  # No history
                             purchase_price = Decimal(0)
-                            purchase_currency = sale_currency  # Assume same
+                            # purchase_currency = sale_currency  # Unused
 
                             self._create_entry(
                                 report_entries,
-                                symbol,
-                                matched_qty,
+                                str(symbol),
+                                Decimal(matched_qty),
                                 sale_date,
                                 sale_price,
                                 sale_currency,
                                 purchase_date,
                                 purchase_price,
                             )
-                            sale_qty_remaining = 0
+                            sale_qty_remaining = Decimal(0)
                             break
 
                         # Peek at oldest lot
@@ -113,13 +113,13 @@ class TaxCalculator:
                             # Partial lot consumption
                             matched_qty = sale_qty_remaining
                             lot["quantity"] -= matched_qty
-                            sale_qty_remaining = 0
+                            sale_qty_remaining = Decimal(0)
 
                         # Create Report Entry for this segment
                         self._create_entry(
                             report_entries,
-                            symbol,
-                            matched_qty,
+                            str(symbol),
+                            Decimal(matched_qty),
                             sale_date,
                             sale_price,
                             sale_currency,
@@ -129,7 +129,7 @@ class TaxCalculator:
 
         return report_entries
 
-    def _create_entry(
+    def _create_entry(  # noqa: PLR0913
         self,
         entries_list: list[TaxReportEntry],
         ticker: str,
@@ -143,7 +143,8 @@ class TaxCalculator:
         # 1. Get Exchange Rates
         rate_sale = self.nbs.get_rate(sale_date, sale_currency)
         rate_purchase = self.nbs.get_rate(
-            purchase_date, sale_currency
+            purchase_date,
+            sale_currency,
         )  # Assuming buy/sell same currency for now
 
         if rate_sale is None:
