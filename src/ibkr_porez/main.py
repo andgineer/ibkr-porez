@@ -304,7 +304,7 @@ def show(year: int | None, ticker: str | None, month: str | None):  # noqa: C901
     # Group by Month-Year and Ticker
     # Structure: { "YYYY-MM": { "TICKER": { "divs": 0.0, "sales_count": 0, "pnl": Decimal(0) } } }
     stats = defaultdict(
-        lambda: defaultdict(lambda: {"divs": 0.0, "sales_count": 0, "pnl": Decimal(0)}),
+        lambda: defaultdict(lambda: {"divs": Decimal(0), "sales_count": 0, "pnl": Decimal(0)}),
     )
 
     for entry in sales_entries:  # Already filtered by year (if --year passed, but maybe not by -m)
@@ -338,7 +338,7 @@ def show(year: int | None, ticker: str | None, month: str | None):  # noqa: C901
                 continue
 
             curr = row["currency"]
-            amt = float(row["amount"])
+            amt = Decimal(str(row["amount"]))
 
             # Rate
             from ibkr_porez.models import Currency
@@ -347,7 +347,7 @@ def show(year: int | None, ticker: str | None, month: str | None):  # noqa: C901
                 c_enum = Currency(curr)
                 rate = nbs.get_rate(d, c_enum)
                 if rate:
-                    val = amt * float(rate)
+                    val = amt * rate
                     month_key = d.strftime("%Y-%m")
                     stats[month_key][t]["divs"] += val
             except ValueError:
