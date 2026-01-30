@@ -66,7 +66,7 @@ Shows:
 *   Number of sales (taxable events).
 *   Realized P/L (Capital Gains) estimate (in RSD).
 
-## 3. Generate Tax Report (`report`)
+## 4. Generate Tax Report (`report`)
 
 Generates the PPDG-3R XML file for the Serbian Tax Administration.
 

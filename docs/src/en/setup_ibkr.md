@@ -72,3 +72,13 @@ How to download the correct report:
 5.  Click **Run**.
 6.  Download the **PDF**.
 7.  On the ePorezi portal, in section **8. Doкazi uz priјаvu**, delete the placeholder entry (if present) and upload this file.
+
+## 5. Export Full History (for `import` command)
+
+If you need to load transaction history older than 1 year (unavailable via regular Flex Web Service), use CSV export:
+
+1.  In IBKR, go to **Performance & Reports** > **Statements** > **Activity**.
+2.  **Period**: Select **Complete Date Range** or **Custom Date Range** (specify the entire period since account opening).
+3.  **Format**: **CSV**.
+4.  Click **Run**.
+5.  Download the report file. This file can be used with the `ibkr-porez import` command.

@@ -1,6 +1,7 @@
 """ibkr-porez."""
 
 from datetime import date
+from pathlib import Path
 
 import rich_click as click
 
@@ -136,6 +137,53 @@ def get(force: bool):
             import traceback
 
             traceback.print_exc()
+
+
+@ibkr_porez.command("import")
+@click.argument("file_path", type=click.Path(exists=True, path_type=Path))
+def import_file(file_path: Path):
+    """Import historical transactions from CSV Activity Statement."""
+    from rich.console import Console
+
+    from ibkr_porez.parsers.csv_parser import CSVParser
+
+    console = Console()
+    storage = Storage()
+    nbs = NBSClient(storage)
+
+    console.print(f"[blue]Importing from {file_path}...[/blue]")
+
+    try:
+        parser = CSVParser()
+        with open(file_path, encoding="utf-8-sig") as f:
+            transactions = parser.parse(f)
+
+        if not transactions:
+            console.print("[yellow]No valid transactions found in file.[/yellow]")
+            return
+
+        new_count = storage.save_transactions(transactions)
+        console.print(
+            f"[green]Parsed {len(transactions)} transactions. ({new_count} new)[/green]",
+        )
+
+        # Sync Rates
+        console.print("[blue]Syncing NBS exchange rates for imported data...[/blue]")
+        dates_to_fetch = set()
+        for tx in transactions:
+            dates_to_fetch.add((tx.date, tx.currency))
+            if tx.open_date:
+                dates_to_fetch.add((tx.open_date, tx.currency))
+
+        from rich.progress import track
+
+        for d, curr in track(dates_to_fetch, description="Fetching rates..."):
+            nbs.get_rate(d, curr)
+
+        console.print("[bold green]Import Complete![/bold green]")
+
+    except Exception as e:  # noqa: BLE001
+        console.print(f"[bold red]Import Failed:[/bold red] {e}")
 
 
 @ibkr_porez.command()
