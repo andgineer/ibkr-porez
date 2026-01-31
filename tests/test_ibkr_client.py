@@ -82,6 +82,49 @@ class TestIBKRClient:
         args2, kwargs2 = mock_get.call_args_list[1]
         assert kwargs2["params"]["q"] == "REF123"
 
+    @patch("requests.get")
+    @patch("time.sleep")
+    def test_fetch_latest_report_incremental(self, mock_sleep, mock_get):
+        from datetime import date
+
+        client = IBKRClient("token", "query")
+
+        mock_resp = MagicMock()
+        mock_resp.content = b"<FlexStatementResponse><ReferenceCode>REF</ReferenceCode><Url>http://u</Url></FlexStatementResponse>"
+        mock_get.return_value = mock_resp
+
+        # Call with only start_date
+        client.fetch_latest_report(start_date=date(2023, 1, 1))
+
+        args, kwargs = mock_get.call_args_list[0]
+        params = kwargs["params"]
+
+        assert params["fd"] == "20230101"
+        assert "td" in params  # Should be defaulted to today
+        # We can't easily assert today's date without freezing time, but presence is key.
+
+    @patch("requests.get")
+    @patch("time.sleep")
+    def test_fetch_latest_report_with_dates(self, mock_sleep, mock_get):
+        from datetime import date
+
+        client = IBKRClient("token", "query")
+
+        # Mock responses
+        mock_resp1 = MagicMock()
+        mock_resp1.content = b"<FlexStatementResponse><ReferenceCode>REF123</ReferenceCode><Url>http://test.com</Url></FlexStatementResponse>"
+        mock_resp2 = MagicMock()
+        mock_resp2.content = b"<Report>Data</Report>"
+        mock_get.side_effect = [mock_resp1, mock_resp2]
+
+        client.fetch_latest_report(start_date=date(2023, 1, 1), end_date=date(2023, 2, 1))
+
+        # Verify Step 1 params have overrides
+        args1, kwargs1 = mock_get.call_args_list[0]
+        params = kwargs1["params"]
+        assert params["fd"] == "20230101"
+        assert params["td"] == "20230201"
+
     def test_parse_report_error(self):
         client = IBKRClient("token", "query")
         error_xml = b"<FlexStatementResponse><Status>Error</Status><ErrorCode>1012</ErrorCode><ErrorMessage>Invalid Token</ErrorMessage></FlexStatementResponse>"

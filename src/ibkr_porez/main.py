@@ -1,9 +1,12 @@
 """ibkr-porez."""
 
+import logging
 from datetime import date
 from pathlib import Path
 
 import rich_click as click
+from rich.console import Console
+from rich.logging import RichHandler
 
 from ibkr_porez import __version__
 from ibkr_porez.config import UserConfig, config_manager
@@ -15,6 +18,39 @@ from ibkr_porez.tax import TaxCalculator
 # click.rich_click.USE_MARKDOWN = True
 OUTPUT_FILE_DEFAULT = "output"
 
+# Global Console instance to ensure logs and progress bars share the same stream
+console = Console()
+
+
+def _setup_logging_callback(ctx, param, value):  # noqa: ARG001
+    if not value or ctx.resilient_parsing:
+        return
+
+    # Use RichHandler connected to the global console
+    # rich_tracebacks=True gives nice coloured exceptions
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(console=console, rich_tracebacks=True)],
+    )
+
+    # Suppress chatty libraries
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("requests").setLevel(logging.WARNING)
+
+
+def verbose_option(f):
+    return click.option(
+        "--verbose",
+        "-v",
+        is_flag=True,
+        expose_value=False,
+        is_eager=True,
+        callback=_setup_logging_callback,
+        help="Enable verbose logging.",
+    )(f)
+
 
 @click.group()
 @click.version_option(version=__version__, prog_name="ibkr-porez")
@@ -25,14 +61,10 @@ def ibkr_porez() -> None:
 
 
 @ibkr_porez.command()
+@verbose_option
 def config():
     """Configure IBKR and personal details."""
     current_config = config_manager.load_config()
-
-    console = click.get_current_context().find_root().info_name  # type: ignore
-    from rich.console import Console
-
-    console = Console()
 
     console.print("[bold blue]Configuration Setup[/bold blue]")
     console.print(f"Config file location: {config_manager.config_path}\n")
@@ -67,12 +99,9 @@ def config():
 
 @ibkr_porez.command()
 @click.option("--force", "-f", is_flag=True, help="Force full fetch (ignore local history).")
+@verbose_option
 def get(force: bool):
     """Sync data from IBKR and NBS."""
-    from rich.console import Console
-
-    console = Console()
-
     cfg = config_manager.load_config()
     if not cfg.ibkr_token or not cfg.ibkr_query_id:
         console.print("[red]Missing Configuration! Run `ibkr-porez config` first.[/red]")
@@ -117,37 +146,40 @@ def get(force: bool):
             stats = f"({count_inserted} new, {count_updated} updated)"
             console.print(f"[green]{msg} {stats}[/green]")
 
-            # 4. Sync Rates (Priming Cache)
-            console.print("[blue]Syncing NBS exchange rates...[/blue]")
-            dates_to_fetch = set()
-            for tx in transactions:
-                dates_to_fetch.add((tx.date, tx.currency))
-                if tx.open_date:
-                    dates_to_fetch.add((tx.open_date, tx.currency))
-
-            from rich.progress import track
-
-            for d, curr in track(dates_to_fetch, description="Fetching rates..."):
-                nbs.get_rate(d, curr)
-
-            console.print("[bold green]Sync Complete![/bold green]")
-
         except Exception as e:  # noqa: BLE001
+            # Stop if XML fetch/parse fails
             console.print(f"[bold red]Error:[/bold red] {e}")
-            import traceback
+            console.print_exception()
+            return
 
-            traceback.print_exc()
+    # 4. Sync Rates (Priming Cache) - OUTSIDE status context
+    try:
+        console.print("[blue]Syncing NBS exchange rates...[/blue]")
+        dates_to_fetch = set()
+        for tx in transactions:
+            dates_to_fetch.add((tx.date, tx.currency))
+            if tx.open_date:
+                dates_to_fetch.add((tx.open_date, tx.currency))
+
+        from rich.progress import track
+
+        for d, curr in track(dates_to_fetch, description="Fetching rates...", console=console):
+            nbs.get_rate(d, curr)
+
+        console.print("[bold green]Sync Complete![/bold green]")
+
+    except Exception as e:  # noqa: BLE001
+        console.print(f"[bold red]Rate Sync Error:[/bold red] {e}")
+        console.print_exception()
 
 
 @ibkr_porez.command("import")
 @click.argument("file_path", type=click.Path(exists=True, path_type=Path))
+@verbose_option
 def import_file(file_path: Path):
     """Import historical transactions from CSV Activity Statement."""
-    from rich.console import Console
-
     from ibkr_porez.parsers.csv_parser import CSVParser
 
-    console = Console()
     storage = Storage()
     nbs = NBSClient(storage)
 
@@ -177,13 +209,14 @@ def import_file(file_path: Path):
 
         from rich.progress import track
 
-        for d, curr in track(dates_to_fetch, description="Fetching rates..."):
+        for d, curr in track(dates_to_fetch, description="Fetching rates...", console=console):
             nbs.get_rate(d, curr)
 
         console.print("[bold green]Import Complete![/bold green]")
 
     except Exception as e:  # noqa: BLE001
         console.print(f"[bold red]Import Failed:[/bold red] {e}")
+        console.print_exception()
 
 
 @ibkr_porez.command()
@@ -195,6 +228,7 @@ def import_file(file_path: Path):
     type=str,
     help="Show detailed breakdown for specific month (YYYY-MM, YYYYMM, or MM)",
 )
+@verbose_option
 def show(year: int | None, ticker: str | None, month: str | None):  # noqa: C901,PLR0912,PLR0915
     """Show tax report (Sales only)."""
     import re
@@ -203,10 +237,7 @@ def show(year: int | None, ticker: str | None, month: str | None):  # noqa: C901
     from decimal import Decimal
 
     import pandas as pd
-    from rich.console import Console
     from rich.table import Table
-
-    console = Console()
 
     storage = Storage()
     nbs = NBSClient(storage)
@@ -436,14 +467,11 @@ def show(year: int | None, ticker: str | None, month: str | None):  # noqa: C901
 
 @ibkr_porez.command()
 @click.option("--half", required=False, help="Half-year to report (e.g. 2023-1, 20231)")
+@verbose_option
 def report(half: str | None):  # noqa: C901,PLR0912,PLR0915
     """Generate PPDG-3R XML report."""
     import re
     from datetime import datetime
-
-    from rich.console import Console
-
-    console = Console()
 
     # Determine Period
     target_year = None

@@ -1,3 +1,4 @@
+import logging
 import time
 import xml.etree.ElementTree as ET
 from datetime import date
@@ -7,6 +8,8 @@ import requests
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 from ibkr_porez.models import Currency, Transaction, TransactionType
+
+logger = logging.getLogger(__name__)
 
 
 class IBKRClient:
@@ -37,13 +40,15 @@ class IBKRClient:
         # Step 1: Request the report
         params_req = {"t": self.token, "q": self.query_id, "v": self.VERSION}
 
-        # Incremental fetch: override period
-        # IBKR format: yyyymmdd or yyyy-mm-dd?
-        # API docs say: yyyymmdd
         if start_date:
             params_req["fd"] = start_date.strftime("%Y%m%d")
-        if end_date:
+            # Both fd and td are required for override to work
+            end = end_date or date.today()
+            params_req["td"] = end.strftime("%Y%m%d")
+        elif end_date:
             params_req["td"] = end_date.strftime("%Y%m%d")
+
+        logger.debug(f"Sending IBKR Request: {params_req}")
 
         resp_req = requests.get(self.FLEX_URL_REQUEST, params=params_req, timeout=30)
         resp_req.raise_for_status()
