@@ -1,0 +1,114 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"Test basic retry logic (simulated).","3","test_fetch_rate_api_retry","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestNBSClient","test_nbs","",""
+"Verify XML file creation and content.","41","test_report_generation_file_check","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"
+        Scenario: Complex FIFO (Mutli-Buy/Single-Sell, Single-Buy/Multi-Sell).
+        Data: tests/resources/fifo_scenarios.xml
+        Expect:
+        - AAPL: 1 Sell of 15. Gain ~29,250 RSD (assuming rate 117).
+        - MSFT: 2 Sells (5, 10). Gains 5,850 and 23,400 RSD.
+        ","56","test_report_fifo_complex","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"Test _fetch_rate logic regarding API response.","1","test_fetch_rate_api_success","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestNBSClient","test_nbs","",""
+"","8","test_get_transactions_open_date_conversion","tests","Sat Jan 31 17:41:45 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","TestStorageIncremental","test_storage_incremental","",""
+"
+        Scenario: Run `show` without arguments.
+        Expect: Monthly summary table.
+        ","20","test_show_default_summary","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EShow","test_e2e_show","",""
+"Should skip holidays using holidays lib.","1","test_offline_skip_holiday","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestNBSClient","test_nbs","",""
+"Should skip weekend days directly without API call.","1","test_offline_skip_weekend","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestNBSClient","test_nbs","",""
+"Should give up after 10 days.","2","test_give_up_after_limit","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestNBSClient","test_nbs","",""
+"Verify save_config and load_config work together.","1","test_save_load_roundtrip","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestConfigManager","test_config_manager","",""
+"","0","test_version_option","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","","test_e2e_version","",""
+"
+        Scenario: User runs `config` command and provides all inputs.
+        Expect: Config file created with correct values.
+        ","19","test_config_setup","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestE2EConfig","test_e2e_config","",""
+"Scenario: User omits --half, defaults to previous complete half.","3","test_report_default_period","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"","3","test_tax_calculator_fifo_profit","tests","Sat Jan 31 17:41:45 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"
+        Scenario: Run `show --month 2023-02`.
+        Expect: Summary filtered by month (or detailed? logic says if ticker OR simple filter... wait.
+        Let's check logic: if ticker IS passed -> Detailed. If ONLY month -> Summary filtered?
+        Code: `if show_detailed_list: ...` where `show_detailed_list = True if ticker else False`.
+        So `show -m 2023-02` shows SUMMARY filtered (NOT Detailed).
+        Wait, I should verify what I implemented.
+        ","20","test_show_detailed_month","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EShow","test_e2e_show","",""
+"Scenario: No transactions.","3","test_show_empty","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EShow","test_e2e_show","",""
+"","3","test_nbs_fallback","tests","Sat Jan 31 17:41:45 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","","test_tax_calculator","",""
+"","23","test_dedup_id_type_mismatch","tests","Sat Jan 31 17:41:45 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"
+        Scenario:
+        1. Fetch Flex Query.
+        2. Import CSV.
+
+        Expect:
+        - Common items (AAPL, Divs) skipped.
+        - New items in CSV (MSFT) added.
+        ","52","test_workflow_skip_duplicates","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"","3","test_import_invalid_file","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"","28","test_dedup_identical_skip","tests","Sat Jan 31 17:41:45 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","1","test_parse_csv_dividends","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestCSVParser","test_csv_parser","",""
+"","27","test_dedup_bundle_vs_split_coverage","tests","Sat Jan 31 17:41:45 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"Scenario: User provides invalid date format.","43","test_report_invalid_format","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"","1","test_parse_report","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"","2","test_parse_report_error","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"Test selling 15 shares covering 2 lots (10 @ 100, 10 @ 200).","3","test_tax_calculator_fifo_multi_lot","tests","Sat Jan 31 17:41:45 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"","27","test_dedup_csv_skips_xml","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","0","test_version","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","","test_e2e_version","",""
+"Scenario: Storage effectively empty (or filtered to empty).","4","test_report_no_transactions_found","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"
+        Scenario: Run `show --ticker AAPL`.
+        Expect: Detailed execution list for AAPL.
+        ","20","test_show_detailed_ticker","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EShow","test_e2e_show","",""
+"RSD should always be 1.","0","test_rsd_rate","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestNBSClient","test_nbs","",""
+"","3","test_xml_generator_structure","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestPPDG3R","test_report","",""
+"
+        Scenario: User updates existing config (pressing Enter to keep defaults).
+        ","3","test_config_update","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestE2EConfig","test_e2e_config","",""
+"Test selling 5 shares from a lot of 10.","4","test_tax_calculator_fifo_split_lot","tests","Sat Jan 31 17:41:45 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"Verify load_config returns empty/default config if file missing.","0","test_load_missing_file","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestConfigManager","test_config_manager","",""
+"
+        Scenario: Working day fetch fails (e.g. API error or missing data).
+        Should continue looking back.
+        ","2","test_fallback_search","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestNBSClient","test_nbs","",""
+"","31","test_dedup_strict_id_match","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"Scenario: No sales in period.","21","test_report_no_sales","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"","18","test_get_last_transaction_date","tests","Sat Jan 31 17:41:45 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","TestStorageIncremental","test_storage_incremental","",""
+"Verify config_path property returns expected path.","0","test_config_path","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestConfigManager","test_config_manager","",""
+"","3","test_parse_csv_missing_ids","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestCSVParser","test_csv_parser","",""
+"","40","test_xml_supremacy_reverse_order","tests","Sat Jan 31 17:41:45 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"
+        Scenario: Generate PPDG-3R report for H1 2023.
+        Data:
+        - Buy AAPL 10 @ 100 USD on 2022-12-01 (Outside period context)
+        - Sell AAPL 5 @ 120 USD on 2023-01-15 (Inside period)
+        Expect:
+        - XML generated.
+        - Contains sale of 5 AAPL.
+        - Capital gain calculated correctly.
+        ","423","test_report_generation_h1","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"If rate is in storage, use it.","0","test_cache_hit","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestNBSClient","test_nbs","",""
+"
+        Scenario: Fetch complex Flex Query with multiple trades, splits, and cash interactions.
+        Expect: All transactions parsed and stored correctly.
+        ","83","test_get_command_complex_fetch","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"","73","test_dedup_split_orders_counter","tests","Sat Jan 31 17:41:45 GMT 2026","passed","Sat Jan 31 17:41:45 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","2","test_fetch_latest_report","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"Verify load_config returns default config if file corrupted.","0","test_load_corrupted_file","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestConfigManager","test_config_manager","",""
+"
+        Scenario: Import complex CSV.
+        Expect: All transactions parsed.
+        ","24","test_import_command_complex","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"","2","test_parse_csv_trades","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestCSVParser","test_csv_parser","",""
+"","29","test_dedup_xml_upgrades_csv","tests","Sat Jan 31 17:41:44 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"
+        Scenario (Partial Upgrade):
+        1. Import CSV (contains AAPL, MSFT).
+        2. Fetch Flex Query (contains AAPL, TSLA, GOOG). MSFT is missing in XML (different date/filter).
+
+        Expect:
+        - AAPL (CSV) -> Replaced by AAPL (XML).
+        - MSFT (CSV) -> RETAINED (because XML dates [Jan, Feb] don't cover MSFT date [Apr]).
+        - TSLA/GOOG (XML) -> Added.
+        ","75","test_workflow_partial_upgrade","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:44 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"","0","test_parse_csv_withholding_tax","tests","Sat Jan 31 17:41:43 GMT 2026","passed","Sat Jan 31 17:41:43 GMT 2026","TestCSVParser","test_csv_parser","",""
