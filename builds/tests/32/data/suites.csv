@@ -1,0 +1,72 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"
+        Scenario (Partial Upgrade):
+        1. Import CSV (contains AAPL, MSFT).
+        2. Fetch Flex Query (contains AAPL, TSLA, GOOG). MSFT is missing in XML (different date/filter).
+
+        Expect:
+        - AAPL (CSV) -> Replaced by AAPL (XML).
+        - MSFT (CSV) -> RETAINED (because XML dates [Jan, Feb] don't cover MSFT date [Apr]).
+        - TSLA/GOOG (XML) -> Added.
+        ","88","test_workflow_partial_upgrade","tests","Sat Jan 31 13:19:48 GMT 2026","passed","Sat Jan 31 13:19:48 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"","0","test_version","tests","Sat Jan 31 13:19:50 GMT 2026","passed","Sat Jan 31 13:19:50 GMT 2026","","test_e2e_version","",""
+"","32","test_dedup_xml_upgrades_csv","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","29","test_dedup_bundle_vs_split_coverage","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"
+        Scenario: Import complex CSV.
+        Expect: All transactions parsed.
+        ","26","test_import_command_complex","tests","Sat Jan 31 13:19:48 GMT 2026","passed","Sat Jan 31 13:19:48 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"","4","test_parse_csv_missing_ids","tests","Sat Jan 31 13:19:47 GMT 2026","passed","Sat Jan 31 13:19:47 GMT 2026","TestCSVParser","test_csv_parser","",""
+"
+        Scenario: Complex FIFO (Mutli-Buy/Single-Sell, Single-Buy/Multi-Sell).
+        Data: tests/resources/fifo_scenarios.xml
+        Expect:
+        - AAPL: 1 Sell of 15. Gain ~29,250 RSD (assuming rate 117).
+        - MSFT: 2 Sells (5, 10). Gains 5,850 and 23,400 RSD.
+        ","60","test_report_fifo_complex","tests","Sat Jan 31 13:19:49 GMT 2026","passed","Sat Jan 31 13:19:49 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"","3","test_nbs_fallback","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","","test_tax_calculator","",""
+"","20","test_get_last_transaction_date","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestStorageIncremental","test_storage_incremental","",""
+"","3","test_import_invalid_file","tests","Sat Jan 31 13:19:48 GMT 2026","passed","Sat Jan 31 13:19:48 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"","1","test_parse_csv_withholding_tax","tests","Sat Jan 31 13:19:47 GMT 2026","passed","Sat Jan 31 13:19:47 GMT 2026","TestCSVParser","test_csv_parser","",""
+"","1","test_parse_report","tests","Sat Jan 31 13:19:50 GMT 2026","passed","Sat Jan 31 13:19:50 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"","1","test_parse_csv_dividends","tests","Sat Jan 31 13:19:47 GMT 2026","passed","Sat Jan 31 13:19:47 GMT 2026","TestCSVParser","test_csv_parser","",""
+"
+        Scenario: Fetch complex Flex Query with multiple trades, splits, and cash interactions.
+        Expect: All transactions parsed and stored correctly.
+        ","894","test_get_command_complex_fetch","tests","Sat Jan 31 13:19:47 GMT 2026","passed","Sat Jan 31 13:19:48 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"","1003","test_fetch_latest_report","tests","Sat Jan 31 13:19:50 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"","3","test_xml_generator_structure","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestPPDG3R","test_report","",""
+"","29","test_dedup_csv_skips_xml","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","43","test_xml_supremacy_reverse_order","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","2","test_parse_report_error","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"","31","test_dedup_identical_skip","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"Verify XML file creation and content.","45","test_report_generation_file_check","tests","Sat Jan 31 13:19:49 GMT 2026","passed","Sat Jan 31 13:19:49 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"","4","test_tax_calculator_fifo_profit","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"Test selling 15 shares covering 2 lots (10 @ 100, 10 @ 200).","4","test_tax_calculator_fifo_multi_lot","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"","75","test_dedup_split_orders_counter","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","1","test_version_option","tests","Sat Jan 31 13:19:50 GMT 2026","passed","Sat Jan 31 13:19:50 GMT 2026","","test_e2e_version","",""
+"
+        Scenario: Generate PPDG-3R report for H1 2023.
+        Data:
+        - Buy AAPL 10 @ 100 USD on 2022-12-01 (Outside period context)
+        - Sell AAPL 5 @ 120 USD on 2023-01-15 (Inside period)
+        Expect:
+        - XML generated.
+        - Contains sale of 5 AAPL.
+        - Capital gain calculated correctly.
+        ","1501","test_report_generation_h1","tests","Sat Jan 31 13:19:48 GMT 2026","passed","Sat Jan 31 13:19:49 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"","35","test_dedup_strict_id_match","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","24","test_dedup_id_type_mismatch","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","10","test_get_transactions_open_date_conversion","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestStorageIncremental","test_storage_incremental","",""
+"Scenario: No sales in period.","20","test_report_no_sales","tests","Sat Jan 31 13:19:50 GMT 2026","passed","Sat Jan 31 13:19:50 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"
+        Scenario:
+        1. Fetch Flex Query.
+        2. Import CSV.
+
+        Expect:
+        - Common items (AAPL, Divs) skipped.
+        - New items in CSV (MSFT) added.
+        ","52","test_workflow_skip_duplicates","tests","Sat Jan 31 13:19:48 GMT 2026","passed","Sat Jan 31 13:19:48 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"Test selling 5 shares from a lot of 10.","3","test_tax_calculator_fifo_split_lot","tests","Sat Jan 31 13:19:51 GMT 2026","passed","Sat Jan 31 13:19:51 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"","3","test_parse_csv_trades","tests","Sat Jan 31 13:19:47 GMT 2026","passed","Sat Jan 31 13:19:47 GMT 2026","TestCSVParser","test_csv_parser","",""

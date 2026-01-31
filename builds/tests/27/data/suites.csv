@@ -1,0 +1,52 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"","20","test_get_last_transaction_date","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestStorageIncremental","test_storage_incremental","",""
+"","4","test_tax_calculator_fifo_profit","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"","1","test_parse_csv_dividends","tests","Sat Jan 31 12:40:11 GMT 2026","passed","Sat Jan 31 12:40:11 GMT 2026","TestCSVParser","test_csv_parser","",""
+"","26","test_dedup_id_type_mismatch","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","14","test_get_transactions_open_date_conversion","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestStorageIncremental","test_storage_incremental","",""
+"","4","test_parse_csv_missing_ids","tests","Sat Jan 31 12:40:11 GMT 2026","passed","Sat Jan 31 12:40:11 GMT 2026","TestCSVParser","test_csv_parser","",""
+"","32","test_dedup_xml_upgrades_csv","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","1459","test_xml_generator_structure","tests","Sat Jan 31 12:40:13 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestPPDG3R","test_report","",""
+"","53","test_dedup_strict_id_match","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","44","test_xml_supremacy_reverse_order","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","1002","test_fetch_latest_report","tests","Sat Jan 31 12:40:12 GMT 2026","passed","Sat Jan 31 12:40:13 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"","0","test_version","tests","Sat Jan 31 12:40:12 GMT 2026","passed","Sat Jan 31 12:40:12 GMT 2026","","test_e2e_version","",""
+"","1","test_version_option","tests","Sat Jan 31 12:40:12 GMT 2026","passed","Sat Jan 31 12:40:12 GMT 2026","","test_e2e_version","",""
+"
+        Scenario: Import complex CSV.
+        Expect: All transactions parsed.
+        ","845","test_import_command_complex","tests","Sat Jan 31 12:40:12 GMT 2026","failed","Sat Jan 31 12:40:12 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"Test selling 15 shares covering 2 lots (10 @ 100, 10 @ 200).","4","test_tax_calculator_fifo_multi_lot","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"
+        Scenario:
+        1. Fetch Flex Query.
+        2. Import CSV.
+
+        Expect:
+        - Common items (AAPL, Divs) skipped.
+        - New items in CSV (MSFT) added.
+        ","1","test_workflow_skip_duplicates","tests","Sat Jan 31 12:40:12 GMT 2026","broken","Sat Jan 31 12:40:12 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"
+        Scenario (Partial Upgrade):
+        1. Import CSV (contains AAPL, MSFT).
+        2. Fetch Flex Query (contains AAPL, TSLA, GOOG). MSFT is missing in XML (different date/filter).
+
+        Expect:
+        - AAPL (CSV) -> Replaced by AAPL (XML).
+        - MSFT (CSV) -> RETAINED (because XML dates [Jan, Feb] don't cover MSFT date [Apr]).
+        - TSLA/GOOG (XML) -> Added.
+        ","1","test_workflow_partial_upgrade","tests","Sat Jan 31 12:40:12 GMT 2026","broken","Sat Jan 31 12:40:12 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"","2","test_parse_csv_trades","tests","Sat Jan 31 12:40:11 GMT 2026","passed","Sat Jan 31 12:40:11 GMT 2026","TestCSVParser","test_csv_parser","",""
+"","30","test_dedup_identical_skip","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","3","test_parse_report","tests","Sat Jan 31 12:40:12 GMT 2026","passed","Sat Jan 31 12:40:12 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"
+        Scenario: Fetch complex Flex Query with multiple trades, splits, and cash interactions.
+        Expect: All transactions parsed and stored correctly.
+        ","3","test_get_command_complex_fetch","tests","Sat Jan 31 12:40:11 GMT 2026","broken","Sat Jan 31 12:40:11 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"Test selling 5 shares from a lot of 10.","3","test_tax_calculator_fifo_split_lot","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"","3","test_nbs_fallback","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","","test_tax_calculator","",""
+"","1","test_parse_csv_withholding_tax","tests","Sat Jan 31 12:40:11 GMT 2026","passed","Sat Jan 31 12:40:11 GMT 2026","TestCSVParser","test_csv_parser","",""
+"","2","test_parse_report_error","tests","Sat Jan 31 12:40:13 GMT 2026","passed","Sat Jan 31 12:40:13 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"","30","test_dedup_bundle_vs_split_coverage","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","77","test_dedup_split_orders_counter","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"","29","test_dedup_csv_skips_xml","tests","Sat Jan 31 12:40:15 GMT 2026","passed","Sat Jan 31 12:40:15 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""

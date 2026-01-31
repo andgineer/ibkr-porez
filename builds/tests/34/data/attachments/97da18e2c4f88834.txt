@@ -1,0 +1,1 @@
+WARNING  ibkr_porez.nbs:nbs.py:75 Could not find rate for Currency.USD on 2023-01-20 (checked 10 days back)
