@@ -23,10 +23,11 @@ def runner():
 @allure.epic("End-to-end")
 @allure.feature("Fetching from IBKR")
 class TestE2EFetching:
+    @patch("ibkr_porez.main.NBSClient")
     @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.UserConfig")
     def test_get_command_complex_fetch(
-        self, mock_config, mock_fetch, runner, mock_user_data_dir, resources_path
+        self, mock_config, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
     ):
         """
         Scenario: Fetch complex Flex Query with multiple trades, splits, and cash interactions.
@@ -35,6 +36,10 @@ class TestE2EFetching:
         mock_config.load.return_value = MagicMock(
             ibkr_token="test_token", ibkr_query_id="test_query"
         )
+
+        # Mock NBS
+        mock_nbs = mock_nbs_cls.return_value
+        mock_nbs.get_rate.return_value = None
 
         # Load complex XML
         with open(resources_path / "complex_flex.xml", "rb") as f:
@@ -74,24 +79,20 @@ class TestE2EFetching:
         tax = txs[(txs["symbol"] == "KO") & (txs["type"] == "WITHHOLDING_TAX")].iloc[0]
         assert abs(tax["amount"]) == 7.5
 
+    @patch("ibkr_porez.main.NBSClient")
     @patch("ibkr_porez.main.UserConfig")
-    def test_import_command_complex(self, mock_config, runner, mock_user_data_dir, resources_path):
+    def test_import_command_complex(
+        self, mock_config, mock_nbs_cls, runner, mock_user_data_dir, resources_path
+    ):
         """
         Scenario: Import complex CSV.
         Expect: All transactions parsed.
         """
         mock_config.load.return_value = MagicMock()
+        mock_nbs = mock_nbs_cls.return_value
+        mock_nbs.get_rate.return_value = None
 
         csv_path = resources_path / "complex_activity.csv"
-        # We need to copy it to isolated fs or just pass absolute path?
-        # runner.invoke handles path arguments. We can pass absolute path to resource.
-        # But isolated_filesystem() changes cwd.
-        # Path argument in CLI: type=click.Path(exists=True).
-        # We can pass external path.
-
-        # NOTE: We can't use isolated_filesystem AND pass external path easily if we want to write results there?
-        # Actually storage uses user_data_dir which is mocked. So where CLI runs doesn't matter much
-        # except for the input file path.
 
         result = runner.invoke(ibkr_porez, ["import", str(csv_path)])
 
@@ -110,10 +111,11 @@ class TestE2EFetching:
         msft = txs[txs["symbol"] == "MSFT"].iloc[0]
         assert msft["transaction_id"] == "csv-MSFT_ONLY_CSV"
 
+    @patch("ibkr_porez.main.NBSClient")
     @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.UserConfig")
     def test_workflow_partial_upgrade(
-        self, mock_config, mock_fetch, runner, mock_user_data_dir, resources_path
+        self, mock_config, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
     ):
         """
         Scenario (Partial Upgrade):
@@ -126,6 +128,9 @@ class TestE2EFetching:
         - TSLA/GOOG (XML) -> Added.
         """
         mock_config.load.return_value = MagicMock(ibkr_token="t", ibkr_query_id="q")
+        mock_nbs = mock_nbs_cls.return_value
+        mock_nbs.get_rate.return_value = None
+
         with open(resources_path / "complex_flex.xml", "rb") as f:
             mock_fetch.return_value = f.read()
 
@@ -166,10 +171,11 @@ class TestE2EFetching:
         msft = txs[txs["symbol"] == "MSFT"].iloc[0]
         assert msft["transaction_id"] == "csv-MSFT_ONLY_CSV"
 
+    @patch("ibkr_porez.main.NBSClient")
     @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.UserConfig")
     def test_workflow_skip_duplicates(
-        self, mock_config, mock_fetch, runner, mock_user_data_dir, resources_path
+        self, mock_config, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
     ):
         """
         Scenario:
@@ -181,6 +187,9 @@ class TestE2EFetching:
         - New items in CSV (MSFT) added.
         """
         mock_config.load.return_value = MagicMock(ibkr_token="t", ibkr_query_id="q")
+        mock_nbs = mock_nbs_cls.return_value
+        mock_nbs.get_rate.return_value = None
+
         with open(resources_path / "complex_flex.xml", "rb") as f:
             mock_fetch.return_value = f.read()
 
@@ -210,3 +219,21 @@ class TestE2EFetching:
 
         assert "Parsed 4 transactions" in result.output
         assert "(1 new" in result.output
+
+    @patch("ibkr_porez.main.NBSClient")
+    @patch("ibkr_porez.main.UserConfig")
+    def test_import_invalid_file(self, mock_config, mock_nbs_cls, runner, mock_user_data_dir):
+        mock_config.load.return_value = MagicMock()
+        mock_nbs = mock_nbs_cls.return_value
+        mock_nbs.get_rate.return_value = None
+
+        with runner.isolated_filesystem():
+            with open("broken.csv", "w") as f:
+                f.write("Just garbage data")
+
+            result = runner.invoke(ibkr_porez, ["import", "broken.csv"])
+
+            # CLI catches exception and prints message or parser returns empty.
+            # Code says: "No valid transactions found in file."
+            assert result.exit_code == 0
+            assert "No valid transactions found" in result.output
