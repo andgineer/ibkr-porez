@@ -534,7 +534,7 @@ def report(half: str | None):  # noqa: C901,PLR0912,PLR0915
     xml_content = xml_gen.generate_xml(entries, start_date, end_date)
 
     filename = f"ppdg3r_{target_year}_H{target_half}.xml"
-    with open(filename, "w") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         f.write(xml_content)
 
     console.print(f"[bold green]Report generated: {filename}[/bold green]")
