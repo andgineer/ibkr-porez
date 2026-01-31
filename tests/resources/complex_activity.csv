@@ -1,0 +1,8 @@
+"Statement","Header","DataDiscriminator","Asset Category","Currency","Symbol","Date/Time","Quantity","T. Price","Proceeds","Comm/Fee","Basis","Realized P/L","Mtm P/L","Code","Transaction ID"
+"Trades","Header","Data","Asset Category","Currency","Symbol","Date/Time","Quantity","T. Price","Proceeds","Comm/Fee","Basis","Realized P/L","Mtm P/L","Code","Transaction ID"
+"Trades","Data","Order","Stocks","USD","AAPL","2023-01-01","10","150","1500","-1","1500","0","0","O","csv-XML_AAPL_BUY_1"
+"Trades","Data","Order","Stocks","USD","MSFT","2023-04-01","100","300","30000","-2","30000","0","0","O","csv-MSFT_ONLY_CSV"
+"Dividends","Header","Data","Asset Category","Currency","Symbol","Date","Amount","Description","Transaction ID"
+"Dividends","Data","Data","Stocks","USD","KO","2023-03-15","50","Dividend Payment","csv-XML_DIV_KO"
+"Withholding Tax","Header","Data","Asset Category","Currency","Symbol","Date","Amount","Description","Transaction ID"
+"Withholding Tax","Data","Data","Stocks","USD","KO","2023-03-15","-7.5","Tax","csv-XML_TAX_KO"
