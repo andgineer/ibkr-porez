@@ -162,20 +162,6 @@ class IBKRClient:
         # XML date format from IBKR is typically YYYYMMDD for dates.
         # "20230101".
 
-        # Helper for date parsing
-        def parse_date(d_str):
-            if ";" in d_str:
-                d_str = d_str.split(";")[0]
-            try:
-                # Format typically YYYYMMDD
-                return time.strptime(d_str, "%Y%m%d")
-            except ValueError:
-                # Try other formats?
-                try:
-                    return time.strptime(d_str, "%Y-%m-%d")
-                except ValueError:
-                    return None
-
         # Actually models expects python date object.
         from datetime import datetime
 

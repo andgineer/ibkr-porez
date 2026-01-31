@@ -260,3 +260,52 @@ class TestE2EReport:
 
         assert result.exit_code == 0
         assert "No taxable sales found" in result.output
+
+    @patch("ibkr_porez.main.NBSClient")
+    @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
+    @patch("ibkr_porez.main.config_manager")
+    def test_report_invalid_format(
+        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir
+    ):
+        """Scenario: User provides invalid date format."""
+        result = runner.invoke(ibkr_porez, ["report", "--half", "2023_1"])
+        assert "Invalid format: 2023_1" in result.output
+        assert result.exit_code == 0
+
+        result_unknown = runner.invoke(ibkr_porez, ["report", "--half", "abc"])
+        assert "Invalid format: abc" in result_unknown.output
+
+        result_bad_half = runner.invoke(ibkr_porez, ["report", "--half", "2023-3"])
+        assert "Half-year must be 1 or 2" in result_bad_half.output
+
+    @patch("ibkr_porez.main.NBSClient")
+    @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
+    @patch("ibkr_porez.main.config_manager")
+    def test_report_default_period(
+        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir
+    ):
+        """Scenario: User omits --half, defaults to previous complete half."""
+        from datetime import datetime
+
+        now = datetime.now()
+        expected_year = now.year - 1 if now.month < 7 else now.year
+        expected_half = 2 if now.month < 7 else 1
+
+        result = runner.invoke(ibkr_porez, ["report"])
+        assert f"Generating Report for {expected_year} H{expected_half}" in result.output
+        assert "No transactions found" in result.output
+
+    @patch("ibkr_porez.main.NBSClient")
+    @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
+    @patch("ibkr_porez.main.config_manager")
+    def test_report_no_transactions_found(
+        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir
+    ):
+        """Scenario: Storage effectively empty (or filtered to empty)."""
+        s = Storage()
+        # No transactions saved
+
+        result = runner.invoke(ibkr_porez, ["report", "--half", "2023-1"])
+
+        assert "No transactions found. Run `ibkr-porez get` first." in result.output
+        assert result.exit_code == 0
