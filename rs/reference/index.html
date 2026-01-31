@@ -1,0 +1,3521 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Andrey Sorokin">
+      
+      
+        <link rel="canonical" href="https://andgineer.github.io/ibkr-porez/reference/">
+      
+      
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.13">
+    
+    
+      
+        <title>Reference - ibkr_porez</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.342714a4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ibkr_porez" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="ibkr_porez" class="md-header__button md-logo" aria-label="ibkr_porez" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ibkr_porez
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/ru/" hreflang="ru" class="md-select__link">
+              Русский
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/rs/" hreflang="rs" class="md-select__link">
+              Srpski (Latinica)
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/rs-cyr/" hreflang="rs-cyr" class="md-select__link">
+              Српски (Ћирилица)
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/andgineer/ibkr-porez" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ibkr_porez
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="ibkr_porez" class="md-nav__button md-logo" aria-label="ibkr_porez" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    ibkr_porez
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/andgineer/ibkr-porez" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ibkr_porez
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Brzi start
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Instalacija
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upotreba
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ibkr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Interactive Brokers (IBKR)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ibkr_porez" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">ibkr_porez</span>
+
+
+</h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Automated PPDG-3R tax reports for Interactive Brokers.</p>
+<p>It automatically pulls your data and generates a ready-to-upload XML file
+with all prices converted to RSD.</p>
+<p>The file is mandatory for build system to find the package.</p>
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<h3 id="ibkr_porez-modules">Modules</h3>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h4 id="ibkr_porez.config" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">ibkr_porez.config</span>
+
+
+</h4>
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h5 id="ibkr_porez.config-attributes">Attributes</h5>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h6 id="ibkr_porez.config.config_manager" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.config.config_manager</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">config_manager</span> <span class="o">=</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.config.ConfigManager" href="#ibkr_porez.config.ConfigManager">ConfigManager</a></span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+<h5 id="ibkr_porez.config-classes">Classes</h5>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.config.ConfigManager" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.config.ConfigManager</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.config.ConfigManager-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.config.ConfigManager.APP_NAME" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.config.ConfigManager.APP_NAME</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">APP_NAME</span> <span class="o">=</span> <span class="s1">&#39;ibkr-porez&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.config.ConfigManager.CONFIG_FILENAME" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.config.ConfigManager.CONFIG_FILENAME</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">CONFIG_FILENAME</span> <span class="o">=</span> <span class="s1">&#39;config.json&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.config.ConfigManager.config_path" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.config.ConfigManager.config_path</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">config_path</span><span class="p">:</span> <span class="n"><span title="pathlib.Path">Path</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<h7 id="ibkr_porez.config.ConfigManager-functions">Functions</h7>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.config.ConfigManager.load_config" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.config.ConfigManager.load_config</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">load_config</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.UserConfig" href="#ibkr_porez.models.UserConfig">UserConfig</a></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.config.ConfigManager.save_config" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.config.ConfigManager.save_config</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">save_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.UserConfig" href="#ibkr_porez.models.UserConfig">UserConfig</a></span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h4 id="ibkr_porez.ibkr" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">ibkr_porez.ibkr</span>
+
+
+</h4>
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h5 id="ibkr_porez.ibkr-attributes">Attributes</h5>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h6 id="ibkr_porez.ibkr.logger" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.ibkr.logger</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">logger</span> <span class="o">=</span> <span class="n"><span title="logging.getLogger">getLogger</span></span><span class="p">(</span><span class="n"><span title="__name__">__name__</span></span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+<h5 id="ibkr_porez.ibkr-classes">Classes</h5>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.ibkr.IBKRClient" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.ibkr.IBKRClient</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.ibkr.IBKRClient-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.ibkr.IBKRClient.FLEX_URL_GET" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.ibkr.IBKRClient.FLEX_URL_GET</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">FLEX_URL_GET</span> <span class="o">=</span> <span class="s1">&#39;https://ndcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.ibkr.IBKRClient.FLEX_URL_REQUEST" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.ibkr.IBKRClient.FLEX_URL_REQUEST</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">FLEX_URL_REQUEST</span> <span class="o">=</span> <span class="s1">&#39;https://ndcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.SendRequest&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.ibkr.IBKRClient.VERSION" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.ibkr.IBKRClient.VERSION</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">VERSION</span> <span class="o">=</span> <span class="s1">&#39;3&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.ibkr.IBKRClient.query_id" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.ibkr.IBKRClient.query_id</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">query_id</span> <span class="o">=</span> <span class="n"><span title="ibkr_porez.ibkr.IBKRClient(query_id)">query_id</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.ibkr.IBKRClient.token" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.ibkr.IBKRClient.token</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">token</span> <span class="o">=</span> <span class="n"><span title="ibkr_porez.ibkr.IBKRClient(token)">token</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<h7 id="ibkr_porez.ibkr.IBKRClient-functions">Functions</h7>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.ibkr.IBKRClient.fetch_latest_report" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.ibkr.IBKRClient.fetch_latest_report</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">fetch_latest_report</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n"><span title="bytes">bytes</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Fetch the latest Flex Query.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.ibkr.IBKRClient.parse_report" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.ibkr.IBKRClient.parse_report</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">parse_report</span><span class="p">(</span><span class="n">xml_content</span><span class="p">:</span> <span class="n"><span title="bytes">bytes</span></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="list">list</span></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.Transaction" href="#ibkr_porez.models.Transaction">Transaction</a></span><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Parse XML content and extract transactions manually.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h4 id="ibkr_porez.main" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">ibkr_porez.main</span>
+
+
+</h4>
+
+    <div class="doc doc-contents ">
+
+        <p>ibkr-porez.</p>
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h5 id="ibkr_porez.main-attributes">Attributes</h5>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h6 id="ibkr_porez.main.OUTPUT_FILE_DEFAULT" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.main.OUTPUT_FILE_DEFAULT</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">OUTPUT_FILE_DEFAULT</span> <span class="o">=</span> <span class="s1">&#39;output&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h6 id="ibkr_porez.main.console" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.main.console</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">console</span> <span class="o">=</span> <span class="n"><span title="rich.console.Console">Console</span></span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+<h5 id="ibkr_porez.main-classes">Classes</h5>
+<h5 id="ibkr_porez.main-functions">Functions</h5>
+
+<div class="doc doc-object doc-function">
+
+
+<h6 id="ibkr_porez.main.config" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.main.config</span>
+
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">config</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Configure IBKR and personal details.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h6 id="ibkr_porez.main.get" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.main.get</span>
+
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">get</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Sync data from IBKR and NBS.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h6 id="ibkr_porez.main.ibkr_porez" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.main.ibkr_porez</span>
+
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">ibkr_porez</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Automated PPDG-3R tax reports for Interactive Brokers.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h6 id="ibkr_porez.main.import_file" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.main.import_file</span>
+
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">import_file</span><span class="p">(</span><span class="n">file_path</span><span class="p">:</span> <span class="n"><span title="pathlib.Path">Path</span></span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Import historical transactions from CSV Activity Statement.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h6 id="ibkr_porez.main.report" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.main.report</span>
+
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">report</span><span class="p">(</span><span class="n">half</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Generate PPDG-3R XML report.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h6 id="ibkr_porez.main.show" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.main.show</span>
+
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">show</span><span class="p">(</span><span class="n">year</span><span class="p">:</span> <span class="n"><span title="int">int</span></span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">ticker</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">month</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Show tax report (Sales only).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h6 id="ibkr_porez.main.verbose_option" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.main.verbose_option</span>
+
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">verbose_option</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h4 id="ibkr_porez.models" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">ibkr_porez.models</span>
+
+
+</h4>
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+<h5 id="ibkr_porez.models-classes">Classes</h5>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.models.AssetClass" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.models.AssetClass</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="str">str</span></code>, <code><span title="enum.Enum">Enum</span></code></p>
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.models.AssetClass-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.AssetClass.BOND" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.AssetClass.BOND</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">BOND</span> <span class="o">=</span> <span class="s1">&#39;BOND&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.AssetClass.CASH" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.AssetClass.CASH</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">CASH</span> <span class="o">=</span> <span class="s1">&#39;CASH&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.AssetClass.CFD" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.AssetClass.CFD</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">CFD</span> <span class="o">=</span> <span class="s1">&#39;CFD&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.AssetClass.OPTION" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.AssetClass.OPTION</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">OPTION</span> <span class="o">=</span> <span class="s1">&#39;OPT&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.AssetClass.STOCK" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.AssetClass.STOCK</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">STOCK</span> <span class="o">=</span> <span class="s1">&#39;STK&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.models.Currency" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.models.Currency</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="str">str</span></code>, <code><span title="enum.Enum">Enum</span></code></p>
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.models.Currency-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Currency.EUR" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Currency.EUR</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">EUR</span> <span class="o">=</span> <span class="s1">&#39;EUR&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Currency.GBP" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Currency.GBP</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">GBP</span> <span class="o">=</span> <span class="s1">&#39;GBP&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Currency.RSD" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Currency.RSD</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">RSD</span> <span class="o">=</span> <span class="s1">&#39;RSD&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Currency.USD" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Currency.USD</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">USD</span> <span class="o">=</span> <span class="s1">&#39;USD&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.models.ExchangeRate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.models.ExchangeRate</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="pydantic.BaseModel">BaseModel</span></code></p>
+
+
+        <p>NBS middle exchange rate for a specific date and currency.</p>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.models.ExchangeRate-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.ExchangeRate.currency" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.ExchangeRate.currency</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">currency</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.Currency" href="#ibkr_porez.models.Currency">Currency</a></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.ExchangeRate.date" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.ExchangeRate.date</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">date</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.ExchangeRate.date
+
+
+  
+      instance-attribute
+  " href="#ibkr_porez.models.ExchangeRate.date">date</a></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.ExchangeRate.rate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.ExchangeRate.rate</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">rate</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.models.TaxReportEntry" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.models.TaxReportEntry</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="pydantic.BaseModel">BaseModel</span></code></p>
+
+
+        <p>Single row in the final tax report.</p>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.models.TaxReportEntry-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.capital_gain_rsd" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.capital_gain_rsd</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">capital_gain_rsd</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.is_tax_exempt" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.is_tax_exempt</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">is_tax_exempt</span><span class="p">:</span> <span class="n"><span title="bool">bool</span></span> <span class="o">=</span> <span class="kc">False</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.purchase_date" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.purchase_date</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">purchase_date</span><span class="p">:</span> <span class="n"><span title="datetime.date">date</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.purchase_exchange_rate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.purchase_exchange_rate</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">purchase_exchange_rate</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.purchase_price" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.purchase_price</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">purchase_price</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.purchase_value_rsd" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.purchase_value_rsd</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">purchase_value_rsd</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.quantity" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.quantity</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">quantity</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.sale_date" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.sale_date</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">sale_date</span><span class="p">:</span> <span class="n"><span title="datetime.date">date</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.sale_exchange_rate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.sale_exchange_rate</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">sale_exchange_rate</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.sale_price" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.sale_price</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">sale_price</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.sale_value_rsd" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.sale_value_rsd</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">sale_value_rsd</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TaxReportEntry.ticker" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TaxReportEntry.ticker</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">ticker</span><span class="p">:</span> <span class="n"><span title="str">str</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.models.Transaction" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.models.Transaction</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="pydantic.BaseModel">BaseModel</span></code></p>
+
+
+        <p>Represents a single financial event (trade, dividend, tax).</p>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.models.Transaction-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.amount" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.amount</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">amount</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n"><span title="pydantic.Field(description)">description</span></span><span class="o">=</span><span class="s1">&#39;Total amount in original currency&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.amount_rsd" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.amount_rsd</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">amount_rsd</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.currency" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.currency</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">currency</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.Currency" href="#ibkr_porez.models.Currency">Currency</a></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.date" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.date</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">date</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.Transaction.date
+
+
+  
+      instance-attribute
+  " href="#ibkr_porez.models.Transaction.date">date</a></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.description" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.description</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">description</span><span class="p">:</span> <span class="n"><span title="str">str</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.exchange_rate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.exchange_rate</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">exchange_rate</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.open_date" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.open_date</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">open_date</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.Transaction.date
+
+
+  
+      instance-attribute
+  " href="#ibkr_porez.models.Transaction.date">date</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.open_price" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.open_price</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">open_price</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.price" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.price</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">price</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span> <span class="o">=</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.quantity" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.quantity</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">quantity</span><span class="p">:</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span> <span class="o">=</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.symbol" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.symbol</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">symbol</span><span class="p">:</span> <span class="n"><span title="str">str</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.transaction_id" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.transaction_id</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">transaction_id</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">=</span> <span class="n"><span title="pydantic.Field">Field</span></span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n"><span title="pydantic.Field(description)">description</span></span><span class="o">=</span><span class="s1">&#39;Unique ID from IBKR (e.g. tradeID)&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.Transaction.type" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.Transaction.type</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nb">type</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.TransactionType" href="#ibkr_porez.models.TransactionType">TransactionType</a></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.models.TransactionType" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.models.TransactionType</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="str">str</span></code>, <code><span title="enum.Enum">Enum</span></code></p>
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.models.TransactionType-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TransactionType.DIVIDEND" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TransactionType.DIVIDEND</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">DIVIDEND</span> <span class="o">=</span> <span class="s1">&#39;DIVIDEND&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TransactionType.INTEREST" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TransactionType.INTEREST</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">INTEREST</span> <span class="o">=</span> <span class="s1">&#39;INTEREST&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TransactionType.TAX" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TransactionType.TAX</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">TAX</span> <span class="o">=</span> <span class="s1">&#39;TAX&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TransactionType.TRADE" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TransactionType.TRADE</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">TRADE</span> <span class="o">=</span> <span class="s1">&#39;TRADE&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.TransactionType.WITHHOLDING_TAX" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.TransactionType.WITHHOLDING_TAX</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">WITHHOLDING_TAX</span> <span class="o">=</span> <span class="s1">&#39;WITHHOLDING_TAX&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.models.UserConfig" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.models.UserConfig</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="pydantic.BaseModel">BaseModel</span></code></p>
+
+
+        <p>User configuration stored on disk.</p>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.models.UserConfig-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.UserConfig.address" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.UserConfig.address</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">address</span><span class="p">:</span> <span class="n"><span title="str">str</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.UserConfig.city_code" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.UserConfig.city_code</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">city_code</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">=</span> <span class="s1">&#39;223&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.UserConfig.email" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.UserConfig.email</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">email</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">=</span> <span class="s1">&#39;email@example.com&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.UserConfig.full_name" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.UserConfig.full_name</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">full_name</span><span class="p">:</span> <span class="n"><span title="str">str</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.UserConfig.ibkr_query_id" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.UserConfig.ibkr_query_id</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">ibkr_query_id</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.UserConfig.ibkr_token" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.UserConfig.ibkr_token</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">ibkr_token</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.UserConfig.personal_id" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.UserConfig.personal_id</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">personal_id</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.models.UserConfig.phone" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.models.UserConfig.phone</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">phone</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">=</span> <span class="s1">&#39;0600000000&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h4 id="ibkr_porez.nbs" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">ibkr_porez.nbs</span>
+
+
+</h4>
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h5 id="ibkr_porez.nbs-attributes">Attributes</h5>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h6 id="ibkr_porez.nbs.logger" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.nbs.logger</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+</h6>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">logger</span> <span class="o">=</span> <span class="n"><span title="logging.getLogger">getLogger</span></span><span class="p">(</span><span class="n"><span title="__name__">__name__</span></span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+<h5 id="ibkr_porez.nbs-classes">Classes</h5>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.nbs.NBSClient" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.nbs.NBSClient</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.nbs.NBSClient-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.nbs.NBSClient.BASE_URL" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.nbs.NBSClient.BASE_URL</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">BASE_URL</span> <span class="o">=</span> <span class="s1">&#39;https://kurs.resenje.org/api/v1&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.nbs.NBSClient.storage" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.nbs.NBSClient.storage</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">storage</span> <span class="o">=</span> <span class="n"><span title="ibkr_porez.nbs.NBSClient(storage)">storage</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<h7 id="ibkr_porez.nbs.NBSClient-functions">Functions</h7>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.nbs.NBSClient.get_rate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.nbs.NBSClient.get_rate</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">get_rate</span><span class="p">(</span><span class="n">date_obj</span><span class="p">:</span> <span class="n"><span title="datetime.date">date</span></span><span class="p">,</span> <span class="n">currency</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.Currency" href="#ibkr_porez.models.Currency">Currency</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="decimal.Decimal">Decimal</span></span> <span class="o">|</span> <span class="kc">None</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Get NBS middle rate for currency on date. Uses cache if available.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h4 id="ibkr_porez.parsers" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">ibkr_porez.parsers</span>
+
+
+</h4>
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<h5 id="ibkr_porez.parsers-modules">Modules</h5>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h6 id="ibkr_porez.parsers.csv_parser" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">ibkr_porez.parsers.csv_parser</span>
+
+
+</h6>
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+<h7 id="ibkr_porez.parsers.csv_parser-classes">Classes</h7>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h8 id="ibkr_porez.parsers.csv_parser.CSVParser" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.parsers.csv_parser.CSVParser</span>
+
+
+</h8>
+
+
+    <div class="doc doc-contents ">
+
+
+        <p>Parses IBKR Activity Statement CSV files.</p>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<h9 id="ibkr_porez.parsers.csv_parser.CSVParser-functions">Functions</h9>
+
+<div class="doc doc-object doc-function">
+
+
+<h10 id="ibkr_porez.parsers.csv_parser.CSVParser.parse" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.parsers.csv_parser.CSVParser.parse</span>
+
+
+</h10>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">parse</span><span class="p">(</span><span class="n">file_content</span><span class="p">:</span> <span class="n"><span title="typing.TextIO">TextIO</span></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="list">list</span></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.Transaction" href="#ibkr_porez.models.Transaction">Transaction</a></span><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Parse CSV content and return a list of Transactions.
+Expects standard IBKR Activity Statement CSV export.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h4 id="ibkr_porez.report" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">ibkr_porez.report</span>
+
+
+</h4>
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+<h5 id="ibkr_porez.report-classes">Classes</h5>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.report.XMLGenerator" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.report.XMLGenerator</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.report.XMLGenerator-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.report.XMLGenerator.config" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.report.XMLGenerator.config</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">config</span> <span class="o">=</span> <span class="n"><span title="ibkr_porez.report.XMLGenerator(config)">config</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<h7 id="ibkr_porez.report.XMLGenerator-functions">Functions</h7>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.report.XMLGenerator.generate_xml" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.report.XMLGenerator.generate_xml</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">generate_xml</span><span class="p">(</span><span class="n">entries</span><span class="p">:</span> <span class="n"><span title="list">list</span></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.TaxReportEntry" href="#ibkr_porez.models.TaxReportEntry">TaxReportEntry</a></span><span class="p">],</span> <span class="n">_period_start</span><span class="p">:</span> <span class="n"><span title="datetime.date">date</span></span><span class="p">,</span> <span class="n">period_end</span><span class="p">:</span> <span class="n"><span title="datetime.date">date</span></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="str">str</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Generate PPDG-3R XML content.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h4 id="ibkr_porez.storage" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">ibkr_porez.storage</span>
+
+
+</h4>
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+<h5 id="ibkr_porez.storage-classes">Classes</h5>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.storage.Storage" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.storage.Storage</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.storage.Storage-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.storage.Storage.APP_NAME" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.storage.Storage.APP_NAME</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">APP_NAME</span> <span class="o">=</span> <span class="s1">&#39;ibkr-porez&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.storage.Storage.PARTITION_DIR" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.storage.Storage.PARTITION_DIR</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">PARTITION_DIR</span> <span class="o">=</span> <span class="s1">&#39;partitions&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.storage.Storage.RATES_FILENAME" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.storage.Storage.RATES_FILENAME</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">RATES_FILENAME</span> <span class="o">=</span> <span class="s1">&#39;rates.json&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.storage.Storage.RAW_DIR" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.storage.Storage.RAW_DIR</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">RAW_DIR</span> <span class="o">=</span> <span class="s1">&#39;raw_reports&#39;</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<h7 id="ibkr_porez.storage.Storage-functions">Functions</h7>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.storage.Storage.get_exchange_rate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.storage.Storage.get_exchange_rate</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">get_exchange_rate</span><span class="p">(</span><span class="n">date_obj</span><span class="p">:</span> <span class="n"><span title="datetime.date">date</span></span><span class="p">,</span> <span class="n">currency</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.Currency" href="#ibkr_porez.models.Currency">Currency</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.ExchangeRate" href="#ibkr_porez.models.ExchangeRate">ExchangeRate</a></span> <span class="o">|</span> <span class="kc">None</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.storage.Storage.get_last_transaction_date" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.storage.Storage.get_last_transaction_date</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">get_last_transaction_date</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n"><span title="datetime.date">date</span></span> <span class="o">|</span> <span class="kc">None</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Find the date of the latest transaction across all partitions.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.storage.Storage.get_transactions" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.storage.Storage.get_transactions</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">get_transactions</span><span class="p">(</span><span class="n">start_date</span><span class="p">:</span> <span class="n"><span title="datetime.date">date</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="n"><span title="datetime.date">date</span></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="pandas.DataFrame">DataFrame</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Load transactions into a DataFrame.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.storage.Storage.save_exchange_rate" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.storage.Storage.save_exchange_rate</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">save_exchange_rate</span><span class="p">(</span><span class="n">rate</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.ExchangeRate" href="#ibkr_porez.models.ExchangeRate">ExchangeRate</a></span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.storage.Storage.save_raw_report" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.storage.Storage.save_raw_report</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">save_raw_report</span><span class="p">(</span><span class="n">content</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="n"><span title="bytes">bytes</span></span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="n"><span title="str">str</span></span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.storage.Storage.save_transactions" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.storage.Storage.save_transactions</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">save_transactions</span><span class="p">(</span><span class="n">transactions</span><span class="p">:</span> <span class="n"><span title="list">list</span></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.Transaction" href="#ibkr_porez.models.Transaction">Transaction</a></span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n"><span title="tuple">tuple</span></span><span class="p">[</span><span class="n"><span title="int">int</span></span><span class="p">,</span> <span class="n"><span title="int">int</span></span><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Save transactions to storage.
+Returns:
+    tuple[int, int]: (count_inserted, count_updated)</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h4 id="ibkr_porez.tax" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-module"></code>            <span class="doc doc-object-name doc-module-name">ibkr_porez.tax</span>
+
+
+</h4>
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+<h5 id="ibkr_porez.tax-classes">Classes</h5>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h6 id="ibkr_porez.tax.TaxCalculator" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">ibkr_porez.tax.TaxCalculator</span>
+
+
+</h6>
+
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+<h7 id="ibkr_porez.tax.TaxCalculator-attributes">Attributes</h7>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h8 id="ibkr_porez.tax.TaxCalculator.nbs" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ibkr_porez.tax.TaxCalculator.nbs</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="n">nbs</span> <span class="o">=</span> <span class="n"><span title="ibkr_porez.tax.TaxCalculator(nbs_client)">nbs_client</span></span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<h7 id="ibkr_porez.tax.TaxCalculator-functions">Functions</h7>
+
+<div class="doc doc-object doc-function">
+
+
+<h8 id="ibkr_porez.tax.TaxCalculator.process_trades" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">ibkr_porez.tax.TaxCalculator.process_trades</span>
+
+
+</h8>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">process_trades</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n"><span title="pandas.DataFrame">DataFrame</span></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="list">list</span></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" title="            ibkr_porez.models.TaxReportEntry" href="#ibkr_porez.models.TaxReportEntry">TaxReportEntry</a></span><span class="p">]</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Process trades using FIFO matching to calculate capital gains.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>df</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>DataFrame containing all transactions.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="list">list</span>[<a class="autorefs autorefs-internal" title="            ibkr_porez.models.TaxReportEntry" href="#ibkr_porez.models.TaxReportEntry">TaxReportEntry</a>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>List of TaxReportEntry.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["toc.integrate", "navigation.tracking", "content.code.copy"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.13a4f30d.min.js"></script>
+      
+    
+  </body>
+</html>
