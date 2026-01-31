@@ -55,15 +55,25 @@ class XMLGenerator:
 
         create_text(p_prijavi, "IsplataUDelovima", "0")
 
-        # 1.3 DatumDospelosti: Jan 31 or Jul 31.
-        if period_end.month == 6:  # noqa: PLR2004
-            due_date = date(period_end.year, 7, 31)
-        else:
-            due_date = date(period_end.year + 1, 1, 31)
+        # 1.3 DatumDospelosti: 30 days after period end.
+        # If weekend/holiday -> first next working day.
+        from datetime import timedelta
+
+        import holidays
+
+        saturday = 5
+        base_due = period_end + timedelta(days=30)
+        # Use country_holidays to avoid pyrefly dynamic attribute error
+        rs_holidays = holidays.country_holidays("RS")
+
+        # Shift if weekend (5=Sat, 6=Sun) or Holiday
+        while base_due.weekday() >= saturday or base_due in rs_holidays:
+            base_due += timedelta(days=1)
+
         create_text(
             p_prijavi,
             "DatumDospelostiZaPodnosenjePoreskePrijave",
-            due_date.strftime("%Y-%m-%d"),
+            base_due.strftime("%Y-%m-%d"),
         )
 
         d_nacin = doc.createElement("ns1:DatumINacinPodnosenjaPrijave")

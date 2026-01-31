@@ -6,7 +6,7 @@
 #   build-docs.sh --copy-assets <lang> # Copy assets only (use before mkdocs serve)
 #
 
-LANGUAGES="en ru"
+LANGUAGES="en ru rs rs-cyr"
 
 # Parse arguments
 if [ "$1" = "--copy-assets" ]; then

@@ -86,3 +86,7 @@ def test_xml_generator_structure():
 
     # Verify summary
     assert "8775.00" in xml_out
+
+    # Test H2 2024 (Ends Dec 31 2024) -> Due Jan 30 2025 (Thursday)
+    xml_out_h2 = xml_gen.generate_xml(entries, date(2024, 7, 1), date(2024, 12, 31))
+    assert "2025-01-30" in xml_out_h2

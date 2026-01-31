@@ -67,9 +67,15 @@ extra:
     - name: Русский
       link: /ibkr-porez/ru/
       lang: ru
+    - name: Srpski (Latinica)
+      link: /ibkr-porez/rs/
+      lang: rs
+    - name: Српски (Ћирилица)
+      link: /ibkr-porez/rs-cyr/
+      lang: rs-cyr
 
 nav:
   - index.md
+  - installation.md
   - usage.md
   - setup_ibkr.md
-  - installation.md

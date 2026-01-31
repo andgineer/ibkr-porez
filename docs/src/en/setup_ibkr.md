@@ -1,6 +1,7 @@
 # Setting up Interactive Brokers (IBKR)
 
-To use `ibkr-porez`, you need to configure a **Flex Query** in your Interactive Brokers account. This allows the tool to automatically fetch your transaction history.
+To use `ibkr-porez`, you need to configure a **Flex Query** in your Interactive Brokers account.
+This allows `ibkr-porez` to automatically fetch your transaction history.
 
 ## 1. Enable Flex Web Service
 

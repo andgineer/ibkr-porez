@@ -1,6 +1,7 @@
-# Настройка Interactive Brokers (IBKR)
+# Настройки в Interactive Brokers (IBKR)
 
-Чтобы использовать `ibkr-porez`, необходимо настроить **Flex Query** в вашем аккаунте Interactive Brokers. Это позволит инструменту автоматически загружать историю ваших транзакций.
+Чтобы использовать `ibkr-porez`, необходимо настроить **Flex Query** в вашем аккаунте Interactive Brokers.
+Это позволит `ibkr-porez` автоматически загружать историю ваших транзакций.
 
 ## 1. Включите Flex Web Service
 

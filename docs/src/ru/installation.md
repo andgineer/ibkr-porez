@@ -1,37 +1,25 @@
 ## Установка
-
-## Установка pipx
-[`pipx`](https://pypa.github.io/pipx/) создает изолированные среды, чтобы избежать конфликтов с
-существующими системными пакетами.
+Установите с помощью [`pipx`](https://pypa.github.io/pipx/), что предотвращает конфликты с системными пакетами Python:
 
 === "MacOS"
-    В терминале выполните:
     ```bash
     brew install pipx
     pipx ensurepath
     ```
 
 === "Linux"
-    Сначала убедитесь, что Python установлен.
-
-    Введите в терминал:
-
     ```bash
     python3 -m pip install --user pipx
     python3 -m pipx ensurepath
     ```
 
 === "Windows"
-    Сначала установите Python, если он еще не установлен.
-
-    В командной строке введите (если Python был установлен из Microsoft Store, используйте `python3` вместо `python`):
-
     ```bash
+    # Если вы установили python через app-store, замените `python` на `python3` в следующей строке.
     python -m pip install --user pipx
     ```
 
-## Установка `ibkr-porez`:
-В терминале (командной строке) выполните:
+После настройки `pipx` установите `ibkr-porez`:
 
 ```bash
 pipx install ibkr-porez

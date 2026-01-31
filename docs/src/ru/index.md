@@ -5,17 +5,19 @@
 
 ![ППДГ-3Р](images/ppdg-3r.png)
 
-1. [Настройка](https://andgineer.github.io/ibkr-porez/ru/setup_ibkr/): Сохраните учетные данные Interactive Brokers Flex Query и данные налогоплательщика.
+[Установите ibkr-porez](installation.md)
+
+[Настройка](setup_ibkr.md): Сохраните учетные данные Interactive Brokers Flex Query и данные налогоплательщика.
     ```bash
     ibkr-porez config
     ```
 
-2. [Загрузка данных](https://andgineer.github.io/ibkr-porez/ru/usage/#1-fetch-data-get): Скачайте историю транзакций из Interactive Brokers и официальные курсы валют Народного банка Сербии.
+[Загрузка данных](usage.md/#get): Скачайте историю транзакций из Interactive Brokers и официальные курсы валют Народного банка Сербии.
     ```bash
     ibkr-porez get
     ```
 
-3. [Создание отчета](https://andgineer.github.io/ibkr-porez/ru/usage/#3-generate-tax-report-report): Сгенерируйте XML-файл ППДГ-3Р.
+[Создание отчета](usage.md/#report): Сгенерируйте XML-файл ППДГ-3Р.
     ```bash
     ibkr-porez report
     ```
