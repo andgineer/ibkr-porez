@@ -1,25 +1,32 @@
-# ibkr-porez
+# Brzi start
 
 Automatizovano generisanje poreske prijave PPDG-3R (Kapitalna dobit) za korisnike Interactive Brokers u Srbiji.
-Program automatski preuzima podatke o vašim transakcijama i generiše XML fajl spreman za otpremanje, sa svim cenama konvertovanim u RSD.
+Program automatski preuzima podatke o transakcijama i kreira spreman XML fajl za otpremanje, konvertujući sve cene u dinare (RSD).
 
-![PPDG-3R](images/ppdg-3r.png)
+1. [Instalirajte ibkr-porez](installation.md)
 
-[Instaliraj ibkr-porez](installation.md)
-
-[Konfiguracija](setup_ibkr.md): Sačuvajte vaše Interactive Brokers Flex Query kredencijale i poreske podatke.
+2. [Konfiguracija](usage.md):
     ```bash
     ibkr-porez config
     ```
 
-[Preuzimanje podataka](usage.md/#fetch-data-get): Preuzmite istoriju transakcija sa Interactive Brokers i kurseve valuta sa Narodne banke Srbije.
+3. [Preuzimanje podataka](usage.md/#preuzimanje-podataka-get): Preuzmite istoriju transakcija sa Interactive Brokers i zvanične kurseve valuta sa Narodne banke Srbije.
     ```bash
     ibkr-porez get
     ```
 
-[Generisanje izveštaja](usage.md/#generate-capital-gains-ppdg-3r-tax-report-report): Generišite PPDG-3R XML fajl.
+    > Za proračun dobiti, aplikaciji je potrebna puna istorija za prodate hartije.
+    > Pošto Flex Query omogućava preuzimanje podataka za ne više od godinu dana, za učitavanje starijih podataka koristite
+    > [<u>import</u>](usage.md/#uvoz-istorijskih-podataka-import) iz CSV fajlova.
+
+    > ⚠️ Ne zaboravite da pokrenete `get` nakon `import` kako bi aplikacija dodala maksimum detalja bar za poslednju godinu
+    > u manje detaljne podatke učitane iz CSV-a.
+
+4. [Kreiranje izveštaja](usage.md/#generisanje-poreskog-izvestaja-za-kapitalnu-dobit-report): Generišite PPDG-3R XML fajl.
     ```bash
     ibkr-porez report
     ```
 
-> Jednostavno otpremite generisani XML na portal **ePorezi** (sekcija PPDG-3R).
+5. Otpremite generisani XML na portal **ePorezi** (sekcija PPDG-3R).
+
+    ![PPDG-3R](images/ppdg-3r.png)

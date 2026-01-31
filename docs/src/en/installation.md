@@ -1,7 +1,7 @@
+# Installation
+Recommended to use [`pipx`](https://pipx.pypa.io) for installation to prevent conflicts with system Python packages:
 
-## Installation
-Install using [`pipx`](https://pypa.github.io/pipx/) for isolated environments, which prevents interference
-with your system's Python packages:
+### Install `pipx`
 
 === "MacOS"
     ```bash
@@ -21,7 +21,7 @@ with your system's Python packages:
     python -m pip install --user pipx
     ```
 
-**Final Step**: Once `pipx` is set up, install `ibkr-porez`:
+### Install Application
 
 ```bash
 pipx install ibkr-porez

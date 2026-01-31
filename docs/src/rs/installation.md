@@ -1,7 +1,7 @@
+# Instalacija
+Preporučuje se upotreba [`pipx`](https://pipx.pypa.io) za instalaciju kako bi se sprečili konflikti sa sistemskim Python paketima:
 
-## Instalacija
-Instalirajte koristeći [`pipx`](https://pypa.github.io/pipx/) za izolovana okruženja, što sprečava ometanje
-Python paketa vašeg sistema:
+### Instalacija `pipx`
 
 === "MacOS"
     ```bash
@@ -21,7 +21,7 @@ Python paketa vašeg sistema:
     python -m pip install --user pipx
     ```
 
-**Završni korak**: Kada je `pipx` podešen, instalirajte `ibkr-porez`:
+### Instalacija aplikacije
 
 ```bash
 pipx install ibkr-porez

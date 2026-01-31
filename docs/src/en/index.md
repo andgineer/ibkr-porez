@@ -1,25 +1,31 @@
-# ibkr-porez
+# Quick Start
 
-Automated generation of the PPDG-3R tax report (Capital Gains) for Interactive Brokers users in Serbia.
-It automatically fetches your transaction data and generates a ready-to-upload XML file with all prices converted to RSD.
+Automated generation of PPDG-3R tax report (Capital Gains) for Interactive Brokers users in Serbia.
+The program automatically retrieves transaction data and creates a ready-to-upload XML file, converting all prices to Dinars (RSD).
 
-![PPDG-3R](images/ppdg-3r.png)
+1. [Install ibkr-porez](installation.md)
 
-[Install ibkr-porez](installation.md)
-
-[Configure](setup_ibkr.md): Save your Interactive Brokers Flex Query credentials and taxpayer details.
+2. [Configuration](usage.md):
     ```bash
     ibkr-porez config
     ```
 
-[Fetch Data](usage.md/#fetch-data-get): Download transaction history from Interactive Brokers and exchange rates from the National Bank of Serbia.
+3. [Fetch Data](usage.md/#fetch-data-get): Download transaction history from Interactive Brokers and official exchange rates from the National Bank of Serbia.
     ```bash
     ibkr-porez get
     ```
 
-[Generate Report](usage.md/#generate-capital-gains-ppdg-3r-tax-report-report): Generate the PPDG-3R XML file.
+    > To calculate gains, the application needs full history for sold securities.
+    > Since Flex Query allows downloading data for no more than a year, use [<u>import</u>](usage.md/#import-historical-data-import) from CSV files for older data.
+
+    > ⚠️ Do not forget to run `get` after `import` so the application adds maximum details at least for the last year
+    > into the less detailed data loaded from CSV.
+
+4. [Generate Report](usage.md/#generate-capital-gains-tax-report-report): Generate PPDG-3R XML file.
     ```bash
     ibkr-porez report
     ```
 
-> Simply upload the generated XML to the **ePorezi** portal (PPDG-3R section).
+5. Upload the generated XML to the **ePorezi** portal (PPDG-3R section).
+
+    ![PPDG-3R](images/ppdg-3r.png)
