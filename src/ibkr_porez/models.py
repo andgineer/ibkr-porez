@@ -10,6 +10,7 @@ class TransactionType(str, Enum):
     DIVIDEND = "DIVIDEND"
     TAX = "TAX"
     WITHHOLDING_TAX = "WITHHOLDING_TAX"
+    INTEREST = "INTEREST"
 
 
 class AssetClass(str, Enum):

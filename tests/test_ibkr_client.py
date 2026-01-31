@@ -1,3 +1,4 @@
+import allure
 import pytest
 from unittest.mock import MagicMock, patch
 from ibkr_porez.ibkr import IBKRClient
@@ -28,60 +29,61 @@ def sample_xml_report():
     """
 
 
-def test_parse_report(sample_xml_report):
-    client = IBKRClient("token", "query")
-    transactions = client.parse_report(sample_xml_report)
+@allure.epic("IBKR")
+@allure.feature("Flex Query")
+class TestIBKRClient:
+    def test_parse_report(self, sample_xml_report):
+        client = IBKRClient("token", "query")
+        transactions = client.parse_report(sample_xml_report)
 
-    assert len(transactions) == 2
+        assert len(transactions) == 2
 
-    # Check Trade
-    trade = transactions[0]
-    assert trade.type == TransactionType.TRADE
-    assert trade.symbol == "AAPL"
-    assert trade.quantity == 10
-    assert trade.price == 150.0
-    assert trade.amount == 300.0  # fifoPnlRealized
-    assert str(trade.date) == "2023-01-01"
+        # Check Trade
+        trade = transactions[0]
+        assert trade.type == TransactionType.TRADE
+        assert trade.symbol == "AAPL"
+        assert trade.quantity == 10
+        assert trade.price == 150.0
+        assert trade.amount == 300.0  # fifoPnlRealized
+        assert str(trade.date) == "2023-01-01"
 
-    # Check Cash Transaction
-    div = transactions[1]
-    assert div.type == TransactionType.DIVIDEND
-    assert div.symbol == "AAPL"
-    assert div.amount == 5.0
-    assert str(div.date) == "2023-01-15"
+        # Check Cash Transaction
+        div = transactions[1]
+        assert div.type == TransactionType.DIVIDEND
+        assert div.symbol == "AAPL"
+        assert div.amount == 5.0
+        assert str(div.date) == "2023-01-15"
 
+    @patch("requests.get")
+    def test_fetch_latest_report(self, mock_get):
+        client = IBKRClient("token", "query")
 
-@patch("requests.get")
-def test_fetch_latest_report(mock_get):
-    client = IBKRClient("token", "query")
+        # Mock Step 1
+        mock_resp1 = MagicMock()
+        mock_resp1.content = b"<FlexStatementResponse><ReferenceCode>REF123</ReferenceCode><Url>http://test.com</Url></FlexStatementResponse>"
 
-    # Mock Step 1
-    mock_resp1 = MagicMock()
-    mock_resp1.content = b"<FlexStatementResponse><ReferenceCode>REF123</ReferenceCode><Url>http://test.com</Url></FlexStatementResponse>"
+        # Mock Step 2
+        mock_resp2 = MagicMock()
+        mock_resp2.content = b"<Report>Data</Report>"
 
-    # Mock Step 2
-    mock_resp2 = MagicMock()
-    mock_resp2.content = b"<Report>Data</Report>"
+        mock_get.side_effect = [mock_resp1, mock_resp2]
 
-    mock_get.side_effect = [mock_resp1, mock_resp2]
+        data = client.fetch_latest_report()
 
-    data = client.fetch_latest_report()
+        assert data == b"<Report>Data</Report>"
+        assert mock_get.call_count == 2
 
-    assert data == b"<Report>Data</Report>"
-    assert mock_get.call_count == 2
+        # Verify Step 1 params
+        args1, kwargs1 = mock_get.call_args_list[0]
+        assert kwargs1["params"]["q"] == "query"
 
-    # Verify Step 1 params
-    args1, kwargs1 = mock_get.call_args_list[0]
-    assert kwargs1["params"]["q"] == "query"
+        # Verify Step 2 params
+        args2, kwargs2 = mock_get.call_args_list[1]
+        assert kwargs2["params"]["q"] == "REF123"
 
-    # Verify Step 2 params
-    args2, kwargs2 = mock_get.call_args_list[1]
-    assert kwargs2["params"]["q"] == "REF123"
+    def test_parse_report_error(self):
+        client = IBKRClient("token", "query")
+        error_xml = b"<FlexStatementResponse><Status>Error</Status><ErrorCode>1012</ErrorCode><ErrorMessage>Invalid Token</ErrorMessage></FlexStatementResponse>"
 
-
-def test_parse_report_error():
-    client = IBKRClient("token", "query")
-    error_xml = b"<FlexStatementResponse><Status>Error</Status><ErrorCode>1012</ErrorCode><ErrorMessage>Invalid Token</ErrorMessage></FlexStatementResponse>"
-
-    with pytest.raises(ValueError, match="Flex Query Failed: 1012 - Invalid Token"):
-        client.parse_report(error_xml)
+        with pytest.raises(ValueError, match="Flex Query Failed: 1012 - Invalid Token"):
+            client.parse_report(error_xml)

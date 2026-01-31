@@ -240,6 +240,7 @@ class IBKRClient:
             "Dividends": TransactionType.DIVIDEND,
             "Withholding Tax": TransactionType.WITHHOLDING_TAX,
             "Payment In Lieu Of Dividends": TransactionType.DIVIDEND,
+            "Broker Interest Paid": TransactionType.INTEREST,
         }
 
         mapped_type = tx_type_map.get(type_str)
