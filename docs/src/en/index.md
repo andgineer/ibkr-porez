@@ -5,7 +5,7 @@ The program automatically retrieves transaction data and creates a ready-to-uplo
 
 1. [Install ibkr-porez](installation.md)
 
-2. [Configuration](usage.md):
+2. [Configuration](usage.md#configuration):
     ```bash
     ibkr-porez config
     ```

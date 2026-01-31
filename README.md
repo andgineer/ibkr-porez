@@ -6,7 +6,7 @@ Automated PPDG-3R tax report generation for Interactive Brokers. It automaticall
 
 # Quick Start
 
-1.  [Configure](https://andgineer.github.io/ibkr-porez/ibkr/): Save your Interactive Brokers Flex Query credentials and taxpayer details.
+1.  [Configure](https://andgineer.github.io/ibkr-porez/usage/#configuration): Save your Interactive Brokers Flex Query credentials and taxpayer details.
     ```bash
     ibkr-porez config
     ```

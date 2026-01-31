@@ -5,7 +5,7 @@
 
 1. [Инсталирајте ibkr-porez](installation.md)
 
-2. [Конфигурација](usage.md):
+2. [Конфигурација](usage.md#configuration):
     ```bash
     ibkr-porez config
     ```

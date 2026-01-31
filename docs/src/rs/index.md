@@ -5,7 +5,7 @@ Program automatski preuzima podatke o transakcijama i kreira spreman XML fajl za
 
 1. [Instalirajte ibkr-porez](installation.md)
 
-2. [Konfiguracija](usage.md):
+2. [Konfiguracija](usage.md#configuration):
     ```bash
     ibkr-porez config
     ```

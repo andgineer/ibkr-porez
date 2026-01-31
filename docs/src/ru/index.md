@@ -4,7 +4,7 @@
 
 1. [Установите ibkr-porez](installation.md)
 
-2. [Настройка](usage.md):
+2. [Настройка](usage.md#configuration):
     ```bash
     ibkr-porez config
     ```
