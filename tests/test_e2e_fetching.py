@@ -25,15 +25,16 @@ def runner():
 class TestE2EFetching:
     @patch("ibkr_porez.main.NBSClient")
     @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
-    @patch("ibkr_porez.main.UserConfig")
+    @patch("ibkr_porez.main.config_manager")
     def test_get_command_complex_fetch(
-        self, mock_config, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
+        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
     ):
         """
         Scenario: Fetch complex Flex Query with multiple trades, splits, and cash interactions.
         Expect: All transactions parsed and stored correctly.
         """
-        mock_config.load.return_value = MagicMock(
+        # Mock ConfigManager.load_config()
+        mock_cfg_mgr.load_config.return_value = MagicMock(
             ibkr_token="test_token", ibkr_query_id="test_query"
         )
 
@@ -80,15 +81,15 @@ class TestE2EFetching:
         assert abs(tax["amount"]) == 7.5
 
     @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.main.UserConfig")
+    @patch("ibkr_porez.main.config_manager")
     def test_import_command_complex(
-        self, mock_config, mock_nbs_cls, runner, mock_user_data_dir, resources_path
+        self, mock_cfg_mgr, mock_nbs_cls, runner, mock_user_data_dir, resources_path
     ):
         """
         Scenario: Import complex CSV.
         Expect: All transactions parsed.
         """
-        mock_config.load.return_value = MagicMock()
+        mock_cfg_mgr.load_config.return_value = MagicMock()
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = None
 
@@ -113,9 +114,9 @@ class TestE2EFetching:
 
     @patch("ibkr_porez.main.NBSClient")
     @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
-    @patch("ibkr_porez.main.UserConfig")
+    @patch("ibkr_porez.main.config_manager")
     def test_workflow_partial_upgrade(
-        self, mock_config, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
+        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
     ):
         """
         Scenario (Partial Upgrade):
@@ -127,7 +128,8 @@ class TestE2EFetching:
         - MSFT (CSV) -> RETAINED (because XML dates [Jan, Feb] don't cover MSFT date [Apr]).
         - TSLA/GOOG (XML) -> Added.
         """
-        mock_config.load.return_value = MagicMock(ibkr_token="t", ibkr_query_id="q")
+        mock_cfg_mgr.load_config.return_value = MagicMock(ibkr_token="t", ibkr_query_id="q")
+
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = None
 
@@ -173,9 +175,9 @@ class TestE2EFetching:
 
     @patch("ibkr_porez.main.NBSClient")
     @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
-    @patch("ibkr_porez.main.UserConfig")
+    @patch("ibkr_porez.main.config_manager")
     def test_workflow_skip_duplicates(
-        self, mock_config, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
+        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
     ):
         """
         Scenario:
@@ -186,7 +188,8 @@ class TestE2EFetching:
         - Common items (AAPL, Divs) skipped.
         - New items in CSV (MSFT) added.
         """
-        mock_config.load.return_value = MagicMock(ibkr_token="t", ibkr_query_id="q")
+        mock_cfg_mgr.load_config.return_value = MagicMock(ibkr_token="t", ibkr_query_id="q")
+
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = None
 
@@ -221,9 +224,9 @@ class TestE2EFetching:
         assert "(1 new" in result.output
 
     @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.main.UserConfig")
-    def test_import_invalid_file(self, mock_config, mock_nbs_cls, runner, mock_user_data_dir):
-        mock_config.load.return_value = MagicMock()
+    @patch("ibkr_porez.main.config_manager")
+    def test_import_invalid_file(self, mock_cfg_mgr, mock_nbs_cls, runner, mock_user_data_dir):
+        mock_cfg_mgr.load_config.return_value = MagicMock()
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = None
 
