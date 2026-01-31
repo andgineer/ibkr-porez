@@ -1,11 +1,15 @@
-from datetime import date
+import logging
+from datetime import date, timedelta
 from decimal import Decimal
 
+import holidays
 import requests
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 from ibkr_porez.models import Currency, ExchangeRate
 from ibkr_porez.storage import Storage
+
+logger = logging.getLogger(__name__)
 
 
 class NBSClient:
@@ -21,9 +25,7 @@ class NBSClient:
 
         # Optimization: Find the nearest previous working day offline using holidays lib
         # This avoids 404s/Timeouts for known non-working days.
-        import holidays
 
-        # rs_holidays = holidays.RS() # DEPRECATED/REMOVED
         rs_holidays = holidays.country_holidays("RS")
 
         target_date = date_obj
@@ -40,15 +42,11 @@ class NBSClient:
                     )
                 return cached.rate
 
-            # If it's a weekend or holiday, skip fetching and move back
             saturday = 5
             is_weekend = target_date.weekday() >= saturday
             is_holiday = target_date in rs_holidays
 
             if is_weekend or is_holiday:
-                # Offline skip
-                from datetime import timedelta
-
                 target_date -= timedelta(days=1)
                 continue
 
@@ -66,27 +64,20 @@ class NBSClient:
                             ExchangeRate(date=date_obj, currency=currency, rate=rate_val),
                         )
                     return rate_val
-            except Exception:  # noqa: S110,BLE001
+            except Exception as e:  # noqa: BLE001
                 # Real error even on working day? Or maybe unexpected holiday?
                 # Continue looking back just in case, but log debug.
-                # print(f"DEBUG: Failed to fetch working day {target_date}: {e}")
-                pass
+                logger.debug(f"Failed to fetch working day {target_date}: {e}")
 
             # If failed, move back
-            from datetime import timedelta
-
             target_date -= timedelta(days=1)
 
-        print(f"Warning: Could not find rate for {currency} on {date_obj} (checked 10 days back)")
+        logger.warning(f"Could not find rate for {currency} on {date_obj} (checked 10 days back)")
         return None
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
     def _fetch_rate(self, date_obj: date, currency: Currency) -> Decimal | None:
         # URL logic: https://kurs.resenje.org/api/v1/currencies/{currency}/rates/{date}
-        # Note: Currency codes in API might be lower/upper case. API usually uses lowercase?
-        # Let's check API docs or assume generic.
-        # Research sample: "currencies/eur/rates/2023-01-01"
-
         url = f"{self.BASE_URL}/currencies/{currency.value.lower()}/rates/{date_obj.isoformat()}"
 
         response = requests.get(url, timeout=10)

@@ -55,7 +55,8 @@ class TestIBKRClient:
         assert str(div.date) == "2023-01-15"
 
     @patch("requests.get")
-    def test_fetch_latest_report(self, mock_get):
+    @patch("time.sleep")
+    def test_fetch_latest_report(self, mock_sleep, mock_get):
         client = IBKRClient("token", "query")
 
         # Mock Step 1

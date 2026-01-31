@@ -6,8 +6,7 @@ from ibkr_porez.config import ConfigManager
 from ibkr_porez.models import UserConfig
 
 
-@allure.epic("Configuration")
-@allure.feature("ConfigManager")
+@allure.epic("ConfigManager")
 class TestConfigManager:
     @pytest.fixture
     def mock_config_dir(self, tmp_path):
