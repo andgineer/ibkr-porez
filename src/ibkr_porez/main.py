@@ -98,9 +98,8 @@ def config():
 
 
 @ibkr_porez.command()
-@click.option("--force", "-f", is_flag=True, help="Force full fetch (ignore local history).")
 @verbose_option
-def get(force: bool):
+def get():
     """Sync data from IBKR and NBS."""
     cfg = config_manager.load_config()
     if not cfg.ibkr_token or not cfg.ibkr_query_id:
@@ -114,22 +113,8 @@ def get(force: bool):
     with console.status("[bold green]Fetching data from IBKR...[/bold green]"):
         try:
             # 1. Fetch XML
-            last_date = None
-            if not force:
-                last_date = storage.get_last_transaction_date()
-
-            if last_date:
-                console.print(
-                    f"[blue]Found existing data up to {last_date}. Fetching updates...[/blue]",
-                )
-                # We start from the last date to catch any corrections on that day
-                xml_content = ibkr.fetch_latest_report(start_date=last_date)
-            else:
-                msg = "Fetching full report (last 365 days)..."
-                if force:
-                    msg = "Force update enabled. " + msg
-                console.print(f"[blue]{msg}[/blue]")
-                xml_content = ibkr.fetch_latest_report()
+            console.print("[blue]Fetching full report...[/blue]")
+            xml_content = ibkr.fetch_latest_report()
 
             # Save raw backup
             import time

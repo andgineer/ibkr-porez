@@ -185,7 +185,7 @@ class TestE2EReport:
         with open(resources_path / "fifo_scenarios.xml", "rb") as f:
             mock_fetch.return_value = f.read()
 
-        res_get = runner.invoke(ibkr_porez, ["get", "--force"])
+        res_get = runner.invoke(ibkr_porez, ["get"])
         assert res_get.exit_code == 0
         assert "Fetched 6 transactions" in res_get.output
 

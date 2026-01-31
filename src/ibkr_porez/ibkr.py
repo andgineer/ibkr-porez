@@ -1,7 +1,5 @@
 import logging
-import time
 import xml.etree.ElementTree as ET
-from datetime import date
 from decimal import Decimal
 
 import requests
@@ -26,27 +24,12 @@ class IBKRClient:
         self.query_id = query_id
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-    def fetch_latest_report(
-        self,
-        start_date: "date | None" = None,
-        end_date: "date | None" = None,
-    ) -> bytes:
+    def fetch_latest_report(self) -> bytes:
         """
-        Fetch the latest Flex Query report.
-        If start_date/end_date (date objects) are provided, they override the query's
-        default period.
+        Fetch the latest Flex Query.
         """
 
-        # Step 1: Request the report
         params_req = {"t": self.token, "q": self.query_id, "v": self.VERSION}
-
-        if start_date:
-            params_req["fd"] = start_date.strftime("%Y%m%d")
-            # Both fd and td are required for override to work
-            end = end_date or date.today()
-            params_req["td"] = end.strftime("%Y%m%d")
-        elif end_date:
-            params_req["td"] = end_date.strftime("%Y%m%d")
 
         logger.debug(f"Sending IBKR Request: {params_req}")
 
@@ -75,13 +58,6 @@ class IBKRClient:
 
         except ET.ParseError as e:
             raise ValueError(f"Failed to parse IBKR response: {e}") from e
-
-        # Step 2: Get the report (Wait loop maybe needed,
-        # but usually immediate provided we wait a bit?)
-        # Actually IBKR says "Check the status". But typically for small reports it's fast.
-        # But robust implementation loops checking status or just tries to get it.
-        # Simple implementation: Wait 1s and try.
-        time.sleep(1)
 
         params_get = {"q": reference_code, "t": self.token, "v": self.VERSION}
         resp_get = requests.get(base_url, params=params_get, timeout=30)
