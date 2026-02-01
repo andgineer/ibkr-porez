@@ -14,12 +14,12 @@
 | src/ibkr\_porez/nbs.py                     |       51 |        1 |     98% |        40 |
 | src/ibkr\_porez/report\_gains.py           |       31 |        1 |     97% |        67 |
 | src/ibkr\_porez/report\_income.py          |        7 |        2 |     71% |    12, 34 |
-| src/ibkr\_porez/report\_params.py          |      109 |       34 |     69% |31-35, 53, 76-80, 90, 92, 101, 106, 138, 144, 147-149, 163-164, 167, 170-186 |
+| src/ibkr\_porez/report\_params.py          |      109 |        6 |     94% |80, 144, 163-164, 167, 186 |
 | src/ibkr\_porez/storage.py                 |      277 |       47 |     83% |43, 77-78, 128-129, 166-168, 234-235, 260, 270, 288-290, 298, 344-358, 368-369, 372, 381, 383, 408-409, 428-431, 436-441, 449, 455-459 |
 | src/ibkr\_porez/tables.py                  |       21 |        0 |    100% |           |
 | src/ibkr\_porez/tax.py                     |       71 |       14 |     80% |26, 32, 56-58, 86-102, 151-152, 155-156 |
 | src/ibkr\_porez/validation.py              |       23 |       10 |     57% | 24, 33-44 |
-| **TOTAL**                                  | **1300** |  **224** | **83%** |           |
+| **TOTAL**                                  | **1300** |  **196** | **85%** |           |
 
 
 ## Setup coverage badge
