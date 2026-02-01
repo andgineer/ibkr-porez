@@ -162,10 +162,12 @@ class TestE2EReport:
     @patch("ibkr_porez.nbs.requests.get")
     @patch("ibkr_porez.report_gains.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
+    @patch("ibkr_porez.main.config_manager")
     @patch("ibkr_porez.report_gains.config_manager")
     def test_report_fifo_complex(
         self,
-        mock_cfg_mgr,
+        mock_report_cfg_mgr,
+        mock_main_cfg_mgr,
         mock_fetch,
         mock_nbs_cls,
         mock_requests_get,
@@ -180,14 +182,16 @@ class TestE2EReport:
         - AAPL: 1 Sell of 15. Gain ~29,250 RSD (assuming rate 117).
         - MSFT: 2 Sells (5, 10). Gains 5,850 and 23,400 RSD.
         """
-        # Mock Config
-        mock_cfg_mgr.load_config.return_value = MagicMock(
+        # Mock Config (for both main.get and report_gains)
+        mock_config = MagicMock(
             personal_id="1234567890123",
             full_name="Complex User",
             ibkr_token="t",
             ibkr_query_id="q",
             city_code="223",
         )
+        mock_main_cfg_mgr.load_config.return_value = mock_config
+        mock_report_cfg_mgr.load_config.return_value = mock_config
 
         # Mock NBS (Fixed rate 117.0)
         mock_nbs = mock_nbs_cls.return_value
