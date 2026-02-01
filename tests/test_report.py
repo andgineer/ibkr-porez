@@ -1,7 +1,7 @@
 import allure
 from datetime import date
 from decimal import Decimal
-from ibkr_porez.report import XMLGenerator
+from ibkr_porez.declaration_gains_xml import XMLGenerator
 from ibkr_porez.models import TaxReportEntry, UserConfig
 
 

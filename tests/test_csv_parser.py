@@ -4,7 +4,7 @@ import pytest
 from datetime import date
 from decimal import Decimal
 from ibkr_porez.models import Currency, TransactionType
-from ibkr_porez.parsers.csv_parser import CSVParser
+from ibkr_porez.ibkr_csv import CSVParser
 
 
 @pytest.fixture

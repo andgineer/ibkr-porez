@@ -25,9 +25,12 @@ def runner():
 @allure.epic("End-to-end")
 @allure.feature("ppdg-3r")
 class TestE2EReport:
-    @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.main.config_manager")
-    def test_report_generation_h1(self, mock_cfg_mgr, mock_nbs_cls, runner, mock_user_data_dir):
+    @patch("ibkr_porez.nbs.requests.get")
+    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_gains.config_manager")
+    def test_report_generation_h1(
+        self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
+    ):
         """
         Scenario: Generate PPDG-3R report for H1 2023.
         Data:
@@ -97,10 +100,11 @@ class TestE2EReport:
                 content = f.read()
                 assert "AAPL" in content  # Basic check
 
-    @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.main.config_manager")
+    @patch("ibkr_porez.nbs.requests.get")
+    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_gains.config_manager")
     def test_report_generation_file_check(
-        self, mock_cfg_mgr, mock_nbs_cls, runner, mock_user_data_dir
+        self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
         """Verify XML file creation and content."""
         mock_cfg_mgr.load_config.return_value = MagicMock(
@@ -155,11 +159,19 @@ class TestE2EReport:
             assert "TSLA" in content
             assert "ns1:ProdajnaCena" in content
 
-    @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
-    @patch("ibkr_porez.main.config_manager")
+    @patch("ibkr_porez.nbs.requests.get")
+    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
+    @patch("ibkr_porez.report_gains.config_manager")
     def test_report_fifo_complex(
-        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
+        self,
+        mock_cfg_mgr,
+        mock_fetch,
+        mock_nbs_cls,
+        mock_requests_get,
+        runner,
+        mock_user_data_dir,
+        resources_path,
     ):
         """
         Scenario: Complex FIFO (Mutli-Buy/Single-Sell, Single-Buy/Multi-Sell).
@@ -231,9 +243,12 @@ class TestE2EReport:
             assert "257400.00" in content
             # Gain 23400 is already asserted above.
 
-    @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.main.config_manager")
-    def test_report_no_sales(self, mock_cfg_mgr, mock_nbs_cls, runner, mock_user_data_dir):
+    @patch("ibkr_porez.nbs.requests.get")
+    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_gains.config_manager")
+    def test_report_no_sales(
+        self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
+    ):
         """Scenario: No sales in period."""
         mock_cfg_mgr.load_config.return_value = MagicMock()
         mock_nbs = mock_nbs_cls.return_value
@@ -261,11 +276,12 @@ class TestE2EReport:
         assert result.exit_code == 0
         assert "No taxable sales found" in result.output
 
-    @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
-    @patch("ibkr_porez.main.config_manager")
+    @patch("ibkr_porez.nbs.requests.get")
+    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
+    @patch("ibkr_porez.report_gains.config_manager")
     def test_report_invalid_format(
-        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir
+        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
         """Scenario: User provides invalid date format."""
         result = runner.invoke(ibkr_porez, ["report", "--half", "2023_1"])
@@ -278,11 +294,12 @@ class TestE2EReport:
         result_bad_half = runner.invoke(ibkr_porez, ["report", "--half", "2023-3"])
         assert "Half-year must be 1 or 2" in result_bad_half.output
 
-    @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
-    @patch("ibkr_porez.main.config_manager")
+    @patch("ibkr_porez.nbs.requests.get")
+    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
+    @patch("ibkr_porez.report_gains.config_manager")
     def test_report_default_period(
-        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir
+        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
         """Scenario: User omits --half, defaults to previous complete half."""
         from datetime import datetime
@@ -292,14 +309,15 @@ class TestE2EReport:
         expected_half = 2 if now.month < 7 else 1
 
         result = runner.invoke(ibkr_porez, ["report"])
-        assert f"Generating Report for {expected_year} H{expected_half}" in result.output
+        assert "Generating PPDG-3R Report for" in result.output
         assert "No transactions found" in result.output
 
-    @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
-    @patch("ibkr_porez.main.config_manager")
+    @patch("ibkr_porez.nbs.requests.get")
+    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
+    @patch("ibkr_porez.report_gains.config_manager")
     def test_report_no_transactions_found(
-        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir
+        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
         """Scenario: Storage effectively empty (or filtered to empty)."""
         s = Storage()

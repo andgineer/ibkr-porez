@@ -24,7 +24,7 @@ def runner():
 @allure.feature("Fetching from IBKR")
 class TestE2EFetching:
     @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
+    @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.config_manager")
     def test_get_command_complex_fetch(
         self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
@@ -113,7 +113,7 @@ class TestE2EFetching:
         assert msft["transaction_id"] == "csv-MSFT_ONLY_CSV"
 
     @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
+    @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.config_manager")
     def test_workflow_partial_upgrade(
         self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
@@ -174,7 +174,7 @@ class TestE2EFetching:
         assert msft["transaction_id"] == "csv-MSFT_ONLY_CSV"
 
     @patch("ibkr_porez.main.NBSClient")
-    @patch("ibkr_porez.ibkr.IBKRClient.fetch_latest_report")
+    @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.config_manager")
     def test_workflow_skip_duplicates(
         self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path

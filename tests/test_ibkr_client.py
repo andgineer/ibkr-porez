@@ -1,7 +1,7 @@
 import allure
 import pytest
 from unittest.mock import MagicMock, patch
-from ibkr_porez.ibkr import IBKRClient
+from ibkr_porez.ibkr_flex_query import IBKRClient
 from ibkr_porez.models import TransactionType
 
 

@@ -1,21 +1,32 @@
 """ibkr-porez."""
 
 import logging
-from datetime import date
+import re
+from collections import defaultdict
+from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 
+import pandas as pd
 import rich_click as click
+from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.table import Table
 
 from ibkr_porez import __version__
 from ibkr_porez.config import UserConfig, config_manager
-from ibkr_porez.ibkr import IBKRClient
+from ibkr_porez.ibkr_csv import CSVParser
+from ibkr_porez.ibkr_flex_query import IBKRClient
 from ibkr_porez.nbs import NBSClient
+from ibkr_porez.report_gains import GainsReportGenerator
+from ibkr_porez.report_income import IncomeReportGenerator
+from ibkr_porez.report_params import ReportParams, ReportType
 from ibkr_porez.storage import Storage
+from ibkr_porez.tables import render_declaration_table
 from ibkr_porez.tax import TaxCalculator
+from ibkr_porez.validation import handle_validation_error
 
-# click.rich_click.USE_MARKDOWN = True
 OUTPUT_FILE_DEFAULT = "output"
 
 # Global Console instance to ensure logs and progress bars share the same stream
@@ -52,15 +63,17 @@ def verbose_option(f):
     )(f)
 
 
-@click.group()
+@click.group(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/",
+)
 @click.version_option(version=__version__, prog_name="ibkr-porez")
 def ibkr_porez() -> None:
-    """
-    Automated PPDG-3R tax reports for Interactive Brokers.
-    """
+    """Automated PPDG-3R tax reports for Interactive Brokers."""
 
 
-@ibkr_porez.command()
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#configuration",
+)
 @verbose_option
 def config():
     """Configure IBKR and personal details."""
@@ -68,6 +81,12 @@ def config():
 
     console.print("[bold blue]Configuration Setup[/bold blue]")
     console.print(f"Config file location: {config_manager.config_path}\n")
+
+    console.print(
+        "[dim]Need help getting your IBKR Flex Token and Query ID? "
+        "See [link=https://andgineer.github.io/ibkr-porez/ibkr/#flex-web-service]"
+        "documentation[/link].[/dim]\n",
+    )
 
     ibkr_token = click.prompt("IBKR Flex Token", default=current_config.ibkr_token)
     ibkr_query_id = click.prompt("IBKR Query ID", default=current_config.ibkr_query_id)
@@ -97,7 +116,9 @@ def config():
     console.print("\n[bold green]Configuration saved successfully![/bold green]")
 
 
-@ibkr_porez.command()
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#fetch-data-get",
+)
 @verbose_option
 def get():
     """Sync data from IBKR and NBS."""
@@ -158,13 +179,14 @@ def get():
         console.print_exception()
 
 
-@ibkr_porez.command("import")
+@ibkr_porez.command(
+    "import",
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#import-historical-data-import",
+)
 @click.argument("file_path", type=click.Path(exists=True, path_type=Path))
 @verbose_option
 def import_file(file_path: Path):
     """Import historical transactions from CSV Activity Statement."""
-    from ibkr_porez.parsers.csv_parser import CSVParser
-
     storage = Storage()
     nbs = NBSClient(storage)
 
@@ -204,8 +226,10 @@ def import_file(file_path: Path):
         console.print_exception()
 
 
-@ibkr_porez.command()
-@click.option("--year", type=int, help="Filter by year (e.g. 2023)")
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#show-statistics-show",
+)
+@click.option("--year", type=int, help="Filter by year (e.g. 2026)")
 @click.option("-t", "--ticker", type=str, help="Show detailed breakdown for specific ticker")
 @click.option(
     "-m",
@@ -216,14 +240,6 @@ def import_file(file_path: Path):
 @verbose_option
 def show(year: int | None, ticker: str | None, month: str | None):  # noqa: C901,PLR0912,PLR0915
     """Show tax report (Sales only)."""
-    import re
-    from collections import defaultdict
-    from datetime import datetime
-    from decimal import Decimal
-
-    import pandas as pd
-    from rich.table import Table
-
     storage = Storage()
     nbs = NBSClient(storage)
     tax_calc = TaxCalculator(nbs)
@@ -450,154 +466,129 @@ def show(year: int | None, ticker: str | None, month: str | None):  # noqa: C901
     console.print(table)
 
 
-@ibkr_porez.command()
-@click.option("--half", required=False, help="Half-year to report (e.g. 2023-1, 20231)")
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#generate-capital-gains-tax-report-report",
+)
+@click.option(
+    "--type",
+    type=click.Choice(["gains", "income"], case_sensitive=False),
+    default="gains",
+    help="Report type: 'gains' for PPDG-3R (capital gains) or 'income' for PP OPO (capital income)",
+)
+@click.option(
+    "--half",
+    required=False,
+    help=(
+        "Half-year period (e.g. 2026-1, 20261). "
+        "For --type=gains, defaults to the last complete half-year if not provided."
+    ),
+)
+@click.option(
+    "--from",
+    "from_date",
+    required=False,
+    help=(
+        "Start date (YYYY-MM-DD). "
+        "If --from and --to are not provided, they default to current month "
+        "(from 1st to today). If only --from is provided, --to defaults to --from."
+    ),
+)
+@click.option(
+    "--to",
+    "to_date",
+    required=False,
+    help=(
+        "End date (YYYY-MM-DD). "
+        "If --from and --to are not provided, they default to current month "
+        "(from 1st to today). If only --from is provided, --to defaults to --from."
+    ),
+)
 @verbose_option
-def report(half: str | None):  # noqa: C901,PLR0912,PLR0915
-    """Generate PPDG-3R XML report."""
-    import re
-    from datetime import datetime
+def report(  # noqa: C901,PLR0915
+    type: str,
+    half: str | None,
+    from_date: str | None,
+    to_date: str | None,
+):  # noqa: PLR0913
+    """Generate tax reports (PPDG-3R for capital gains or PP OPO for capital income)."""
+    try:
+        params = ReportParams.model_validate(
+            {
+                "type": type,
+                "half": half,
+                "from": from_date,
+                "to": to_date,
+            },
+        )
+        start_date_obj, end_date_obj = params.get_period()
+    except ValidationError as e:
+        handle_validation_error(e, console)
+        return
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        return
 
-    # Determine Period
-    target_year = None
-    target_half = None
+    if params.type == ReportType.GAINS:
+        console.print(
+            f"[bold blue]Generating PPDG-3R Report for "
+            f"({start_date_obj} to {end_date_obj})[/bold blue]",
+        )
 
-    if half:
-        # Parse Argument
-        # Formats: 2023-2, 20232
-        m_dash = re.match(r"^(\d{4})-(\d)$", half)
-        m_compact = re.match(r"^(\d{4})(\d)$", half)
+        try:
+            generator = GainsReportGenerator()
+            # Generate filename from half if available
+            filename = None
+            if params.half:
+                half_match = re.match(r"^(\d{4})-(\d)$", params.half) or re.match(
+                    r"^(\d{4})(\d)$",
+                    params.half,
+                )
+                if half_match:
+                    target_year = int(half_match.group(1))
+                    target_half = int(half_match.group(2))
+                    filename = f"ppdg3r_{target_year}_H{target_half}.xml"
 
-        if m_dash:
-            target_year = int(m_dash.group(1))
-            target_half = int(m_dash.group(2))
-        elif m_compact:
-            target_year = int(m_compact.group(1))
-            target_half = int(m_compact.group(2))
-        else:
+            filename, entries = generator.generate(
+                start_date=start_date_obj,
+                end_date=end_date_obj,
+                filename=filename,
+            )
+
+            console.print(f"[bold green]Report generated: {filename}[/bold green]")
+            console.print(f"Total Entries: {len(entries)}")
+
+            table = render_declaration_table(entries)
+            console.print(table)
             console.print(
-                f"[red]Invalid format: {half}. Use YYYY-H (e.g. 2023-2) "
-                f"or YYYYH (e.g. 20232)[/red]",
+                "[dim]Use these values to cross-check with the portal "
+                "or fill manually if needed.[/dim]",
+            )
+
+            console.print("\n[bold red]ATTENTION: Step 8 (Upload)[/bold red]")
+            console.print(
+                "[bold]You MUST manually upload your IBKR Activity Report (PDF) "
+                "in 'Deo 8' on the ePorezi portal. "
+                "See [link=https://andgineer.github.io/ibkr-porez/ibkr/#export-full-history-for-import-command]"
+                "Export Full History[/link].[/bold]",
+            )
+
+        except ValueError as e:
+            console.print(f"[yellow]{e}[/yellow]")
+            return
+
+    elif params.type == ReportType.INCOME:
+        try:
+            generator = IncomeReportGenerator()
+            generator.generate(
+                start_date=start_date_obj,
+                end_date=end_date_obj,
+            )
+        except NotImplementedError as e:
+            console.print(f"[yellow]{e}[/yellow]")
+            console.print(
+                f"[dim]Requested period: {start_date_obj} to {end_date_obj}[/dim]",
             )
             return
-
-        if target_half not in [1, 2]:
-            console.print("[red]Half-year must be 1 or 2.[/red]")
-            return
-    else:
-        # Default: Last COMPLETE half-year
-        now = datetime.now()
-        current_year = now.year
-        current_month = now.month
-
-        if current_month < 7:  # noqa: PLR2004
-            # Current is H1 (incomplete), so Last Complete is Previous Year H2
-            target_year = current_year - 1
-            target_half = 2
-        else:
-            # Current is H2 (incomplete), so Last Complete is Current Year H1
-            target_year = current_year
-            target_half = 1
-
-    # Calculate Dates
-    if target_half == 1:
-        start_date = date(target_year, 1, 1)
-        end_date = date(target_year, 6, 30)
-    else:
-        start_date = date(target_year, 7, 1)
-        end_date = date(target_year, 12, 31)
-
-    console.print(
-        f"[bold blue]Generating Report for {target_year} H{target_half} "
-        f"({start_date} to {end_date})[/bold blue]",
-    )
-
-    from ibkr_porez.report import XMLGenerator
-
-    cfg = config_manager.load_config()
-    storage = Storage()
-    nbs = NBSClient(storage)
-    tax_calc = TaxCalculator(nbs)
-    xml_gen = XMLGenerator(cfg)
-
-    # Get Transactions (DataFrame)
-    # Load ALL to ensure FIFO context
-    df_transactions = storage.get_transactions()
-
-    if df_transactions.empty:
-        console.print(
-            "[yellow]No transactions found. Run `ibkr-porez get` first.[/yellow]",
-        )
-        return
-
-    # Process FIFO for all
-    all_entries = tax_calc.process_trades(df_transactions)
-
-    # Filter for Period
-    entries = []
-    for e in all_entries:
-        if start_date <= e.sale_date <= end_date:
-            entries.append(e)
-
-    if not entries:
-        console.print("[yellow]No taxable sales found in this period.[/yellow]")
-        return
-
-    # Generate XML
-    xml_content = xml_gen.generate_xml(entries, start_date, end_date)
-
-    filename = f"ppdg3r_{target_year}_H{target_half}.xml"
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(xml_content)
-
-    console.print(f"[bold green]Report generated: {filename}[/bold green]")
-    console.print(f"Total Entries: {len(entries)}")
-
-    # Print Detailed Table for Manual Entry
-    from rich.table import Table
-
-    table = Table(title="Manual Entry Helpers (Part 4)", box=None)
-
-    table.add_column("No.", justify="right")
-    table.add_column("Ticker (Naziv)", justify="left")
-    table.add_column("Sale Date (4.3)", justify="left")
-    table.add_column("Qty (4.5/4.9)", justify="right")
-    table.add_column("Sale Price RSD (4.6)", justify="right")  # Prodajna Cena
-    table.add_column("Buy Date (4.7)", justify="left")
-    table.add_column("Buy Price RSD (4.10)", justify="right")  # Nabavna Cena
-    table.add_column("Gain RSD", justify="right")
-    table.add_column("Loss RSD", justify="right")
-
-    i = 1
-    for e in entries:
-        gain = e.capital_gain_rsd
-        g_str = f"{gain:.2f}" if gain >= 0 else "0.00"
-        l_str = f"{abs(gain):.2f}" if gain < 0 else "0.00"
-
-        table.add_row(
-            str(i),
-            e.ticker,
-            e.sale_date.strftime("%Y-%m-%d"),
-            f"{e.quantity:.2f}",
-            f"{e.sale_value_rsd:.2f}",
-            e.purchase_date.strftime("%Y-%m-%d"),
-            f"{e.purchase_value_rsd:.2f}",
-            g_str,
-            l_str,
-        )
-        i += 1
-
-    console.print(table)
-    console.print(
-        "[dim]Use these values to cross-check with the portal or fill manually if needed.[/dim]",
-    )
-
-    console.print("\n[bold red]ATTENTION: Step 8 (Upload)[/bold red]")
-    console.print("The XML includes a placeholder for Part 8 (Evidence).")
-    console.print(
-        "[bold]You MUST manually upload your IBKR Activity Report (PDF) "
-        "in 'Deo 8' on the ePorezi portal.[/bold]",
-    )
 
 
 if __name__ == "__main__":  # pragma: no cover
