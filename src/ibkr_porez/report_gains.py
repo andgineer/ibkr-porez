@@ -4,7 +4,6 @@ from datetime import date
 
 from ibkr_porez.config import config_manager
 from ibkr_porez.declaration_gains_xml import XMLGenerator
-from ibkr_porez.models import TaxReportEntry
 from ibkr_porez.nbs import NBSClient
 from ibkr_porez.storage import Storage
 from ibkr_porez.tax import TaxCalculator
@@ -25,7 +24,7 @@ class GainsReportGenerator:
         start_date: date,
         end_date: date,
         filename: str | None = None,
-    ) -> list[tuple[str, list[TaxReportEntry]]]:
+    ):
         """
         Generate PPDG-3R XML report.
 
@@ -34,9 +33,9 @@ class GainsReportGenerator:
             end_date: End date for the report period.
             filename: Optional filename. If not provided, will be generated.
 
-        Returns:
-            list[tuple[str, list[TaxReportEntry]]]: List of (filename, entries) tuples.
-                For gains, this will always be a single-element list.
+        Yields:
+            tuple[str, list[TaxReportEntry]]: (filename, entries) tuple.
+                For gains, this will always be a single yield.
 
         Raises:
             ValueError: If no transactions found or no taxable sales in period.
@@ -71,4 +70,4 @@ class GainsReportGenerator:
         with open(filename, "w", encoding="utf-8") as f:
             f.write(xml_content)
 
-        return [(filename, entries)]
+        yield filename, entries

@@ -1,12 +1,10 @@
 """ibkr-porez."""
 
 import logging
-import re
 import time
 from pathlib import Path
 
 import rich_click as click
-from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.progress import track
@@ -16,13 +14,9 @@ from ibkr_porez.config import UserConfig, config_manager
 from ibkr_porez.ibkr_csv import CSVParser
 from ibkr_porez.ibkr_flex_query import IBKRClient
 from ibkr_porez.nbs import NBSClient
-from ibkr_porez.report_gains import GainsReportGenerator
-from ibkr_porez.report_income import IncomeReportGenerator
-from ibkr_porez.report_params import ReportParams, ReportType
-from ibkr_porez.show_statistics import ShowStatistics
+from ibkr_porez.operation_report import execute_report_command
+from ibkr_porez.operation_show import ShowStatistics
 from ibkr_porez.storage import Storage
-from ibkr_porez.tables import render_declaration_table
-from ibkr_porez.validation import handle_validation_error
 
 OUTPUT_FILE_DEFAULT = "output"
 
@@ -294,128 +288,14 @@ def show(year: int | None, ticker: str | None, month: str | None):
     ),
 )
 @verbose_option
-def report(  # noqa: C901,PLR0915, PLR0912
+def report(
     type: str,
     half: str | None,
     start_date: str | None,
     end_date: str | None,
-):  # noqa: PLR0913
+):
     """Generate tax reports (PPDG-3R for capital gains or PP OPO for capital income)."""
-    try:
-        params = ReportParams.model_validate(
-            {
-                "type": type,
-                "half": half,
-                "start": start_date,
-                "end": end_date,
-            },
-        )
-        start_date_obj, end_date_obj = params.get_period()
-    except ValidationError as e:
-        handle_validation_error(e, console)
-        return
-    except ValueError as e:
-        console.print(f"[red]{e}[/red]")
-        return
-
-    if params.type == ReportType.GAINS:
-        console.print(
-            f"[bold blue]Generating PPDG-3R Report for "
-            f"({start_date_obj} to {end_date_obj})[/bold blue]",
-        )
-
-        try:
-            generator = GainsReportGenerator()
-            # Generate filename from half if available
-            filename = None
-            if params.half:
-                half_match = re.match(r"^(\d{4})-(\d)$", params.half) or re.match(
-                    r"^(\d{4})(\d)$",
-                    params.half,
-                )
-                if half_match:
-                    target_year = int(half_match.group(1))
-                    target_half = int(half_match.group(2))
-                    filename = f"ppdg3r_{target_year}_H{target_half}.xml"
-
-            results = generator.generate(
-                start_date=start_date_obj,
-                end_date=end_date_obj,
-                filename=filename,
-            )
-
-            if not results:
-                console.print("[yellow]No declarations generated.[/yellow]")
-                return
-
-            console.print(f"[bold green]Generated {len(results)} declaration(s):[/bold green]")
-
-            total_entries = 0
-            for filename, entries in results:
-                console.print(f"  [green]{filename}[/green] ({len(entries)} entries)")
-                total_entries += len(entries)
-
-                table = render_declaration_table(entries)
-                console.print(table)
-                console.print(
-                    "[dim]Use these values to cross-check with the portal "
-                    "or fill manually if needed.[/dim]",
-                )
-
-            console.print(f"\n[bold]Total Entries: {total_entries}[/bold]")
-
-            console.print("\n[bold red]ATTENTION: Step 8 (Upload)[/bold red]")
-            console.print(
-                "[bold]You MUST manually upload your IBKR Activity Report (PDF) "
-                "in 'Deo 8' on the ePorezi portal. "
-                "See [link=https://andgineer.github.io/ibkr-porez/ibkr/#export-full-history-for-import-command]"
-                "Export Full History[/link].[/bold]",
-            )
-
-        except ValueError as e:
-            console.print(f"[yellow]{e}[/yellow]")
-            return
-
-    elif params.type == ReportType.INCOME:
-        console.print(
-            f"[bold blue]Generating PP OPO Report for "
-            f"({start_date_obj} to {end_date_obj})[/bold blue]",
-        )
-
-        try:
-            generator = IncomeReportGenerator()
-            results = generator.generate(
-                start_date=start_date_obj,
-                end_date=end_date_obj,
-            )
-
-            if not results:
-                console.print("[yellow]No income declarations generated.[/yellow]")
-                return
-
-            console.print(f"[bold green]Generated {len(results)} declaration(s):[/bold green]")
-
-            for filename, entries in results:
-                console.print(f"  [green]{filename}[/green]")
-                # Each entry represents one declaration (aggregated if multiple income sources)
-                for entry in entries:
-                    console.print(f"    Date: {entry.date.strftime('%Y-%m-%d')}")
-                    console.print(f"    SifraVrstePrihoda: {entry.sifra_vrste_prihoda}")
-                    console.print(f"    BrutoPrihod: {entry.bruto_prihod:,.2f} RSD")
-                    console.print(f"    OsnovicaZaPorez: {entry.osnovica_za_porez:,.2f} RSD")
-                    console.print(f"    ObracunatiPorez: {entry.obracunati_porez:,.2f} RSD")
-                    console.print(
-                        f"    PorezPlacenDrugojDrzavi: {entry.porez_placen_drugoj_drzavi:,.2f} RSD",
-                    )
-                    console.print(f"    PorezZaUplatu: {entry.porez_za_uplatu:,.2f} RSD")
-                console.print(
-                    "[dim]Use these values to cross-check with the portal "
-                    "or fill manually if needed.[/dim]",
-                )
-
-        except ValueError as e:
-            console.print(f"[yellow]{e}[/yellow]")
-            return
+    execute_report_command(type, half, start_date, end_date, console)
 
 
 if __name__ == "__main__":  # pragma: no cover

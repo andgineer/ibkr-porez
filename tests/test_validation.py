@@ -4,6 +4,7 @@ import allure
 from unittest.mock import MagicMock
 from pydantic import ValidationError, BaseModel, field_validator
 
+from ibkr_porez.operation_report_params import ReportParams
 from ibkr_porez.validation import format_validation_error, handle_validation_error
 
 
@@ -126,8 +127,6 @@ class TestValidationErrorHandling:
         """handle_validation_error should remove Pydantic links before printing."""
         mock_console = MagicMock()
         # Use ReportParams which can have Pydantic links in error messages
-        from ibkr_porez.report_params import ReportParams
-
         try:
             ReportParams.model_validate({"half": "2023-3"})
         except ValidationError as e:
@@ -156,8 +155,6 @@ class TestValidationErrorHandling:
 
     def test_format_validation_error_with_real_validation_error(self):
         """format_validation_error should work with real Pydantic ValidationError."""
-        from ibkr_porez.report_params import ReportParams
-
         try:
             ReportParams.model_validate({"half": "2023-3"})
         except ValidationError as e:
@@ -167,8 +164,6 @@ class TestValidationErrorHandling:
 
     def test_format_validation_error_with_date_format_error(self):
         """format_validation_error should format date format errors correctly."""
-        from ibkr_porez.report_params import ReportParams
-
         try:
             ReportParams.model_validate({"from": "2025-01-15-extra"})
         except ValidationError as e:

@@ -217,7 +217,7 @@ class IncomeReportGenerator:
         start_date: date,
         end_date: date,
         filename: str | None = None,
-    ) -> list[tuple[str, list[IncomeDeclarationEntry]]]:
+    ):
         """
         Generate PP OPO XML reports for income in period.
 
@@ -229,8 +229,8 @@ class IncomeReportGenerator:
             end_date: End date for the report period.
             filename: Optional base filename. If not provided, will be generated.
 
-        Returns:
-            list[tuple[str, list[IncomeDeclarationEntry]]]: List of (filename, entries) tuples.
+        Yields:
+            tuple[str, list[IncomeDeclarationEntry]]: (filename, entries) tuple.
                 Each entry represents one declaration row with calculated tax fields.
 
         Raises:
@@ -256,8 +256,6 @@ class IncomeReportGenerator:
         grouped = self._group_entries_by_date_symbol_and_type(entries)
 
         # Generate XML for each group
-        results = []
-
         for (declaration_date, symbol, income_type), group_entries in sorted(grouped.items()):
             # Get withholding tax for this group
             withholding_key = (declaration_date, symbol, income_type)
@@ -286,7 +284,5 @@ class IncomeReportGenerator:
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(xml_content)
 
-            # Return declaration entry (one per declaration)
-            results.append((file_path, [declaration_entry]))
-
-        return results
+            # Yield declaration entry (one per declaration)
+            yield file_path, [declaration_entry]

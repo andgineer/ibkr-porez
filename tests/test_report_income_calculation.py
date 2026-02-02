@@ -246,9 +246,11 @@ class TestIncomeCalculationAccuracy:
 
             # Generate reports
             generator = IncomeReportGenerator()
-            results = generator.generate(
-                start_date=date(2025, 12, 24),
-                end_date=date(2025, 12, 24),
+            results = list(
+                generator.generate(
+                    start_date=date(2025, 12, 24),
+                    end_date=date(2025, 12, 24),
+                )
             )
 
             # Should create 2 separate declarations (one for SGOV, one for VOO)

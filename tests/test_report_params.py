@@ -5,7 +5,7 @@ import pytest
 from datetime import date, datetime
 from pydantic import ValidationError
 
-from ibkr_porez.report_params import ReportParams, ReportType
+from ibkr_porez.operation_report_params import ReportParams, ReportType
 
 
 @allure.epic("Tax")
