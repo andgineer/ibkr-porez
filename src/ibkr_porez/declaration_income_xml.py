@@ -18,7 +18,7 @@ class IncomeXMLGenerator:
         self,
         income_entries: list[IncomeEntry],
         declaration_date: date,
-        income_type: str,  # "dividend" или "coupon"
+        income_type: str,  # "dividend" or "coupon"
         withholding_tax_rsd: Decimal = Decimal("0.00"),
     ) -> str:
         """

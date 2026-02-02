@@ -1,6 +1,6 @@
 # Brzi start
 
-Automatizovano generisanje poreske prijave PPDG-3R (Kapitalna dobit) za korisnike Interactive Brokers u Srbiji.
+Automatizovano generisanje poreske prijave PPDG-3R (Kapitalna dobit) i PP OPO (Prihodi od kapitala) za korisnike Interactive Brokers u Srbiji.
 Program automatski preuzima podatke o transakcijama i kreira spreman XML fajl za otpremanje, konvertujući sve cene u dinare (RSD).
 
 1. [Instalirajte ibkr-porez](installation.md)

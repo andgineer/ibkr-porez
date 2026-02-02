@@ -86,14 +86,14 @@ class IncomeEntry(BaseModel):
 
     date: date
     symbol: str
-    amount: Decimal  # В исходной валюте
+    amount: Decimal  # In original currency
     currency: Currency
-    amount_rsd: Decimal  # В RSD
+    amount_rsd: Decimal  # In RSD
     exchange_rate: Decimal
-    income_type: str  # "dividend" или "coupon"
+    income_type: str  # "dividend" or "coupon"
     description: str
-    withholding_tax_usd: Decimal = Decimal("0.00")  # Удержанный налог в USD
-    withholding_tax_rsd: Decimal = Decimal("0.00")  # Удержанный налог в RSD
+    withholding_tax_usd: Decimal = Decimal("0.00")  # Withholding tax in USD
+    withholding_tax_rsd: Decimal = Decimal("0.00")  # Withholding tax in RSD
 
 
 class IncomeDeclarationEntry(BaseModel):

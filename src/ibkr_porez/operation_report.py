@@ -117,6 +117,7 @@ def process_income_report(
     start_date: date,
     end_date: date,
     console: Console,
+    force: bool = False,
 ) -> None:
     """
     Process and display income report (PP OPO).
@@ -125,16 +126,25 @@ def process_income_report(
         start_date: Start date for the report period.
         end_date: End date for the report period.
         console: Rich console for output.
+        force: If True, create declaration with zero tax even if withholding tax not found.
     """
     console.print(
         f"[bold blue]Generating PP OPO Report for ({start_date} to {end_date})[/bold blue]",
     )
+
+    if force:
+        console.print(
+            "[bold yellow]WARNING: --force flag is set. "
+            "Declarations will be created with zero withholding tax if tax not found. "
+            "This means you'll need to pay tax in Serbia.[/bold yellow]",
+        )
 
     try:
         generator = IncomeReportGenerator()
         results = generator.generate(
             start_date=start_date,
             end_date=end_date,
+            force=force,
         )
 
         declaration_count = 0
@@ -152,16 +162,17 @@ def process_income_report(
             return
 
     except ValueError as e:
-        console.print(f"[yellow]{e}[/yellow]")
+        console.print(f"[red]{e}[/red]")
         return
 
 
-def execute_report_command(
+def execute_report_command(  # noqa: PLR0913
     type: str,
     half: str | None,
     start_date: str | None,
     end_date: str | None,
     console: Console,
+    force: bool = False,
 ) -> None:
     """
     Execute the report command.
@@ -172,6 +183,7 @@ def execute_report_command(
         start_date: Start date string (YYYY-MM-DD).
         end_date: End date string (YYYY-MM-DD).
         console: Rich console for output.
+        force: If True, create income declaration with zero tax even if withholding tax not found.
     """
     try:
         params = ReportParams.model_validate(
@@ -180,6 +192,7 @@ def execute_report_command(
                 "half": half,
                 "start": start_date,
                 "end": end_date,
+                "force": force,
             },
         )
         start_date_obj, end_date_obj = params.get_period()
@@ -194,4 +207,4 @@ def execute_report_command(
         filename = generate_gains_filename(params.half)
         process_gains_report(start_date_obj, end_date_obj, filename, console)
     elif params.type == ReportType.INCOME:
-        process_income_report(start_date_obj, end_date_obj, console)
+        process_income_report(start_date_obj, end_date_obj, console, force=force)

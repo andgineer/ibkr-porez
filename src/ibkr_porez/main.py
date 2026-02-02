@@ -287,15 +287,25 @@ def show(year: int | None, ticker: str | None, month: str | None):
         "(from 1st to today). If only --start is provided, --end defaults to --start."
     ),
 )
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help=(
+        "For income reports: create declaration with zero withholding tax "
+        "even if tax not found. Warning: this means you'll need to pay tax in Serbia."
+    ),
+)
 @verbose_option
 def report(
     type: str,
     half: str | None,
     start_date: str | None,
     end_date: str | None,
+    force: bool,
 ):
     """Generate tax reports (PPDG-3R for capital gains or PP OPO for capital income)."""
-    execute_report_command(type, half, start_date, end_date, console)
+    execute_report_command(type, half, start_date, end_date, console, force=force)
 
 
 if __name__ == "__main__":  # pragma: no cover

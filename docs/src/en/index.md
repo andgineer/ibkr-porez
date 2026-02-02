@@ -1,7 +1,7 @@
 # Quick Start
 
-Automated generation of PPDG-3R tax report (Capital Gains) for Interactive Brokers users in Serbia.
-The program automatically retrieves transaction data and creates a ready-to-upload XML file, converting all prices to Dinars (RSD).
+Automated PPDG-3R (Capital Gains) and PP-OPO (Dividends / Interest) tax reports generation for Interactive Brokers.
+It automatically fetches data from IBKR and generates a ready-to-upload XML files with all prices converted to RSD.
 
 1. [Install ibkr-porez](installation.md)
 
