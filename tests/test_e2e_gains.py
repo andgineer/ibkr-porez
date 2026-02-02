@@ -89,7 +89,7 @@ class TestE2EReport:
             result = runner.invoke(ibkr_porez, ["report", "--half", "2023-1"])
 
             assert result.exit_code == 0
-            assert "Report generated" in result.output
+            assert "Generated" in result.output and "declaration(s)" in result.output
 
             # Verify File Exists
             import os
@@ -146,7 +146,8 @@ class TestE2EReport:
             result = runner.invoke(ibkr_porez, ["report", "--half", "2023-2"])
 
             assert result.exit_code == 0
-            assert "Report generated: ppdg3r_2023_H2.xml" in result.output
+            assert "ppdg3r_2023_H2.xml" in result.output
+            assert "declaration(s)" in result.output
 
             # Read file
             with open("ppdg3r_2023_H2.xml", "r") as f:

@@ -76,7 +76,7 @@ class TestReportDateParams:
     def test_report_gains_from_only_defaults_to_to_equals_from(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
-        """Report gains with only --from sets --to equal to --from."""
+        """Report gains with only --start sets --end equal to --start."""
         mock_cfg_mgr.load_config.return_value = MagicMock(
             personal_id="1234567890123",
             full_name="Test User",
@@ -87,7 +87,7 @@ class TestReportDateParams:
 
         result = runner.invoke(
             ibkr_porez,
-            ["report", "--type", "gains", "--from", "2025-03-15"],
+            ["report", "--type", "gains", "--start", "2025-03-15"],
         )
 
         assert result.exit_code == 0
@@ -101,7 +101,7 @@ class TestReportDateParams:
     def test_report_gains_to_only_uses_start_of_month_to_to(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
-        """Report gains with only --to uses start of current month to --to."""
+        """Report gains with only --end uses start of current month to --end."""
         mock_cfg_mgr.load_config.return_value = MagicMock(
             personal_id="1234567890123",
             full_name="Test User",
@@ -115,7 +115,7 @@ class TestReportDateParams:
 
         result = runner.invoke(
             ibkr_porez,
-            ["report", "--type", "gains", "--to", "2025-03-15"],
+            ["report", "--type", "gains", "--end", "2025-03-15"],
         )
 
         assert result.exit_code == 0
@@ -129,7 +129,7 @@ class TestReportDateParams:
     def test_report_gains_from_and_to_uses_specified_dates(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
-        """Report gains with --from and --to uses specified date range."""
+        """Report gains with --start and --end uses specified date range."""
         mock_cfg_mgr.load_config.return_value = MagicMock(
             personal_id="1234567890123",
             full_name="Test User",
@@ -140,7 +140,7 @@ class TestReportDateParams:
 
         result = runner.invoke(
             ibkr_porez,
-            ["report", "--type", "gains", "--from", "2025-01-15", "--to", "2025-02-20"],
+            ["report", "--type", "gains", "--start", "2025-01-15", "--end", "2025-02-20"],
         )
 
         assert result.exit_code == 0
@@ -153,7 +153,7 @@ class TestReportDateParams:
     def test_report_gains_half_takes_precedence_over_dates(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
-        """Report gains with --half and --from/--to, half takes precedence."""
+        """Report gains with --half and --start/--end, half takes precedence."""
         mock_cfg_mgr.load_config.return_value = MagicMock(
             personal_id="1234567890123",
             full_name="Test User",
@@ -170,9 +170,9 @@ class TestReportDateParams:
                 "gains",
                 "--half",
                 "2023-1",
-                "--from",
+                "--start",
                 "2025-01-15",
-                "--to",
+                "--end",
                 "2025-02-20",
             ],
         )
@@ -195,7 +195,7 @@ class TestReportDateParams:
 
         result = runner.invoke(
             ibkr_porez,
-            ["report", "--type", "gains", "--from", "2025-01-15-extra"],
+            ["report", "--type", "gains", "--start", "2025-01-15-extra"],
         )
 
         assert result.exit_code == 0
@@ -207,14 +207,14 @@ class TestReportDateParams:
     def test_report_gains_from_after_to_error(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
-        """Report gains with --from after --to should show error."""
+        """Report gains with --start after --end should show error."""
         mock_cfg_mgr.load_config.return_value = MagicMock()
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = Decimal("117.0")
 
         result = runner.invoke(
             ibkr_porez,
-            ["report", "--type", "gains", "--from", "2025-06-01", "--to", "2025-01-01"],
+            ["report", "--type", "gains", "--start", "2025-06-01", "--end", "2025-01-01"],
         )
 
         assert result.exit_code == 0
@@ -226,7 +226,7 @@ class TestReportDateParams:
     def test_report_gains_from_equals_to_valid(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
-        """Report gains with --from equal to --to should be valid."""
+        """Report gains with --start equal to --end should be valid."""
         mock_cfg_mgr.load_config.return_value = MagicMock(
             personal_id="1234567890123",
             full_name="Test User",
@@ -237,7 +237,7 @@ class TestReportDateParams:
 
         result = runner.invoke(
             ibkr_porez,
-            ["report", "--type", "gains", "--from", "2025-01-15", "--to", "2025-01-15"],
+            ["report", "--type", "gains", "--start", "2025-01-15", "--end", "2025-01-15"],
         )
 
         assert result.exit_code == 0
@@ -257,7 +257,7 @@ class TestReportDateParams:
 
         result = runner.invoke(
             ibkr_porez,
-            ["report", "--type", "gains", "--from", "20250115"],
+            ["report", "--type", "gains", "--start", "20250115"],
         )
 
         assert result.exit_code == 0

@@ -220,7 +220,7 @@ def import_file(file_path: Path):
 @ibkr_porez.command(
     epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#show-statistics-show",
 )
-@click.option("--year", type=int, help="Filter by year (e.g. 2026)")
+@click.option("-y", "--year", type=int, help="Filter by year (e.g. 2026)")
 @click.option("-t", "--ticker", type=str, help="Show detailed breakdown for specific ticker")
 @click.option(
     "-m",
@@ -256,12 +256,14 @@ def show(year: int | None, ticker: str | None, month: str | None):
     epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#generate-capital-gains-tax-report-report",
 )
 @click.option(
+    "-t",
     "--type",
     type=click.Choice(["gains", "income"], case_sensitive=False),
     default="gains",
     help="Report type: 'gains' for PPDG-3R (capital gains) or 'income' for PP OPO (capital income)",
 )
 @click.option(
+    "-h",
     "--half",
     required=False,
     help=(
@@ -270,31 +272,33 @@ def show(year: int | None, ticker: str | None, month: str | None):
     ),
 )
 @click.option(
-    "--from",
-    "from_date",
+    "-s",
+    "--start",
+    "start_date",
     required=False,
     help=(
         "Start date (YYYY-MM-DD). "
-        "If --from and --to are not provided, they default to current month "
-        "(from 1st to today). If only --from is provided, --to defaults to --from."
+        "If --start and --end are not provided, they default to current month "
+        "(from 1st to today). If only --start is provided, --end defaults to --start."
     ),
 )
 @click.option(
-    "--to",
-    "to_date",
+    "-e",
+    "--end",
+    "end_date",
     required=False,
     help=(
         "End date (YYYY-MM-DD). "
-        "If --from and --to are not provided, they default to current month "
-        "(from 1st to today). If only --from is provided, --to defaults to --from."
+        "If --start and --end are not provided, they default to current month "
+        "(from 1st to today). If only --start is provided, --end defaults to --start."
     ),
 )
 @verbose_option
-def report(  # noqa: C901,PLR0915
+def report(  # noqa: C901,PLR0915, PLR0912
     type: str,
     half: str | None,
-    from_date: str | None,
-    to_date: str | None,
+    start_date: str | None,
+    end_date: str | None,
 ):  # noqa: PLR0913
     """Generate tax reports (PPDG-3R for capital gains or PP OPO for capital income)."""
     try:
@@ -302,8 +306,8 @@ def report(  # noqa: C901,PLR0915
             {
                 "type": type,
                 "half": half,
-                "from": from_date,
-                "to": to_date,
+                "start": start_date,
+                "end": end_date,
             },
         )
         start_date_obj, end_date_obj = params.get_period()
@@ -334,21 +338,31 @@ def report(  # noqa: C901,PLR0915
                     target_half = int(half_match.group(2))
                     filename = f"ppdg3r_{target_year}_H{target_half}.xml"
 
-            filename, entries = generator.generate(
+            results = generator.generate(
                 start_date=start_date_obj,
                 end_date=end_date_obj,
                 filename=filename,
             )
 
-            console.print(f"[bold green]Report generated: {filename}[/bold green]")
-            console.print(f"Total Entries: {len(entries)}")
+            if not results:
+                console.print("[yellow]No declarations generated.[/yellow]")
+                return
 
-            table = render_declaration_table(entries)
-            console.print(table)
-            console.print(
-                "[dim]Use these values to cross-check with the portal "
-                "or fill manually if needed.[/dim]",
-            )
+            console.print(f"[bold green]Generated {len(results)} declaration(s):[/bold green]")
+
+            total_entries = 0
+            for filename, entries in results:
+                console.print(f"  [green]{filename}[/green] ({len(entries)} entries)")
+                total_entries += len(entries)
+
+                table = render_declaration_table(entries)
+                console.print(table)
+                console.print(
+                    "[dim]Use these values to cross-check with the portal "
+                    "or fill manually if needed.[/dim]",
+                )
+
+            console.print(f"\n[bold]Total Entries: {total_entries}[/bold]")
 
             console.print("\n[bold red]ATTENTION: Step 8 (Upload)[/bold red]")
             console.print(
@@ -363,17 +377,44 @@ def report(  # noqa: C901,PLR0915
             return
 
     elif params.type == ReportType.INCOME:
+        console.print(
+            f"[bold blue]Generating PP OPO Report for "
+            f"({start_date_obj} to {end_date_obj})[/bold blue]",
+        )
+
         try:
             generator = IncomeReportGenerator()
-            generator.generate(
+            results = generator.generate(
                 start_date=start_date_obj,
                 end_date=end_date_obj,
             )
-        except NotImplementedError as e:
+
+            if not results:
+                console.print("[yellow]No income declarations generated.[/yellow]")
+                return
+
+            console.print(f"[bold green]Generated {len(results)} declaration(s):[/bold green]")
+
+            for filename, entries in results:
+                console.print(f"  [green]{filename}[/green]")
+                # Each entry represents one declaration (aggregated if multiple income sources)
+                for entry in entries:
+                    console.print(f"    Date: {entry.date.strftime('%Y-%m-%d')}")
+                    console.print(f"    SifraVrstePrihoda: {entry.sifra_vrste_prihoda}")
+                    console.print(f"    BrutoPrihod: {entry.bruto_prihod:,.2f} RSD")
+                    console.print(f"    OsnovicaZaPorez: {entry.osnovica_za_porez:,.2f} RSD")
+                    console.print(f"    ObracunatiPorez: {entry.obracunati_porez:,.2f} RSD")
+                    console.print(
+                        f"    PorezPlacenDrugojDrzavi: {entry.porez_placen_drugoj_drzavi:,.2f} RSD",
+                    )
+                    console.print(f"    PorezZaUplatu: {entry.porez_za_uplatu:,.2f} RSD")
+                console.print(
+                    "[dim]Use these values to cross-check with the portal "
+                    "or fill manually if needed.[/dim]",
+                )
+
+        except ValueError as e:
             console.print(f"[yellow]{e}[/yellow]")
-            console.print(
-                f"[dim]Requested period: {start_date_obj} to {end_date_obj}[/dim]",
-            )
             return
 
 

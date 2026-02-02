@@ -25,7 +25,7 @@ class GainsReportGenerator:
         start_date: date,
         end_date: date,
         filename: str | None = None,
-    ) -> tuple[str, list[TaxReportEntry]]:
+    ) -> list[tuple[str, list[TaxReportEntry]]]:
         """
         Generate PPDG-3R XML report.
 
@@ -35,7 +35,8 @@ class GainsReportGenerator:
             filename: Optional filename. If not provided, will be generated.
 
         Returns:
-            tuple[str, list[TaxReportEntry]]: (filename, entries)
+            list[tuple[str, list[TaxReportEntry]]]: List of (filename, entries) tuples.
+                For gains, this will always be a single-element list.
 
         Raises:
             ValueError: If no transactions found or no taxable sales in period.
@@ -70,4 +71,4 @@ class GainsReportGenerator:
         with open(filename, "w", encoding="utf-8") as f:
             f.write(xml_content)
 
-        return filename, entries
+        return [(filename, entries)]

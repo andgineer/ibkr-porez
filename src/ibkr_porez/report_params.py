@@ -19,10 +19,10 @@ class ReportParams(BaseModel):
 
     type: ReportType = ReportType.GAINS
     half: str | None = None
-    from_date: str | None = Field(None, alias="from")
-    to_date: str | None = Field(None, alias="to")
+    start_date: str | None = Field(None, alias="start")
+    end_date: str | None = Field(None, alias="end")
 
-    @field_validator("from_date", "to_date")
+    @field_validator("start_date", "end_date")
     @classmethod
     def validate_date_format(cls, v: str | None) -> str | None:
         """Validate date string format."""
@@ -83,26 +83,26 @@ class ReportParams(BaseModel):
 
     def _parse_dates(self) -> tuple[date | None, date | None]:
         """Parse date strings to date objects."""
-        from_date_obj = None
-        to_date_obj = None
+        start_date_obj = None
+        end_date_obj = None
 
-        if self.from_date:
-            from_date_obj = datetime.strptime(self.from_date, "%Y-%m-%d").date()
-        if self.to_date:
-            to_date_obj = datetime.strptime(self.to_date, "%Y-%m-%d").date()
+        if self.start_date:
+            start_date_obj = datetime.strptime(self.start_date, "%Y-%m-%d").date()
+        if self.end_date:
+            end_date_obj = datetime.strptime(self.end_date, "%Y-%m-%d").date()
 
-        return from_date_obj, to_date_obj
+        return start_date_obj, end_date_obj
 
     @model_validator(mode="after")
     def validate_date_range(self) -> "ReportParams":
         """Validate that start date is before or equal to end date."""
-        # If --from is filled and --to is empty, set --to equal to --from
-        if self.from_date and not self.to_date:
-            self.to_date = self.from_date
+        # If --start is filled and --end is empty, set --end equal to --start
+        if self.start_date and not self.end_date:
+            self.end_date = self.start_date
 
-        from_date_obj, to_date_obj = self._parse_dates()
+        start_date_obj, end_date_obj = self._parse_dates()
 
-        if from_date_obj and to_date_obj and from_date_obj > to_date_obj:
+        if start_date_obj and end_date_obj and start_date_obj > end_date_obj:
             raise ValueError("Start date must be before or equal to end date.")
 
         return self
@@ -117,7 +117,7 @@ class ReportParams(BaseModel):
         Raises:
             ValueError: If period cannot be determined.
         """
-        from_date_obj, to_date_obj = self._parse_dates()
+        start_date_obj, end_date_obj = self._parse_dates()
         half_parsed = self._parse_half()
         target_year: int | None = None
         target_half: int | None = None
@@ -134,19 +134,20 @@ class ReportParams(BaseModel):
                     return date(target_year, 1, 1), date(target_year, 6, 30)
                 return date(target_year, 7, 1), date(target_year, 12, 31)
 
-            if from_date_obj and to_date_obj:
-                return from_date_obj, to_date_obj
+            if start_date_obj and end_date_obj:
+                return start_date_obj, end_date_obj
 
-            # If --from or --to is provided (but not both), handle special cases
-            # If only --from is provided, --to defaults to --from (handled in validate_date_range)
-            if from_date_obj and not to_date_obj:
+            # If --start or --end is provided (but not both), handle special cases
+            # If only --start is provided, --end defaults to --start
+            # (handled in validate_date_range)
+            if start_date_obj and not end_date_obj:
                 # This should not happen due to validate_date_range, but handle it
-                return from_date_obj, from_date_obj
-            if to_date_obj and not from_date_obj:
-                # User provided --to but not --from, use start of current month
+                return start_date_obj, start_date_obj
+            if end_date_obj and not start_date_obj:
+                # User provided --end but not --start, use start of current month
                 now = datetime.now()
                 start_of_month = date(now.year, now.month, 1)
-                return start_of_month, to_date_obj
+                return start_of_month, end_date_obj
 
             # Default: Last COMPLETE half-year (when nothing is provided)
             # This is the default behavior for gains when no parameters are specified
@@ -174,8 +175,8 @@ class ReportParams(BaseModel):
                     return date(target_year, 1, 1), date(target_year, 6, 30)
                 return date(target_year, 7, 1), date(target_year, 12, 31)
 
-            if from_date_obj and to_date_obj:
-                return from_date_obj, to_date_obj
+            if start_date_obj and end_date_obj:
+                return start_date_obj, end_date_obj
 
             # Default: current month (from 1st to today)
             now = datetime.now()

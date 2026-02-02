@@ -30,13 +30,13 @@ class TestReportParams:
 
     def test_valid_date_format(self):
         """Valid date format YYYY-MM-DD should be accepted."""
-        params = ReportParams.model_validate({"from": "2025-01-15"})
-        assert params.from_date == "2025-01-15"
+        params = ReportParams.model_validate({"start": "2025-01-15"})
+        assert params.start_date == "2025-01-15"
 
     def test_invalid_date_format(self):
         """Invalid date format should raise ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            ReportParams.model_validate({"from": "2025-01-15-extra"})
+            ReportParams.model_validate({"start": "2025-01-15-extra"})
 
         error_msg = str(exc_info.value)
         assert "Invalid date format" in error_msg
@@ -44,7 +44,7 @@ class TestReportParams:
     def test_invalid_date_format_compact(self):
         """Invalid compact date format should raise ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            ReportParams.model_validate({"from": "20250115"})
+            ReportParams.model_validate({"start": "20250115"})
 
         error_msg = str(exc_info.value)
         assert "Invalid date format" in error_msg
@@ -75,29 +75,29 @@ class TestReportParams:
         error_msg = str(exc_info.value)
         assert "Half-year must be 1 or 2" in error_msg
 
-    def test_date_range_from_after_to(self):
+    def test_date_range_start_after_end(self):
         """Start date must be before or equal to end date."""
         with pytest.raises(ValidationError) as exc_info:
             ReportParams.model_validate(
-                {"from": "2025-06-01", "to": "2025-01-01"},
+                {"start": "2025-06-01", "end": "2025-01-01"},
             )
 
         error_msg = str(exc_info.value)
         assert "Start date must be before or equal to end date" in error_msg
 
-    def test_date_range_from_equals_to(self):
+    def test_date_range_start_equals_end(self):
         """Start date can equal end date."""
         params = ReportParams.model_validate(
-            {"from": "2025-01-01", "to": "2025-01-01"},
+            {"start": "2025-01-01", "end": "2025-01-01"},
         )
-        assert params.from_date == "2025-01-01"
-        assert params.to_date == "2025-01-01"
+        assert params.start_date == "2025-01-01"
+        assert params.end_date == "2025-01-01"
 
-    def test_from_without_to_defaults_to_from(self):
-        """If --from is provided and --to is empty, --to defaults to --from."""
-        params = ReportParams.model_validate({"from": "2025-01-15"})
-        assert params.from_date == "2025-01-15"
-        assert params.to_date == "2025-01-15"
+    def test_start_without_end_defaults_to_start(self):
+        """If --start is provided and --end is empty, --end defaults to --start."""
+        params = ReportParams.model_validate({"start": "2025-01-15"})
+        assert params.start_date == "2025-01-15"
+        assert params.end_date == "2025-01-15"
 
     def test_get_period_gains_with_half_h1(self):
         """get_period for GAINS with half-year H1 returns Jan-Jun."""
@@ -123,7 +123,7 @@ class TestReportParams:
     def test_get_period_gains_with_dates(self):
         """get_period for GAINS with date range returns those dates."""
         params = ReportParams.model_validate(
-            {"type": "gains", "from": "2025-01-15", "to": "2025-02-20"},
+            {"type": "gains", "start": "2025-01-15", "end": "2025-02-20"},
         )
         start, end = params.get_period()
         assert start == date(2025, 1, 15)
@@ -160,8 +160,8 @@ class TestReportParams:
             {
                 "type": "gains",
                 "half": "2023-1",
-                "from": "2025-01-15",
-                "to": "2025-02-20",
+                "start": "2025-01-15",
+                "end": "2025-02-20",
             },
         )
         start, end = params.get_period()
@@ -186,7 +186,7 @@ class TestReportParams:
     def test_get_period_income_with_dates(self):
         """get_period for INCOME with date range returns those dates."""
         params = ReportParams.model_validate(
-            {"type": "income", "from": "2025-01-15", "to": "2025-02-20"},
+            {"type": "income", "start": "2025-01-15", "end": "2025-02-20"},
         )
         start, end = params.get_period()
         assert start == date(2025, 1, 15)
@@ -225,33 +225,33 @@ class TestReportParams:
     def test_parse_dates(self):
         """_parse_dates should parse date strings correctly."""
         params = ReportParams.model_validate(
-            {"from": "2025-01-15", "to": "2025-02-20"},
+            {"start": "2025-01-15", "end": "2025-02-20"},
         )
-        from_date_obj, to_date_obj = params._parse_dates()
-        assert from_date_obj == date(2025, 1, 15)
-        assert to_date_obj == date(2025, 2, 20)
+        start_date_obj, end_date_obj = params._parse_dates()
+        assert start_date_obj == date(2025, 1, 15)
+        assert end_date_obj == date(2025, 2, 20)
 
     def test_parse_dates_none(self):
         """_parse_dates should return None when dates are not provided."""
         params = ReportParams.model_validate({})
-        from_date_obj, to_date_obj = params._parse_dates()
-        assert from_date_obj is None
-        assert to_date_obj is None
+        start_date_obj, end_date_obj = params._parse_dates()
+        assert start_date_obj is None
+        assert end_date_obj is None
 
     def test_parse_dates_partial(self):
         """_parse_dates should handle partial dates."""
-        params = ReportParams.model_validate({"from": "2025-01-15"})
-        # Note: validate_date_range sets to_date = from_date when only from is provided
-        from_date_obj, to_date_obj = params._parse_dates()
-        assert from_date_obj == date(2025, 1, 15)
-        assert to_date_obj == date(2025, 1, 15)  # Auto-set by validator
+        params = ReportParams.model_validate({"start": "2025-01-15"})
+        # Note: validate_date_range sets end_date = start_date when only start is provided
+        start_date_obj, end_date_obj = params._parse_dates()
+        assert start_date_obj == date(2025, 1, 15)
+        assert end_date_obj == date(2025, 1, 15)  # Auto-set by validator
 
-    def test_alias_from_to_from_date(self):
-        """Field alias 'from' should map to from_date."""
-        params = ReportParams.model_validate({"from": "2025-01-15"})
-        assert params.from_date == "2025-01-15"
+    def test_alias_start_to_start_date(self):
+        """Field alias 'start' should map to start_date."""
+        params = ReportParams.model_validate({"start": "2025-01-15"})
+        assert params.start_date == "2025-01-15"
 
-    def test_alias_to_to_to_date(self):
-        """Field alias 'to' should map to to_date."""
-        params = ReportParams.model_validate({"to": "2025-01-15"})
-        assert params.to_date == "2025-01-15"
+    def test_alias_end_to_end_date(self):
+        """Field alias 'end' should map to end_date."""
+        params = ReportParams.model_validate({"end": "2025-01-15"})
+        assert params.end_date == "2025-01-15"

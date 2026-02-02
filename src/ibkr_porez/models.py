@@ -81,6 +81,33 @@ class TaxReportEntry(BaseModel):
     is_tax_exempt: bool = False  # e.g. >10 years holding
 
 
+class IncomeEntry(BaseModel):
+    """Single income entry for PP OPO (Capital Income)."""
+
+    date: date
+    symbol: str
+    amount: Decimal  # В исходной валюте
+    currency: Currency
+    amount_rsd: Decimal  # В RSD
+    exchange_rate: Decimal
+    income_type: str  # "dividend" или "coupon"
+    description: str
+    withholding_tax_usd: Decimal = Decimal("0.00")  # Удержанный налог в USD
+    withholding_tax_rsd: Decimal = Decimal("0.00")  # Удержанный налог в RSD
+
+
+class IncomeDeclarationEntry(BaseModel):
+    """Single row in PP OPO declaration with calculated tax fields."""
+
+    date: date
+    sifra_vrste_prihoda: str  # "111402000" for dividend, "111403000" for coupon
+    bruto_prihod: Decimal  # BrutoPrihod (gross income in RSD)
+    osnovica_za_porez: Decimal  # OsnovicaZaPorez (tax base)
+    obracunati_porez: Decimal  # ObracunatiPorez (calculated tax)
+    porez_placen_drugoj_drzavi: Decimal  # PorezPlacenDrugojDrzavi (foreign tax paid)
+    porez_za_uplatu: Decimal  # PorezZaUplatu (tax to pay)
+
+
 class UserConfig(BaseModel):
     """User configuration stored on disk."""
 
