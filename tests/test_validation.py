@@ -36,20 +36,16 @@ class TestValidationErrorHandling:
             assert "field2 must be non-negative" in result
             assert "For further information visit" not in result
 
-    def test_format_validation_error_removes_pydantic_link(self):
-        """format_validation_error should remove Pydantic documentation links."""
-        # Create a ValidationError by trying to validate with missing required field
+    def test_format_validation_error_handles_multiple_fields(self):
+        """format_validation_error should handle validation errors with multiple fields."""
+        # Create a ValidationError by trying to validate with missing required fields
         try:
             SampleModel.model_validate({})
         except ValidationError as e:
-            # Manually add Pydantic link to error message to test removal
-            error_dict = e.errors()[0]
-            error_dict["msg"] = (
-                f"{error_dict['msg']}. For further information visit https://errors.pydantic.dev"
-            )
             result = format_validation_error(e)
-            assert "field required" in result.lower() or "field1" in result.lower()
-            assert "For further information visit" not in result
+            # Should contain error messages for both fields
+            assert "field1" in result.lower() or "field required" in result.lower()
+            assert "field2" in result.lower() or "field required" in result.lower()
             assert "https://errors.pydantic.dev" not in result
 
     def test_format_validation_error_multiple_errors(self):

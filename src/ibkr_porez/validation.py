@@ -7,21 +7,17 @@ def format_validation_error(error: ValidationError) -> str:
     """
     Format Pydantic ValidationError into a clean, user-friendly message.
 
-    Removes Pydantic documentation links and extracts the actual error messages.
-    Handles multiple validation errors by combining them.
+    Extracts error messages from ValidationError and combines multiple errors.
 
     Args:
         error: Pydantic ValidationError instance.
 
     Returns:
-        str: Clean error message without Pydantic documentation links.
+        str: Clean error message.
     """
     error_messages = []
     for err in error.errors():
         msg = err.get("msg", "")
-        # Remove Pydantic documentation link if present
-        if "For further information visit" in msg:
-            msg = msg.split("For further information visit")[0].strip()
         if msg:
             error_messages.append(msg)
 
@@ -29,19 +25,8 @@ def format_validation_error(error: ValidationError) -> str:
     if error_messages:
         return " ".join(error_messages)
 
-    # Fallback: use string representation and clean it
-    error_msg = str(error)
-    if "For further information visit" in error_msg:
-        error_msg = error_msg.split("For further information visit")[0].strip()
-
-    # Extract just the actual error message (skip "validation error" prefix)
-    lines = error_msg.split("\n")
-    for line in lines:
-        if "Value error," in line:
-            error_msg = line.split("Value error,")[-1].strip()
-            break
-
-    return error_msg
+    # Fallback: use string representation
+    return str(error)
 
 
 def handle_validation_error(error: ValidationError, console_instance) -> None:
