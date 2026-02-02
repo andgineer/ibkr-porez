@@ -54,8 +54,8 @@
             </div>
         </aside>
         <h2>
-            <span class="text">40 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">40<span class="text"> run</span></button>
+            <span class="text">44 statements &nbsp;</span>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">44<span class="text"> run</span></button>
             <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">0<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_554927f107f7791a_nbs_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-02 05:11 +0000
+            created at 2026-02-02 10:02 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -163,18 +163,45 @@
     <p class="run"><span class="n"><a id="t81" href="#t81">81</a></span><span class="t">    <span class="nam">is_tax_exempt</span><span class="op">:</span> <span class="nam">bool</span> <span class="op">=</span> <span class="key">False</span>  <span class="com"># e.g. >10 years holding</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t82" href="#t82">82</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t83" href="#t83">83</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t84" href="#t84">84</a></span><span class="t"><span class="key">class</span> <span class="nam">UserConfig</span><span class="op">(</span><span class="nam">BaseModel</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t85" href="#t85">85</a></span><span class="t">    <span class="str">"""User configuration stored on disk."""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t84" href="#t84">84</a></span><span class="t"><span class="key">class</span> <span class="nam">IncomeEntry</span><span class="op">(</span><span class="nam">BaseModel</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t85" href="#t85">85</a></span><span class="t">    <span class="str">"""Single income entry for PP OPO (Capital Income)."""</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t86" href="#t86">86</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t87" href="#t87">87</a></span><span class="t">    <span class="nam">ibkr_token</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">""</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t88" href="#t88">88</a></span><span class="t">    <span class="nam">ibkr_query_id</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">""</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t89" href="#t89">89</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t90" href="#t90">90</a></span><span class="t">    <span class="nam">personal_id</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">""</span>  <span class="com"># JMBG</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t91" href="#t91">91</a></span><span class="t">    <span class="nam">full_name</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t92" href="#t92">92</a></span><span class="t">    <span class="nam">address</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t93" href="#t93">93</a></span><span class="t">    <span class="nam">city_code</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">"223"</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t94" href="#t94">94</a></span><span class="t">    <span class="nam">phone</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">"0600000000"</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t95" href="#t95">95</a></span><span class="t">    <span class="nam">email</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">"email@example.com"</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t87" href="#t87">87</a></span><span class="t">    <span class="nam">date</span><span class="op">:</span> <span class="nam">date</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t88" href="#t88">88</a></span><span class="t">    <span class="nam">symbol</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t89" href="#t89">89</a></span><span class="t">    <span class="nam">amount</span><span class="op">:</span> <span class="nam">Decimal</span>  <span class="com"># &#1042; &#1080;&#1089;&#1093;&#1086;&#1076;&#1085;&#1086;&#1081; &#1074;&#1072;&#1083;&#1102;&#1090;&#1077;</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t90" href="#t90">90</a></span><span class="t">    <span class="nam">currency</span><span class="op">:</span> <span class="nam">Currency</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t91" href="#t91">91</a></span><span class="t">    <span class="nam">amount_rsd</span><span class="op">:</span> <span class="nam">Decimal</span>  <span class="com"># &#1042; RSD</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t92" href="#t92">92</a></span><span class="t">    <span class="nam">exchange_rate</span><span class="op">:</span> <span class="nam">Decimal</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t93" href="#t93">93</a></span><span class="t">    <span class="nam">income_type</span><span class="op">:</span> <span class="nam">str</span>  <span class="com"># "dividend" &#1080;&#1083;&#1080; "coupon"</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t94" href="#t94">94</a></span><span class="t">    <span class="nam">description</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t95" href="#t95">95</a></span><span class="t">    <span class="nam">withholding_tax_usd</span><span class="op">:</span> <span class="nam">Decimal</span> <span class="op">=</span> <span class="nam">Decimal</span><span class="op">(</span><span class="str">"0.00"</span><span class="op">)</span>  <span class="com"># &#1059;&#1076;&#1077;&#1088;&#1078;&#1072;&#1085;&#1085;&#1099;&#1081; &#1085;&#1072;&#1083;&#1086;&#1075; &#1074; USD</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t96" href="#t96">96</a></span><span class="t">    <span class="nam">withholding_tax_rsd</span><span class="op">:</span> <span class="nam">Decimal</span> <span class="op">=</span> <span class="nam">Decimal</span><span class="op">(</span><span class="str">"0.00"</span><span class="op">)</span>  <span class="com"># &#1059;&#1076;&#1077;&#1088;&#1078;&#1072;&#1085;&#1085;&#1099;&#1081; &#1085;&#1072;&#1083;&#1086;&#1075; &#1074; RSD</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t97" href="#t97">97</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t98" href="#t98">98</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t99" href="#t99">99</a></span><span class="t"><span class="key">class</span> <span class="nam">IncomeDeclarationEntry</span><span class="op">(</span><span class="nam">BaseModel</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t100" href="#t100">100</a></span><span class="t">    <span class="str">"""Single row in PP OPO declaration with calculated tax fields."""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t101" href="#t101">101</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t102" href="#t102">102</a></span><span class="t">    <span class="nam">date</span><span class="op">:</span> <span class="nam">date</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t103" href="#t103">103</a></span><span class="t">    <span class="nam">sifra_vrste_prihoda</span><span class="op">:</span> <span class="nam">str</span>  <span class="com"># "111402000" for dividend, "111403000" for coupon</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t104" href="#t104">104</a></span><span class="t">    <span class="nam">bruto_prihod</span><span class="op">:</span> <span class="nam">Decimal</span>  <span class="com"># BrutoPrihod (gross income in RSD)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t105" href="#t105">105</a></span><span class="t">    <span class="nam">osnovica_za_porez</span><span class="op">:</span> <span class="nam">Decimal</span>  <span class="com"># OsnovicaZaPorez (tax base)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t106" href="#t106">106</a></span><span class="t">    <span class="nam">obracunati_porez</span><span class="op">:</span> <span class="nam">Decimal</span>  <span class="com"># ObracunatiPorez (calculated tax)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t107" href="#t107">107</a></span><span class="t">    <span class="nam">porez_placen_drugoj_drzavi</span><span class="op">:</span> <span class="nam">Decimal</span>  <span class="com"># PorezPlacenDrugojDrzavi (foreign tax paid)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t108" href="#t108">108</a></span><span class="t">    <span class="nam">porez_za_uplatu</span><span class="op">:</span> <span class="nam">Decimal</span>  <span class="com"># PorezZaUplatu (tax to pay)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t109" href="#t109">109</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t110" href="#t110">110</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t111" href="#t111">111</a></span><span class="t"><span class="key">class</span> <span class="nam">UserConfig</span><span class="op">(</span><span class="nam">BaseModel</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t112" href="#t112">112</a></span><span class="t">    <span class="str">"""User configuration stored on disk."""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t113" href="#t113">113</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t114" href="#t114">114</a></span><span class="t">    <span class="nam">ibkr_token</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t115" href="#t115">115</a></span><span class="t">    <span class="nam">ibkr_query_id</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t116" href="#t116">116</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t117" href="#t117">117</a></span><span class="t">    <span class="nam">personal_id</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">""</span>  <span class="com"># JMBG</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t118" href="#t118">118</a></span><span class="t">    <span class="nam">full_name</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t119" href="#t119">119</a></span><span class="t">    <span class="nam">address</span><span class="op">:</span> <span class="nam">str</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t120" href="#t120">120</a></span><span class="t">    <span class="nam">city_code</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">"223"</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t121" href="#t121">121</a></span><span class="t">    <span class="nam">phone</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">"0600000000"</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t122" href="#t122">122</a></span><span class="t">    <span class="nam">email</span><span class="op">:</span> <span class="nam">str</span> <span class="op">=</span> <span class="str">"email@example.com"</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -184,7 +211,7 @@
             <a class="nav" href="z_554927f107f7791a_nbs_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-02 05:11 +0000
+            created at 2026-02-02 10:02 +0000
         </p>
     </div>
 </footer>
