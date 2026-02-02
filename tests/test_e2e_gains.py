@@ -96,7 +96,7 @@ class TestE2EReport:
 
             assert os.path.exists("ppdg3r_2023_H1.xml")
 
-            with open("ppdg3r_2023_H1.xml", "r") as f:
+            with open("ppdg3r_2023_H1.xml", "r", encoding="utf-8") as f:
                 content = f.read()
                 assert "AAPL" in content  # Basic check
 
@@ -150,7 +150,7 @@ class TestE2EReport:
             assert "declaration(s)" in result.output
 
             # Read file
-            with open("ppdg3r_2023_H2.xml", "r") as f:
+            with open("ppdg3r_2023_H2.xml", "r", encoding="utf-8") as f:
                 content = f.read()
 
             # Basic Checks - ignoring namespace prefix issues by partial match or including prefix if needed
@@ -213,7 +213,7 @@ class TestE2EReport:
 
             assert result.exit_code == 0
 
-            with open("ppdg3r_2023_H1.xml", "r") as f:
+            with open("ppdg3r_2023_H1.xml", "r", encoding="utf-8") as f:
                 content = f.read()
 
             # Verify AAPL (Sell 15 split into 10 + 5 due to different acquisition dates)

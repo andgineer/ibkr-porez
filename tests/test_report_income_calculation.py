@@ -37,7 +37,7 @@ class TestIncomeCalculationAccuracy:
         """Load rates from rates.json."""
         rates_file = Path(__file__).parent.parent / "rates.json"
         if rates_file.exists():
-            with open(rates_file) as f:
+            with open(rates_file, encoding="utf-8") as f:
                 return json.load(f)
         return {}
 
@@ -264,7 +264,7 @@ class TestIncomeCalculationAccuracy:
             sgov_file = sgov_result[0]
             assert Path(sgov_file).exists()
 
-            with open(sgov_file) as f:
+            with open(sgov_file, encoding="utf-8") as f:
                 sgov_xml = f.read()
 
             assert "<ns1:BrutoPrihod>8706.70</ns1:BrutoPrihod>" in sgov_xml
@@ -279,7 +279,7 @@ class TestIncomeCalculationAccuracy:
             voo_file = voo_result[0]
             assert Path(voo_file).exists()
 
-            with open(voo_file) as f:
+            with open(voo_file, encoding="utf-8") as f:
                 voo_xml = f.read()
 
             assert "<ns1:BrutoPrihod>2113.28</ns1:BrutoPrihod>" in voo_xml

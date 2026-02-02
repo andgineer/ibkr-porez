@@ -104,13 +104,13 @@ def display_income_declaration(entry: IncomeDeclarationEntry, console: Console) 
     """
     console.print(f"    Date: {entry.date.strftime('%Y-%m-%d')}")
     console.print(f"    SifraVrstePrihoda: {entry.sifra_vrste_prihoda}")
-    console.print(f"    BrutoPrihod: {entry.bruto_prihod:,.2f} RSD")
-    console.print(f"    OsnovicaZaPorez: {entry.osnovica_za_porez:,.2f} RSD")
-    console.print(f"    ObracunatiPorez: {entry.obracunati_porez:,.2f} RSD")
+    console.print(f"    BrutoPrihod: {entry.bruto_prihod:.2f} RSD")
+    console.print(f"    OsnovicaZaPorez: {entry.osnovica_za_porez:.2f} RSD")
+    console.print(f"    ObracunatiPorez: {entry.obracunati_porez:.2f} RSD")
     console.print(
-        f"    PorezPlacenDrugojDrzavi: {entry.porez_placen_drugoj_drzavi:,.2f} RSD",
+        f"    PorezPlacenDrugojDrzavi: {entry.porez_placen_drugoj_drzavi:.2f} RSD",
     )
-    console.print(f"    PorezZaUplatu: {entry.porez_za_uplatu:,.2f} RSD")
+    console.print(f"    PorezZaUplatu: {entry.porez_za_uplatu:.2f} RSD")
 
 
 def process_income_report(
