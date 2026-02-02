@@ -2,17 +2,14 @@
 
 import logging
 import re
-from collections import defaultdict
-from datetime import datetime
-from decimal import Decimal
+import time
 from pathlib import Path
 
-import pandas as pd
 import rich_click as click
 from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.table import Table
+from rich.progress import track
 
 from ibkr_porez import __version__
 from ibkr_porez.config import UserConfig, config_manager
@@ -22,9 +19,9 @@ from ibkr_porez.nbs import NBSClient
 from ibkr_porez.report_gains import GainsReportGenerator
 from ibkr_porez.report_income import IncomeReportGenerator
 from ibkr_porez.report_params import ReportParams, ReportType
+from ibkr_porez.show_statistics import ShowStatistics
 from ibkr_porez.storage import Storage
 from ibkr_porez.tables import render_declaration_table
-from ibkr_porez.tax import TaxCalculator
 from ibkr_porez.validation import handle_validation_error
 
 OUTPUT_FILE_DEFAULT = "output"
@@ -136,10 +133,6 @@ def get():
             # 1. Fetch XML
             console.print("[blue]Fetching full report...[/blue]")
             xml_content = ibkr.fetch_latest_report()
-
-            # Save raw backup
-            import time
-
             filename = f"flex_report_{int(time.time())}.xml"
             storage.save_raw_report(xml_content, filename)
 
@@ -166,8 +159,6 @@ def get():
             dates_to_fetch.add((tx.date, tx.currency))
             if tx.open_date:
                 dates_to_fetch.add((tx.open_date, tx.currency))
-
-        from rich.progress import track
 
         for d, curr in track(dates_to_fetch, description="Fetching rates...", console=console):
             nbs.get_rate(d, curr)
@@ -238,232 +229,27 @@ def import_file(file_path: Path):
     help="Show detailed breakdown for specific month (YYYY-MM, YYYYMM, or MM)",
 )
 @verbose_option
-def show(year: int | None, ticker: str | None, month: str | None):  # noqa: C901,PLR0912,PLR0915
+def show(year: int | None, ticker: str | None, month: str | None):
     """Show tax report (Sales only)."""
-    storage = Storage()
-    nbs = NBSClient(storage)
-    tax_calc = TaxCalculator(nbs)
+    generator = ShowStatistics()
 
-    # Load transactions
-    # Note: We must load ALL transactions to ensure FIFO context is correct.
-    # We will filter for display later.
-    df_transactions = storage.get_transactions()
-
-    if df_transactions.empty:
-        console.print("[yellow]No transactions found. Run `ibkr-porez get`.[/yellow]")
+    try:
+        table, total_pnl, error_msg = generator.generate(year=year, ticker=ticker, month=month)
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
         return
 
-    # Process Taxable Sales (FIFO)
-    sales_entries = tax_calc.process_trades(df_transactions)
-
-    target_year = year
-    target_month = None
-
-    # Parse Month Argument if provided
-    if month:
-        # Validate format
-        # 1. YYYY-MM
-        m_dash = re.match(r"^(\d{4})-(\d{1,2})$", month)
-        # 2. YYYYMM
-        m_compact = re.match(r"^(\d{4})(\d{2})$", month)
-        # 3. MM or M
-        m_only = re.match(r"^(\d{1,2})$", month)
-
-        if m_dash:
-            target_year = int(m_dash.group(1))
-            target_month = int(m_dash.group(2))
-        elif m_compact:
-            target_year = int(m_compact.group(1))
-            target_month = int(m_compact.group(2))
-        elif m_only:
-            target_month = int(m_only.group(1))
-            if not target_year:
-                # Find latest year with data for this month
-                years_with_data = set()
-                for e in sales_entries:
-                    if e.sale_date.month == target_month:
-                        years_with_data.add(e.sale_date.year)
-
-                # Also check dividends?
-                # Ideally yes, but let's stick to sales for the detailed view context
-                # or generally present data.
-                # Let's check dividends too.
-                if "type" in df_transactions.columns:
-                    divs_check = df_transactions[df_transactions["type"] == "DIVIDEND"]
-                    for d in pd.to_datetime(divs_check["date"]).dt.date:
-                        if d.month == target_month:
-                            years_with_data.add(d.year)
-
-                # Default to current year if no data found
-                target_year = max(years_with_data) if years_with_data else datetime.now().year
-        else:
-            console.print(f"[red]Invalid month format: {month}. Use YYYY-MM, YYYYMM, or MM.[/red]")
-            return
-
-    # Determine Mode: Detailed List vs Monthly Summary
-    # If a TICKER is specified, we almost certainly want the Detailed List of executions.
-    # If only Month is specified, user might want a Monthly Summary (filtered), OR detailed list.
-    # User feedback suggests they want "detailed calculation" when they specify ticker/month.
-
-    show_detailed_list = False
-    if ticker:
-        show_detailed_list = True
-
-    # If detailed list is requested:
-    if show_detailed_list:
-        # Filter entries
-        filtered_entries = []
-        for e in sales_entries:
-            if ticker and e.ticker != ticker:
-                continue
-            if target_year and e.sale_date.year != target_year:
-                continue
-            if target_month and e.sale_date.month != target_month:
-                continue
-            filtered_entries.append(e)
-
-        if not filtered_entries:
-            msg = "[yellow]No sales found matching criteria"
-            if ticker:
-                msg += f" ticker={ticker}"
-            if target_year:
-                msg += f" year={target_year}"
-            if target_month:
-                msg += f" month={target_month}"
-            msg += "[/yellow]"
-            console.print(msg)
-            return
-
-        title_parts = []
-        if ticker:
-            title_parts.append(ticker)
-        if target_year:
-            if target_month:
-                title_parts.append(f"{target_year}-{target_month:02d}")
-            else:
-                title_parts.append(str(target_year))
-
-        table_title = f"Detailed Report: {' - '.join(title_parts)}"
-        table = Table(title=table_title, box=None)  # Cleaner look
-
-        table.add_column("Sale Date", justify="left")
-        table.add_column("Qty", justify="right")
-        table.add_column("Sale Price", justify="right")
-        table.add_column("Sale Rate", justify="right")
-        table.add_column("Sale Val (RSD)", justify="right")  # ADDED
-
-        table.add_column("Buy Date", justify="left")
-        table.add_column("Buy Price", justify="right")
-        table.add_column("Buy Rate", justify="right")
-        table.add_column("Buy Val (RSD)", justify="right")  # ADDED
-
-        table.add_column("Gain (RSD)", justify="right")
-
-        total_pnl = Decimal(0)
-
-        for e in filtered_entries:
-            total_pnl += e.capital_gain_rsd
-            table.add_row(
-                str(e.sale_date),
-                f"{e.quantity:.2f}",
-                f"{e.sale_price:.2f}",
-                f"{e.sale_exchange_rate:.4f}",
-                f"{e.sale_value_rsd:,.0f}",  # No decimals for large RSD values usually cleaner
-                str(e.purchase_date),
-                f"{e.purchase_price:.2f}",
-                f"{e.purchase_exchange_rate:.4f}",
-                f"{e.purchase_value_rsd:,.0f}",
-                f"[bold]{e.capital_gain_rsd:,.2f}[/bold]",
-            )
-
-        console.print(table)
-        console.print(f"[bold]Total P/L: {total_pnl:,.2f} RSD[/bold]")
+    if error_msg:
+        console.print(f"[yellow]{error_msg}[/yellow]")
         return
 
-    # Fallback to Aggregated View (Summary)
-    # Group by Month-Year and Ticker
-    # Structure: { "YYYY-MM": { "TICKER": { "divs": 0.0, "sales_count": 0, "pnl": Decimal(0) } } }
-    stats = defaultdict(
-        lambda: defaultdict(lambda: {"divs": Decimal(0), "sales_count": 0, "pnl": Decimal(0)}),
-    )
-
-    for entry in sales_entries:  # Already filtered by year (if --year passed, but maybe not by -m)
-        if target_year and entry.sale_date.year != target_year:
-            continue
-        if target_month and entry.sale_date.month != target_month:
-            continue
-        if (
-            ticker and entry.ticker != ticker
-        ):  # Should be handled by Detail view usually, but keeping logic safely
-            continue
-
-        month_key = entry.sale_date.strftime("%Y-%m")
-        t = entry.ticker
-        stats[month_key][t]["sales_count"] += 1
-        stats[month_key][t]["pnl"] += entry.capital_gain_rsd
-
-    # Process Dividends
-    if "type" in df_transactions.columns:
-        divs = df_transactions[df_transactions["type"] == "DIVIDEND"].copy()
-
-        for _, row in divs.iterrows():
-            d = row["date"]  # date object
-            if target_year and d.year != target_year:
-                continue
-            if target_month and d.month != target_month:
-                continue
-
-            t = row["symbol"]
-            if ticker and t != ticker:
-                continue
-
-            curr = row["currency"]
-            amt = Decimal(str(row["amount"]))
-
-            # Rate
-            from ibkr_porez.models import Currency
-
-            try:
-                c_enum = Currency(curr)
-                rate = nbs.get_rate(d, c_enum)
-                if rate:
-                    val = amt * rate
-                    month_key = d.strftime("%Y-%m")
-                    stats[month_key][t]["divs"] += val
-            except ValueError:
-                pass
-
-    # Print Table
-    table = Table(title="Monthly Report Breakdown")
-    table.add_column("Month", justify="left")
-    table.add_column("Ticker", justify="left")
-    table.add_column("Dividends (RSD)", justify="right")
-    table.add_column("Sales Count", justify="right")
-    table.add_column("Realized P/L (RSD)", justify="right")
-
-    rows = []
-    for m, tickers in stats.items():
-        for t, data in tickers.items():
-            rows.append((m, t, data))
-
-    rows.sort(key=lambda x: x[1])  # Ticker ASC
-    rows.sort(key=lambda x: x[0], reverse=True)  # Month DESC
-
-    current_month: str | None = None
-    for m, t, data in rows:
-        if current_month != m:
-            table.add_section()
-            current_month = m
-
-        table.add_row(
-            m,
-            t,
-            f"{data['divs']:,.2f}",
-            str(data["sales_count"]),
-            f"{data['pnl']:,.2f}",
-        )
+    if table is None:
+        return
 
     console.print(table)
+
+    if total_pnl is not None:
+        console.print(f"[bold]Total P/L: {total_pnl:,.2f} RSD[/bold]")
 
 
 @ibkr_porez.command(
