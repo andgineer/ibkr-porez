@@ -12,6 +12,8 @@ from ibkr_porez.tax import TaxCalculator
 class GainsReportGenerator:
     """Generator for PPDG-3R (Capital Gains) reports."""
 
+    JUNE_MONTH = 6
+
     def __init__(self):
         self.cfg = config_manager.load_config()
         self.storage = Storage()
@@ -63,8 +65,11 @@ class GainsReportGenerator:
         xml_content = self.xml_gen.generate_xml(entries, start_date, end_date)
 
         # Generate filename if not provided
+        # Format: ppdg3r-yyyy-Hh.xml (matching sync style, without declaration number)
         if filename is None:
-            filename = f"ppdg3r_{start_date}_{end_date}.xml"
+            year = end_date.year
+            half = 1 if end_date.month <= self.JUNE_MONTH else 2
+            filename = f"ppdg3r-{year}-H{half}.xml"
 
         # Write file
         with open(filename, "w", encoding="utf-8") as f:

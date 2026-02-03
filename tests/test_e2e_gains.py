@@ -94,9 +94,9 @@ class TestE2EReport:
             # Verify File Exists
             import os
 
-            assert os.path.exists("ppdg3r_2023_H1.xml")
+            assert os.path.exists("ppdg3r-2023-H1.xml")
 
-            with open("ppdg3r_2023_H1.xml", "r", encoding="utf-8") as f:
+            with open("ppdg3r-2023-H1.xml", "r", encoding="utf-8") as f:
                 content = f.read()
                 assert "AAPL" in content  # Basic check
 
@@ -146,11 +146,11 @@ class TestE2EReport:
             result = runner.invoke(ibkr_porez, ["report", "--half", "2023-2"])
 
             assert result.exit_code == 0
-            assert "ppdg3r_2023_H2.xml" in result.output
+            assert "ppdg3r-2023-H2.xml" in result.output
             assert "declaration(s)" in result.output
 
             # Read file
-            with open("ppdg3r_2023_H2.xml", "r", encoding="utf-8") as f:
+            with open("ppdg3r-2023-H2.xml", "r", encoding="utf-8") as f:
                 content = f.read()
 
             # Basic Checks - ignoring namespace prefix issues by partial match or including prefix if needed
@@ -213,7 +213,7 @@ class TestE2EReport:
 
             assert result.exit_code == 0
 
-            with open("ppdg3r_2023_H1.xml", "r", encoding="utf-8") as f:
+            with open("ppdg3r-2023-H1.xml", "r", encoding="utf-8") as f:
                 content = f.read()
 
             # Verify AAPL (Sell 15 split into 10 + 5 due to different acquisition dates)

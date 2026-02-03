@@ -31,7 +31,7 @@ def generate_gains_filename(half: str | None) -> str | None:
     if half_match:
         target_year = int(half_match.group(1))
         target_half = int(half_match.group(2))
-        return f"ppdg3r_{target_year}_H{target_half}.xml"
+        return f"ppdg3r-{target_year}-H{target_half}.xml"
 
     return None
 

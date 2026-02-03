@@ -428,14 +428,13 @@ class IncomeReportGenerator:
             )
 
             # Generate filename
+            # Format: ppopo-{symbol}-{yyyy}-{mmdd}.xml
+            # (matching sync style, without declaration number)
             # For interest: use currency code in filename; for dividends: use symbol
             filename_key = currency.value if income_type == "coupon" else symbol
-            if filename:
-                # If base filename provided, append date, key and type
-                base = filename.replace(".xml", "")
-                file_path = f"{base}_{declaration_date}_{filename_key}_{income_type}.xml"
-            else:
-                file_path = f"ppopo_{declaration_date}_{filename_key}_{income_type}.xml"
+            symbol_lower = filename_key.lower()
+            date_str = declaration_date.strftime("%Y-%m%d")
+            file_path = filename if filename else f"ppopo-{symbol_lower}-{date_str}.xml"
 
             # Write file
             with open(file_path, "w", encoding="utf-8") as f:

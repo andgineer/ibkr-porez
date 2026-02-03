@@ -11,10 +11,13 @@ from rich.progress import track
 from ibkr_porez import __version__
 from ibkr_porez.config import UserConfig, config_manager
 from ibkr_porez.ibkr_csv import CSVParser
+from ibkr_porez.models import IncomeDeclarationEntry
 from ibkr_porez.nbs import NBSClient
 from ibkr_porez.operation_get import GetOperation
-from ibkr_porez.operation_report import execute_report_command
+from ibkr_porez.operation_report import display_income_declaration, execute_report_command
+from ibkr_porez.operation_report_tables import render_declaration_table
 from ibkr_porez.operation_show import ShowStatistics
+from ibkr_porez.operation_sync import SyncOperation
 from ibkr_porez.storage import Storage
 
 OUTPUT_FILE_DEFAULT = "output"
@@ -229,6 +232,49 @@ def show(year: int | None, ticker: str | None, month: str | None):
 
     if total_pnl is not None:
         console.print(f"[bold]Total P/L: {total_pnl:,.2f} RSD[/bold]")
+
+
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#sync-data-and-create-declarations-sync",
+)
+@verbose_option
+def sync():
+    """Sync data from IBKR and create all necessary declarations."""
+    cfg = config_manager.load_config()
+    if not cfg.ibkr_token or not cfg.ibkr_query_id:
+        console.print("[red]Missing Configuration! Run `ibkr-porez config` first.[/red]")
+        return
+
+    operation = SyncOperation(cfg)
+    try:
+        with console.status("[bold green]Syncing data and creating declarations...[/bold green]"):
+            declarations = operation.execute()
+
+        if not declarations:
+            console.print("[yellow]No new declarations created.[/yellow]")
+        return
+
+        console.print(f"[bold green]Created {len(declarations)} declaration(s):[/bold green]")
+        for decl in declarations:
+            console.print(f"  [green]{decl.declaration_id}[/green]")
+            if decl.report_data:
+                if decl.type.value == "PPDG-3R":
+                    # Gains: render table
+                    from ibkr_porez.models import TaxReportEntry
+
+                    gains_entries = [e for e in decl.report_data if isinstance(e, TaxReportEntry)]
+                    if gains_entries:
+                        table = render_declaration_table(gains_entries)
+                        console.print(table)
+                else:
+                    # Income: show declaration fields
+                    for entry in decl.report_data:
+                        if isinstance(entry, IncomeDeclarationEntry):
+                            display_income_declaration(entry, console)
+
+    except Exception as e:  # noqa: BLE001
+        console.print(f"[bold red]Error:[/bold red] {e}")
+        console.print_exception()
 
 
 @ibkr_porez.command(

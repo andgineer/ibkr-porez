@@ -256,8 +256,8 @@ class TestIncomeCalculationAccuracy:
             # Should create 2 separate declarations (one for SGOV, one for VOO)
             assert len(results) == 2
 
-            # Find SGOV declaration
-            sgov_result = next((r for r in results if "SGOV" in r[0]), None)
+            # Find SGOV declaration (filename format: ppopo-sgov-yyyy-mmdd.xml)
+            sgov_result = next((r for r in results if "sgov" in r[0].lower()), None)
             assert sgov_result is not None, "SGOV declaration not found"
 
             # Verify SGOV file exists and contains correct values
@@ -271,8 +271,8 @@ class TestIncomeCalculationAccuracy:
             assert "<ns1:ObracunatiPorez>1306.01</ns1:ObracunatiPorez>" in sgov_xml
             assert "<ns1:PorezPlacenDrugojDrzavi>2612.51</ns1:PorezPlacenDrugojDrzavi>" in sgov_xml
 
-            # Find VOO declaration
-            voo_result = next((r for r in results if "VOO" in r[0]), None)
+            # Find VOO declaration (filename format: ppopo-voo-yyyy-mmdd.xml)
+            voo_result = next((r for r in results if "voo" in r[0].lower()), None)
             assert voo_result is not None, "VOO declaration not found"
 
             # Verify VOO file exists and contains correct values
