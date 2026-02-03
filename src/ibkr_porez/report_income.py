@@ -7,20 +7,23 @@ from decimal import ROUND_HALF_UP, Decimal
 
 import pandas as pd
 
-from ibkr_porez.config import config_manager
 from ibkr_porez.declaration_income_xml import IncomeXMLGenerator
-from ibkr_porez.models import Currency, IncomeDeclarationEntry, IncomeEntry, TransactionType
-from ibkr_porez.nbs import NBSClient
-from ibkr_porez.storage import Storage
+from ibkr_porez.models import (
+    INCOME_CODE_COUPON,
+    INCOME_CODE_DIVIDEND,
+    Currency,
+    IncomeDeclarationEntry,
+    IncomeEntry,
+    TransactionType,
+)
+from ibkr_porez.report_base import ReportGeneratorBase
 
 
-class IncomeReportGenerator:
+class IncomeReportGenerator(ReportGeneratorBase):
     """Generator for PP OPO (Capital Income) reports."""
 
     def __init__(self):
-        self.cfg = config_manager.load_config()
-        self.storage = Storage()
-        self.nbs = NBSClient(self.storage)
+        super().__init__()
         self.xml_gen = IncomeXMLGenerator(self.cfg)
 
     def _parse_entity_from_description(self, description: str) -> tuple[str | None, str | None]:
@@ -320,10 +323,10 @@ class IncomeReportGenerator:
         # Get date and income_type from first entry (all should be same)
         first_entry = group_entries[0]
 
-        # SifraVrstePrihoda:
-        # 111402000 - Dividends from shares
-        # 111403000 - Interest from bonds (coupons)
-        sifra_vrste_prihoda = "111402000" if first_entry.income_type == "dividend" else "111403000"
+        # SifraVrstePrihoda
+        sifra_vrste_prihoda = (
+            INCOME_CODE_DIVIDEND if first_entry.income_type == "dividend" else INCOME_CODE_COUPON
+        )
 
         return IncomeDeclarationEntry(
             date=first_entry.date,
@@ -335,11 +338,35 @@ class IncomeReportGenerator:
             porez_za_uplatu=porez_za_uplatu,
         )
 
+    def filename(  # type: ignore[override]
+        self,
+        declaration_date: date,
+        symbol: str,
+        currency: Currency,
+        income_type: str,
+    ) -> str:
+        """
+        Generate filename for income report.
+
+        Args:
+            declaration_date: Date of the declaration.
+            symbol: Symbol for dividends.
+            currency: Currency for interest/coupons.
+            income_type: Type of income ("dividend" or "coupon").
+
+        Returns:
+            Filename string in format: ppopo-{symbol}-{yyyy}-{mmdd}.xml
+        """
+        # For interest: use currency code in filename; for dividends: use symbol
+        filename_key = currency.value if income_type == "coupon" else symbol
+        symbol_lower = filename_key.lower()
+        date_str = declaration_date.strftime("%Y-%m%d")
+        return f"ppopo-{symbol_lower}-{date_str}.xml"
+
     def generate(
         self,
         start_date: date,
         end_date: date,
-        filename: str | None = None,
         force: bool = False,
     ):
         """
@@ -355,7 +382,7 @@ class IncomeReportGenerator:
             force: If True, create declaration with zero tax even if withholding tax not found.
 
         Yields:
-            tuple[str, list[IncomeDeclarationEntry]]: (filename, entries) tuple.
+            tuple[str, str, list[IncomeDeclarationEntry]]: (filename, xml_content, entries) tuple.
                 Each entry represents one declaration row with calculated tax fields.
 
         Raises:
@@ -427,18 +454,5 @@ class IncomeReportGenerator:
                 withholding_tax_rsd,
             )
 
-            # Generate filename
-            # Format: ppopo-{symbol}-{yyyy}-{mmdd}.xml
-            # (matching sync style, without declaration number)
-            # For interest: use currency code in filename; for dividends: use symbol
-            filename_key = currency.value if income_type == "coupon" else symbol
-            symbol_lower = filename_key.lower()
-            date_str = declaration_date.strftime("%Y-%m%d")
-            file_path = filename if filename else f"ppopo-{symbol_lower}-{date_str}.xml"
-
-            # Write file
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(xml_content)
-
-            # Yield declaration entry (one per declaration)
-            yield file_path, [declaration_entry]
+            filename = self.filename(declaration_date, symbol, currency, income_type)
+            yield filename, xml_content, [declaration_entry]

@@ -60,16 +60,19 @@ def process_gains_report(
         results = generator.generate(
             start_date=start_date,
             end_date=end_date,
-            filename=filename,
         )
 
         declaration_count = 0
         total_entries = 0
-        for filename_result, entries in results:
+        for filename_result, xml_content, entries in results:
+            output_filename = filename or filename_result
+            with open(output_filename, "w", encoding="utf-8") as f:
+                f.write(xml_content)
+
             if declaration_count == 0:
                 console.print("[bold green]Generated declaration(s):[/bold green]")
             declaration_count += 1
-            console.print(f"  [green]{filename_result}[/green] ({len(entries)} entries)")
+            console.print(f"  [green]{output_filename}[/green] ({len(entries)} entries)")
             total_entries += len(entries)
 
             table = render_declaration_table(entries)
@@ -148,7 +151,10 @@ def process_income_report(
         )
 
         declaration_count = 0
-        for filename, entries in results:
+        for filename, xml_content, entries in results:
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(xml_content)
+
             if declaration_count == 0:
                 console.print("[bold green]Generated declaration(s):[/bold green]")
             declaration_count += 1

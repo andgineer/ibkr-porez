@@ -165,8 +165,8 @@ class TestIncomeCalculationAccuracy:
         )
         assert "<ns1:PorezZaUplatu>0.00</ns1:PorezZaUplatu>" in xml_out
 
-    @patch("ibkr_porez.report_income.NBSClient")
-    @patch("ibkr_porez.report_income.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_e2e_calculation_with_real_data(
         self,
         mock_config_manager,
@@ -260,12 +260,9 @@ class TestIncomeCalculationAccuracy:
             sgov_result = next((r for r in results if "sgov" in r[0].lower()), None)
             assert sgov_result is not None, "SGOV declaration not found"
 
-            # Verify SGOV file exists and contains correct values
-            sgov_file = sgov_result[0]
-            assert Path(sgov_file).exists()
-
-            with open(sgov_file, encoding="utf-8") as f:
-                sgov_xml = f.read()
+            # Verify SGOV XML content
+            sgov_filename, sgov_xml, sgov_entries = sgov_result
+            assert "sgov" in sgov_filename.lower()
 
             assert "<ns1:BrutoPrihod>8706.70</ns1:BrutoPrihod>" in sgov_xml
             assert "<ns1:ObracunatiPorez>1306.01</ns1:ObracunatiPorez>" in sgov_xml
@@ -275,12 +272,9 @@ class TestIncomeCalculationAccuracy:
             voo_result = next((r for r in results if "voo" in r[0].lower()), None)
             assert voo_result is not None, "VOO declaration not found"
 
-            # Verify VOO file exists and contains correct values
-            voo_file = voo_result[0]
-            assert Path(voo_file).exists()
-
-            with open(voo_file, encoding="utf-8") as f:
-                voo_xml = f.read()
+            # Verify VOO XML content
+            voo_filename, voo_xml, voo_entries = voo_result
+            assert "voo" in voo_filename.lower()
 
             assert "<ns1:BrutoPrihod>2113.28</ns1:BrutoPrihod>" in voo_xml
             assert "<ns1:ObracunatiPorez>316.99</ns1:ObracunatiPorez>" in voo_xml

@@ -2,10 +2,16 @@
 
 from datetime import date, timedelta
 from decimal import Decimal
+from xml.dom import minidom
 
 import holidays
 
-from ibkr_porez.models import IncomeEntry, UserConfig
+from ibkr_porez.models import (
+    INCOME_CODE_COUPON,
+    INCOME_CODE_DIVIDEND,
+    IncomeEntry,
+    UserConfig,
+)
 
 
 class IncomeXMLGenerator:
@@ -32,8 +38,6 @@ class IncomeXMLGenerator:
         Returns:
             str: XML content for PP OPO declaration.
         """
-        from xml.dom import minidom
-
         doc = minidom.Document()
 
         # Root Element: ns1:PodaciPoreskeDeklaracije
@@ -131,10 +135,9 @@ class IncomeXMLGenerator:
         porez_za_uplatu = max(Decimal("0.00"), obracunati_porez - porez_placen_drugoj_drzavi)
         porez_za_uplatu = round(porez_za_uplatu, 2)
 
-        # SifraVrstePrihoda:
-        # 111402000 - Dividends from shares
-        # 111403000 - Interest from bonds (coupons)
-        sifra_vrste_prihoda = "111402000" if income_type == "dividend" else "111403000"
+        sifra_vrste_prihoda = (
+            INCOME_CODE_DIVIDEND if income_type == "dividend" else INCOME_CODE_COUPON
+        )
 
         podaci_vrsta = doc.createElement("ns1:PodaciOVrstamaPrihoda")
         deklaracija.appendChild(podaci_vrsta)

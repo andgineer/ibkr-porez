@@ -32,8 +32,8 @@ class TestReportDateParams:
     """Test report command date parameters logic and defaults."""
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_no_params_defaults_to_last_complete_half(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -71,8 +71,8 @@ class TestReportDateParams:
         assert str(expected_end) in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_from_only_defaults_to_to_equals_from(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -96,8 +96,8 @@ class TestReportDateParams:
         assert "(2025-03-15 to 2025-03-15)" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_to_only_uses_start_of_month_to_to(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -124,8 +124,8 @@ class TestReportDateParams:
         assert "2025-03-15" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_from_and_to_uses_specified_dates(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -148,8 +148,8 @@ class TestReportDateParams:
         assert "(2025-01-15 to 2025-02-20)" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_half_takes_precedence_over_dates(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -183,8 +183,8 @@ class TestReportDateParams:
         assert "(2023-01-01 to 2023-06-30)" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_invalid_date_format(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -202,8 +202,8 @@ class TestReportDateParams:
         assert "Invalid date format" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_from_after_to_error(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -221,8 +221,8 @@ class TestReportDateParams:
         assert "Start date must be before or equal to end date" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_from_equals_to_valid(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -245,8 +245,8 @@ class TestReportDateParams:
         assert "(2025-01-15 to 2025-01-15)" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_compact_date_format_invalid(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -264,8 +264,8 @@ class TestReportDateParams:
         assert "Invalid date format" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_half_with_dash_format(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -288,8 +288,8 @@ class TestReportDateParams:
         assert "(2023-01-01 to 2023-06-30)" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_half_with_compact_format(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -312,8 +312,8 @@ class TestReportDateParams:
         assert "(2023-07-01 to 2023-12-31)" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_default_type_is_gains(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -332,8 +332,8 @@ class TestReportDateParams:
         assert "Generating PPDG-3R Report for" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_gains_half_h2_covers_jul_dec(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):

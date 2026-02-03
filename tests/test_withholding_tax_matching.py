@@ -22,7 +22,7 @@ class TestWithholdingTaxMatching:
     @pytest.fixture
     def generator(self):
         """Create IncomeReportGenerator with mocked NBS."""
-        with patch("ibkr_porez.report_income.NBSClient") as mock_nbs_cls:
+        with patch("ibkr_porez.report_base.NBSClient") as mock_nbs_cls:
             mock_nbs = mock_nbs_cls.return_value
             mock_nbs.get_rate.return_value = Decimal("100.0")  # 1 USD = 100 RSD
             gen = IncomeReportGenerator()
@@ -287,7 +287,7 @@ class TestWithholdingTaxMatching:
             storage.save_transactions(transactions)
 
             # Create new generator with fresh storage
-            with patch("ibkr_porez.report_income.NBSClient") as mock_nbs_cls:
+            with patch("ibkr_porez.report_base.NBSClient") as mock_nbs_cls:
                 mock_nbs = mock_nbs_cls.return_value
                 mock_nbs.get_rate.return_value = Decimal("100.0")
                 gen = IncomeReportGenerator()
@@ -305,8 +305,9 @@ class TestWithholdingTaxMatching:
                 assert len(results) == 1
 
                 # Check that both interest amounts are included (100 + 50 = 150)
-                result = results[0]
-                declaration_entry = result[1][0]
+                # Format: (filename, xml_content, entries)
+                filename, xml_content, entries = results[0]
+                declaration_entry = entries[0]
                 # Total should be sum of both: 150.00 USD * 100 = 15000.00 RSD
                 assert declaration_entry.bruto_prihod == Decimal("15000.00")
 

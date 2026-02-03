@@ -96,11 +96,16 @@ class IncomeEntry(BaseModel):
     withholding_tax_rsd: Decimal = Decimal("0.00")  # Withholding tax in RSD
 
 
+# Income type codes for PP OPO declarations
+INCOME_CODE_DIVIDEND = "111402000"  # Dividends from shares
+INCOME_CODE_COUPON = "111403000"  # Interest from bonds (coupons)
+
+
 class IncomeDeclarationEntry(BaseModel):
     """Single row in PP OPO declaration with calculated tax fields."""
 
     date: date
-    sifra_vrste_prihoda: str  # "111402000" for dividend, "111403000" for coupon
+    sifra_vrste_prihoda: str  # INCOME_CODE_DIVIDEND or INCOME_CODE_COUPON
     bruto_prihod: Decimal  # BrutoPrihod (gross income in RSD)
     osnovica_za_porez: Decimal  # OsnovicaZaPorez (tax base)
     obracunati_porez: Decimal  # ObracunatiPorez (calculated tax)

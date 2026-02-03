@@ -40,12 +40,10 @@ class TestSyncOperation:
     @patch("ibkr_porez.operation_sync.GetOperation")
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")
     @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_income.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     def test_sync_creates_gains_declaration(
         self,
-        mock_nbs_income,
-        mock_nbs_gains,
+        mock_nbs_cls,
         mock_income_gen_cls,
         mock_gains_gen_cls,
         mock_get_op_cls,
@@ -57,9 +55,7 @@ class TestSyncOperation:
         mock_get_op = mock_get_op_cls.return_value
         mock_get_op.execute.return_value = ([], 0, 0)
 
-        # Mock GainsReportGenerator - create actual temp file
-        temp_file = mock_user_data_dir / "ppdg3r_2023-01-01_2023-06-30.xml"
-        temp_file.write_text("<?xml version='1.0'?><test>gains</test>", encoding="utf-8")
+        # Mock GainsReportGenerator - no need for temp file anymore
 
         from ibkr_porez.models import TaxReportEntry as RealTaxReportEntry
 
@@ -77,7 +73,9 @@ class TestSyncOperation:
             purchase_value_rsd=Decimal("10000"),
             capital_gain_rsd=Decimal("1000.00"),
         )
-        mock_gains_gen.generate.return_value = [(str(temp_file), [mock_entry])]
+        mock_gains_gen.generate.return_value = [
+            ("ppdg3r-2023-H1.xml", "<?xml version='1.0'?><test>gains</test>", [mock_entry])
+        ]
         mock_gains_gen_cls.return_value = mock_gains_gen
 
         # Mock IncomeReportGenerator (no income) - return empty list
@@ -98,7 +96,7 @@ class TestSyncOperation:
         # Verify
         assert len(declarations) == 1
         assert declarations[0].type == DeclarationType.PPDG3R
-        assert declarations[0].declaration_id == "ppdg3r_2023_H1"
+        assert declarations[0].declaration_id == "1"  # Sequential number
         assert declarations[0].status == DeclarationStatus.DRAFT
         assert declarations[0].period_start == date(2023, 1, 1)
         assert declarations[0].period_end == date(2023, 6, 30)
@@ -109,19 +107,17 @@ class TestSyncOperation:
 
         # Verify declaration was saved
         storage = Storage()
-        saved_decl = storage.get_declaration("ppdg3r_2023_H1")
+        saved_decl = storage.get_declaration("1")
         assert saved_decl is not None
         assert saved_decl.type == DeclarationType.PPDG3R
 
     @patch("ibkr_porez.operation_sync.GetOperation")
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")
     @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
-    @patch("ibkr_porez.report_income.NBSClient")
-    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     def test_sync_creates_income_declaration(
         self,
-        mock_nbs_gains,
-        mock_nbs_income,
+        mock_nbs_cls,
         mock_income_gen_cls,
         mock_gains_gen_cls,
         mock_get_op_cls,
@@ -138,9 +134,7 @@ class TestSyncOperation:
         mock_gains_gen.generate.side_effect = ValueError("No taxable sales found in this period.")
         mock_gains_gen_cls.return_value = mock_gains_gen
 
-        # Mock IncomeReportGenerator - create actual temp file
-        temp_file = mock_user_data_dir / "ppopo_2023-07-15_VOO_dividend.xml"
-        temp_file.write_text("<?xml version='1.0'?><test>income</test>", encoding="utf-8")
+        # Mock IncomeReportGenerator - no need for temp file anymore
 
         from ibkr_porez.models import IncomeDeclarationEntry as RealIncomeDeclarationEntry
 
@@ -154,7 +148,9 @@ class TestSyncOperation:
             porez_placen_drugoj_drzavi=Decimal("30.00"),
             porez_za_uplatu=Decimal("120.00"),
         )
-        mock_income_gen.generate.return_value = [(str(temp_file), [mock_entry])]
+        mock_income_gen.generate.return_value = [
+            ("ppopo-voo-2023-0715.xml", "<?xml version='1.0'?><test>income</test>", [mock_entry])
+        ]
         mock_income_gen_cls.return_value = mock_income_gen
 
         # Create sync operation
@@ -175,7 +171,7 @@ class TestSyncOperation:
         assert len(declarations) == 1
         assert declarations[0].type == DeclarationType.PPO
         assert declarations[0].status == DeclarationStatus.DRAFT
-        assert "ppopo_2023-07-15_VOO_dividend" in declarations[0].declaration_id
+        assert declarations[0].declaration_id == "1"  # Sequential number
 
         # Verify file was created
         assert declarations[0].file_path is not None
@@ -184,12 +180,10 @@ class TestSyncOperation:
     @patch("ibkr_porez.operation_sync.GetOperation")
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")
     @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_income.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     def test_sync_skips_existing_declarations(
         self,
-        mock_nbs_income,
-        mock_nbs_gains,
+        mock_nbs_cls,
         mock_income_gen_cls,
         mock_gains_gen_cls,
         mock_get_op_cls,
@@ -201,21 +195,20 @@ class TestSyncOperation:
         mock_get_op = mock_get_op_cls.return_value
         mock_get_op.execute.return_value = ([], 0, 0)
 
-        # Create existing declaration
+        # Create existing declaration with file_path matching the generator filename
         storage = Storage()
         existing_decl = Declaration(
-            declaration_id="ppdg3r_2023_H1",
+            declaration_id="1",
             type=DeclarationType.PPDG3R,
             status=DeclarationStatus.DRAFT,
             period_start=date(2023, 1, 1),
             period_end=date(2023, 6, 30),
             created_at=datetime.now(),
+            file_path=str(storage.data_dir / "001-ppdg3r-2023-H1.xml"),
         )
         storage.save_declaration(existing_decl)
 
-        # Mock GainsReportGenerator - create actual temp file
-        temp_file = mock_user_data_dir / "ppdg3r_2023-01-01_2023-06-30.xml"
-        temp_file.write_text("<?xml version='1.0'?><test>gains</test>", encoding="utf-8")
+        # Mock GainsReportGenerator - no need for temp file anymore
 
         from ibkr_porez.models import TaxReportEntry as RealTaxReportEntry
 
@@ -233,7 +226,9 @@ class TestSyncOperation:
             purchase_value_rsd=Decimal("10000"),
             capital_gain_rsd=Decimal("1000.00"),
         )
-        mock_gains_gen.generate.return_value = [(str(temp_file), [mock_entry])]
+        mock_gains_gen.generate.return_value = [
+            ("ppdg3r-2023-H1.xml", "<?xml version='1.0'?><test>gains</test>", [mock_entry])
+        ]
         mock_gains_gen_cls.return_value = mock_gains_gen
 
         # Mock IncomeReportGenerator (no income) - return empty list
@@ -257,12 +252,10 @@ class TestSyncOperation:
     @patch("ibkr_porez.operation_sync.GetOperation")
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")
     @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
-    @patch("ibkr_porez.report_income.NBSClient")
-    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     def test_sync_updates_last_declaration_date(
         self,
-        mock_nbs_gains,
-        mock_nbs_income,
+        mock_nbs_cls,
         mock_income_gen_cls,
         mock_gains_gen_cls,
         mock_get_op_cls,
@@ -279,9 +272,7 @@ class TestSyncOperation:
         mock_gains_gen.generate.side_effect = ValueError("No taxable sales found in this period.")
         mock_gains_gen_cls.return_value = mock_gains_gen
 
-        # Mock IncomeReportGenerator - create actual temp file
-        temp_file = mock_user_data_dir / "ppopo_2023-07-15_VOO_dividend.xml"
-        temp_file.write_text("<?xml version='1.0'?><test>income</test>", encoding="utf-8")
+        # Mock IncomeReportGenerator - no need for temp file anymore
 
         from ibkr_porez.models import IncomeDeclarationEntry as RealIncomeDeclarationEntry
 
@@ -295,7 +286,9 @@ class TestSyncOperation:
             porez_placen_drugoj_drzavi=Decimal("30.00"),
             porez_za_uplatu=Decimal("120.00"),
         )
-        mock_income_gen.generate.return_value = [(str(temp_file), [mock_entry])]
+        mock_income_gen.generate.return_value = [
+            ("ppopo-voo-2023-0715.xml", "<?xml version='1.0'?><test>income</test>", [mock_entry])
+        ]
         mock_income_gen_cls.return_value = mock_income_gen
 
         # Set initial last_declaration_date
@@ -320,12 +313,10 @@ class TestSyncOperation:
     @patch("ibkr_porez.operation_sync.GetOperation")
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")
     @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
-    @patch("ibkr_porez.report_income.NBSClient")
-    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     def test_sync_handles_income_tax_not_found_error(
         self,
-        mock_nbs_gains,
-        mock_nbs_income,
+        mock_nbs_cls,
         mock_income_gen_cls,
         mock_gains_gen_cls,
         mock_get_op_cls,
@@ -371,12 +362,10 @@ class TestSyncOperation:
     @patch("ibkr_porez.operation_sync.GetOperation")
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")
     @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
-    @patch("ibkr_porez.report_income.NBSClient")
-    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     def test_sync_first_run_sets_last_declaration_date_to_30_days_ago(
         self,
-        mock_nbs_gains,
-        mock_nbs_income,
+        mock_nbs_cls,
         mock_income_gen_cls,
         mock_gains_gen_cls,
         mock_get_op_cls,
@@ -418,12 +407,10 @@ class TestSyncOperation:
     @patch("ibkr_porez.operation_sync.GetOperation")
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")
     @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
-    @patch("ibkr_porez.report_income.NBSClient")
-    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     def test_sync_creates_multiple_income_declarations(
         self,
-        mock_nbs_gains,
-        mock_nbs_income,
+        mock_nbs_cls,
         mock_income_gen_cls,
         mock_gains_gen_cls,
         mock_get_op_cls,
@@ -440,11 +427,7 @@ class TestSyncOperation:
         mock_gains_gen.generate.side_effect = ValueError("No taxable sales found in this period.")
         mock_gains_gen_cls.return_value = mock_gains_gen
 
-        # Mock IncomeReportGenerator (multiple declarations) - create actual temp files
-        temp_file1 = mock_user_data_dir / "ppopo_2023-07-15_VOO_dividend.xml"
-        temp_file1.write_text("<?xml version='1.0'?><test>income1</test>", encoding="utf-8")
-        temp_file2 = mock_user_data_dir / "ppopo_2023-07-16_SGOV_dividend.xml"
-        temp_file2.write_text("<?xml version='1.0'?><test>income2</test>", encoding="utf-8")
+        # Mock IncomeReportGenerator (multiple declarations) - no need for temp files anymore
 
         from ibkr_porez.models import IncomeDeclarationEntry as RealIncomeDeclarationEntry
 
@@ -468,8 +451,12 @@ class TestSyncOperation:
             porez_za_uplatu=Decimal("240.00"),
         )
         mock_income_gen.generate.return_value = [
-            (str(temp_file1), [mock_entry1]),
-            (str(temp_file2), [mock_entry2]),
+            ("ppopo-voo-2023-0715.xml", "<?xml version='1.0'?><test>income1</test>", [mock_entry1]),
+            (
+                "ppopo-sgov-2023-0716.xml",
+                "<?xml version='1.0'?><test>income2</test>",
+                [mock_entry2],
+            ),
         ]
         mock_income_gen_cls.return_value = mock_income_gen
 
@@ -490,18 +477,22 @@ class TestSyncOperation:
         # Verify both declarations created
         assert len(declarations) == 2
         assert all(d.type == DeclarationType.PPO for d in declarations)
-        assert "VOO" in declarations[0].declaration_id or "VOO" in declarations[1].declaration_id
-        assert "SGOV" in declarations[0].declaration_id or "SGOV" in declarations[1].declaration_id
+        # Verify both declarations have sequential IDs
+        declaration_ids = [d.declaration_id for d in declarations]
+        assert len(declaration_ids) == 2
+        assert all(did in ["1", "2"] for did in declaration_ids)
+        # Verify filenames contain the expected generator filenames
+        file_paths = [d.file_path for d in declarations if d.file_path]
+        assert any("ppopo-voo-2023-0715" in fp for fp in file_paths)
+        assert any("ppopo-sgov-2023-0716" in fp for fp in file_paths)
 
     @patch("ibkr_porez.operation_sync.GetOperation")
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")
     @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_income.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     def test_sync_generates_proper_filename_format(
         self,
-        mock_nbs_income,
-        mock_nbs_gains,
+        mock_nbs_cls,
         mock_income_gen_cls,
         mock_gains_gen_cls,
         mock_get_op_cls,
@@ -513,9 +504,7 @@ class TestSyncOperation:
         mock_get_op = mock_get_op_cls.return_value
         mock_get_op.execute.return_value = ([], 0, 0)
 
-        # Mock GainsReportGenerator - create actual temp file
-        temp_file = mock_user_data_dir / "ppdg3r_2023-01-01_2023-06-30.xml"
-        temp_file.write_text("<?xml version='1.0'?><test>gains</test>", encoding="utf-8")
+        # Mock GainsReportGenerator - no need for temp file anymore
 
         from ibkr_porez.models import TaxReportEntry as RealTaxReportEntry
 
@@ -533,7 +522,9 @@ class TestSyncOperation:
             purchase_value_rsd=Decimal("10000"),
             capital_gain_rsd=Decimal("1000.00"),
         )
-        mock_gains_gen.generate.return_value = [(str(temp_file), [mock_entry])]
+        mock_gains_gen.generate.return_value = [
+            ("ppdg3r-2023-H1.xml", "<?xml version='1.0'?><test>gains</test>", [mock_entry])
+        ]
         mock_gains_gen_cls.return_value = mock_gains_gen
 
         # Mock IncomeReportGenerator (no income) - return empty list
@@ -553,7 +544,6 @@ class TestSyncOperation:
 
         # Verify filename format: nnnn-ppdg3r-yyyy-Hh.xml
         assert len(declarations) == 1
-        filename = declarations[0].file_path
-        assert filename.startswith("0001-ppdg3r-2023-H1.xml") or filename.startswith(
-            "0001-ppdg3r-2023-H1"
-        )
+        file_path = declarations[0].file_path
+        filename = Path(file_path).name
+        assert filename == "001-ppdg3r-2023-H1.xml"

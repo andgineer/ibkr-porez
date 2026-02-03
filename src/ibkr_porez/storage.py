@@ -32,6 +32,11 @@ class Storage:
         self._raw_dir = self._data_dir / self.RAW_DIR
         self._ensure_dirs()
 
+    @property
+    def data_dir(self) -> Path:
+        """Get the data directory path."""
+        return self._data_dir
+
     def _ensure_dirs(self):
         self._data_dir.mkdir(parents=True, exist_ok=True)
         self._partition_dir.mkdir(parents=True, exist_ok=True)

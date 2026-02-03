@@ -95,8 +95,8 @@ class TestE2EIncome:
         return s
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_income.NBSClient")
-    @patch("ibkr_porez.report_income.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_income_basic(
         self,
         mock_config_manager,
@@ -118,18 +118,19 @@ class TestE2EIncome:
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = Decimal("100.0")  # 1 USD = 100 RSD
 
-        result = runner.invoke(
-            ibkr_porez,
-            ["report", "--type=income", "--start=2025-12-24", "--end=2025-12-25"],
-        )
+        with runner.isolated_filesystem():
+            result = runner.invoke(
+                ibkr_porez,
+                ["report", "--type=income", "--start=2025-12-24", "--end=2025-12-25"],
+            )
 
-        assert result.exit_code == 0
+            assert result.exit_code == 0
         assert "Generating PP OPO Report" in result.output
         assert "declaration(s)" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_income.NBSClient")
-    @patch("ibkr_porez.report_income.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_income_missing_tax_error(
         self,
         mock_config_manager,
@@ -183,8 +184,8 @@ class TestE2EIncome:
         )
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_income.NBSClient")
-    @patch("ibkr_porez.report_income.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_income_with_force(
         self,
         mock_config_manager,
@@ -222,18 +223,19 @@ class TestE2EIncome:
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = Decimal("100.0")
 
-        result = runner.invoke(
-            ibkr_porez,
-            ["report", "--type=income", "--start=2025-12-24", "--end=2025-12-24", "--force"],
-        )
+        with runner.isolated_filesystem():
+            result = runner.invoke(
+                ibkr_porez,
+                ["report", "--type=income", "--start=2025-12-24", "--end=2025-12-24", "--force"],
+            )
 
-        assert result.exit_code == 0
+            assert result.exit_code == 0
         assert "WARNING: --force flag is set" in result.output
         assert "declaration(s)" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_income.NBSClient")
-    @patch("ibkr_porez.report_income.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_income_no_data(
         self,
         mock_config_manager,
@@ -256,17 +258,18 @@ class TestE2EIncome:
         # Empty storage
         Storage()
 
-        result = runner.invoke(
-            ibkr_porez,
-            ["report", "--type=income", "--start=2025-12-24", "--end=2025-12-25"],
-        )
+        with runner.isolated_filesystem():
+            result = runner.invoke(
+                ibkr_porez,
+                ["report", "--type=income", "--start=2025-12-24", "--end=2025-12-25"],
+            )
 
-        assert result.exit_code == 0
+            assert result.exit_code == 0
         assert "No transactions found" in result.output or "No income" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_income.NBSClient")
-    @patch("ibkr_porez.report_income.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_income_separate_by_date(
         self,
         mock_config_manager,
@@ -288,12 +291,13 @@ class TestE2EIncome:
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = Decimal("100.0")
 
-        result = runner.invoke(
-            ibkr_porez,
-            ["report", "--type=income", "--start=2025-12-24", "--end=2025-12-25"],
-        )
+        with runner.isolated_filesystem():
+            result = runner.invoke(
+                ibkr_porez,
+                ["report", "--type=income", "--start=2025-12-24", "--end=2025-12-25"],
+            )
 
-        assert result.exit_code == 0
-        # Should create separate declarations for 2025-12-24 and 2025-12-25
-        assert "2025-12-24" in result.output
-        assert "2025-12-25" in result.output
+            assert result.exit_code == 0
+            # Should create separate declarations for 2025-12-24 and 2025-12-25
+            assert "2025-12-24" in result.output
+            assert "2025-12-25" in result.output

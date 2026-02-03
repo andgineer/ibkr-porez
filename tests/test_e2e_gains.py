@@ -26,8 +26,8 @@ def runner():
 @allure.feature("ppdg-3r")
 class TestE2EReport:
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_generation_h1(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -101,8 +101,8 @@ class TestE2EReport:
                 assert "AAPL" in content  # Basic check
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_generation_file_check(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -161,10 +161,10 @@ class TestE2EReport:
             assert "ns1:ProdajnaCena" in content
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.config_manager")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_fifo_complex(
         self,
         mock_report_cfg_mgr,
@@ -249,8 +249,8 @@ class TestE2EReport:
             # Gain 23400 is already asserted above.
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_no_sales(
         self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -282,9 +282,9 @@ class TestE2EReport:
         assert "No taxable sales found" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_invalid_format(
         self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -300,9 +300,9 @@ class TestE2EReport:
         assert "Half-year must be 1 or 2" in result_bad_half.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_default_period(
         self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
@@ -318,9 +318,9 @@ class TestE2EReport:
         assert "No transactions found" in result.output
 
     @patch("ibkr_porez.nbs.requests.get")
-    @patch("ibkr_porez.report_gains.NBSClient")
+    @patch("ibkr_porez.report_base.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
-    @patch("ibkr_porez.report_gains.config_manager")
+    @patch("ibkr_porez.report_base.config_manager")
     def test_report_no_transactions_found(
         self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
