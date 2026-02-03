@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 
@@ -106,6 +106,40 @@ class IncomeDeclarationEntry(BaseModel):
     obracunati_porez: Decimal  # ObracunatiPorez (calculated tax)
     porez_placen_drugoj_drzavi: Decimal  # PorezPlacenDrugojDrzavi (foreign tax paid)
     porez_za_uplatu: Decimal  # PorezZaUplatu (tax to pay)
+
+
+class DeclarationType(str, Enum):
+    """Type of tax declaration."""
+
+    PPDG3R = "PPDG-3R"  # Capital Gains
+    PPO = "PP OPO"  # Capital Income (Dividends/Coupons)
+
+
+class DeclarationStatus(str, Enum):
+    """Status of tax declaration."""
+
+    DRAFT = "draft"  # Created but not submitted
+    SUBMITTED = "submitted"  # Submitted to tax portal
+    PAID = "paid"  # Paid
+
+
+class Declaration(BaseModel):
+    """Tax declaration with lifecycle management."""
+
+    declaration_id: str = Field(..., description="Unique declaration ID")
+    type: DeclarationType
+    status: DeclarationStatus = DeclarationStatus.DRAFT
+    period_start: date
+    period_end: date
+    created_at: datetime
+    submitted_at: datetime | None = None
+    paid_at: datetime | None = None
+    file_path: str | None = None  # Path to XML file
+    xml_content: str | None = None  # XML content (for export)
+    report_data: list[TaxReportEntry | IncomeDeclarationEntry] | None = (
+        None  # Data for display (for export)
+    )
+    metadata: dict = Field(default_factory=dict)  # Additional data (count, sums, etc.)
 
 
 class UserConfig(BaseModel):

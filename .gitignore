@@ -18,3 +18,4 @@ pytest-coverage.txt
 allure-results/
 dist/
 ppdg3r*.xml
+.DS_Store

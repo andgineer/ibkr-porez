@@ -23,11 +23,19 @@ def runner():
 @allure.epic("End-to-end")
 @allure.feature("Fetching from IBKR")
 class TestE2EFetching:
+    @patch("ibkr_porez.operation_get.NBSClient")
     @patch("ibkr_porez.main.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.config_manager")
     def test_get_command_complex_fetch(
-        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
+        self,
+        mock_cfg_mgr,
+        mock_fetch,
+        mock_nbs_cls_main,
+        mock_nbs_cls_get,
+        runner,
+        mock_user_data_dir,
+        resources_path,
     ):
         """
         Scenario: Fetch complex Flex Query with multiple trades, splits, and cash interactions.
@@ -38,9 +46,11 @@ class TestE2EFetching:
             ibkr_token="test_token", ibkr_query_id="test_query"
         )
 
-        # Mock NBS
-        mock_nbs = mock_nbs_cls.return_value
-        mock_nbs.get_rate.return_value = None
+        # Mock NBS (both in main and operation_get)
+        mock_nbs_main = mock_nbs_cls_main.return_value
+        mock_nbs_main.get_rate.return_value = None
+        mock_nbs_get = mock_nbs_cls_get.return_value
+        mock_nbs_get.get_rate.return_value = None
 
         # Load complex XML
         with open(resources_path / "complex_flex.xml", "rb") as f:
@@ -85,6 +95,7 @@ class TestE2EFetching:
     def test_import_command_complex(
         self, mock_cfg_mgr, mock_nbs_cls, runner, mock_user_data_dir, resources_path
     ):
+        # Import doesn't use operation_get, so only main.NBSClient needs patching
         """
         Scenario: Import complex CSV.
         Expect: All transactions parsed.
@@ -112,11 +123,19 @@ class TestE2EFetching:
         msft = txs[txs["symbol"] == "MSFT"].iloc[0]
         assert msft["transaction_id"] == "csv-MSFT_ONLY_CSV"
 
+    @patch("ibkr_porez.operation_get.NBSClient")
     @patch("ibkr_porez.main.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.config_manager")
     def test_workflow_partial_upgrade(
-        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
+        self,
+        mock_cfg_mgr,
+        mock_fetch,
+        mock_nbs_cls_main,
+        mock_nbs_cls_get,
+        runner,
+        mock_user_data_dir,
+        resources_path,
     ):
         """
         Scenario (Partial Upgrade):
@@ -130,8 +149,10 @@ class TestE2EFetching:
         """
         mock_cfg_mgr.load_config.return_value = MagicMock(ibkr_token="t", ibkr_query_id="q")
 
-        mock_nbs = mock_nbs_cls.return_value
-        mock_nbs.get_rate.return_value = None
+        mock_nbs_main = mock_nbs_cls_main.return_value
+        mock_nbs_main.get_rate.return_value = None
+        mock_nbs_get = mock_nbs_cls_get.return_value
+        mock_nbs_get.get_rate.return_value = None
 
         with open(resources_path / "complex_flex.xml", "rb") as f:
             mock_fetch.return_value = f.read()
@@ -173,11 +194,19 @@ class TestE2EFetching:
         msft = txs[txs["symbol"] == "MSFT"].iloc[0]
         assert msft["transaction_id"] == "csv-MSFT_ONLY_CSV"
 
+    @patch("ibkr_porez.operation_get.NBSClient")
     @patch("ibkr_porez.main.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.config_manager")
     def test_workflow_skip_duplicates(
-        self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, runner, mock_user_data_dir, resources_path
+        self,
+        mock_cfg_mgr,
+        mock_fetch,
+        mock_nbs_cls_main,
+        mock_nbs_cls_get,
+        runner,
+        mock_user_data_dir,
+        resources_path,
     ):
         """
         Scenario:
@@ -190,8 +219,10 @@ class TestE2EFetching:
         """
         mock_cfg_mgr.load_config.return_value = MagicMock(ibkr_token="t", ibkr_query_id="q")
 
-        mock_nbs = mock_nbs_cls.return_value
-        mock_nbs.get_rate.return_value = None
+        mock_nbs_main = mock_nbs_cls_main.return_value
+        mock_nbs_main.get_rate.return_value = None
+        mock_nbs_get = mock_nbs_cls_get.return_value
+        mock_nbs_get.get_rate.return_value = None
 
         with open(resources_path / "complex_flex.xml", "rb") as f:
             mock_fetch.return_value = f.read()

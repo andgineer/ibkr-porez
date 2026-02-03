@@ -1,7 +1,6 @@
 """ibkr-porez."""
 
 import logging
-import time
 from pathlib import Path
 
 import rich_click as click
@@ -12,8 +11,8 @@ from rich.progress import track
 from ibkr_porez import __version__
 from ibkr_porez.config import UserConfig, config_manager
 from ibkr_porez.ibkr_csv import CSVParser
-from ibkr_porez.ibkr_flex_query import IBKRClient
 from ibkr_porez.nbs import NBSClient
+from ibkr_porez.operation_get import GetOperation
 from ibkr_porez.operation_report import execute_report_command
 from ibkr_porez.operation_show import ShowStatistics
 from ibkr_porez.storage import Storage
@@ -118,34 +117,22 @@ def get():
         console.print("[red]Missing Configuration! Run `ibkr-porez config` first.[/red]")
         return
 
-    storage = Storage()
-    ibkr = IBKRClient(cfg.ibkr_token, cfg.ibkr_query_id)
-    nbs = NBSClient(storage)
+    operation = GetOperation(cfg)
 
     with console.status("[bold green]Fetching data from IBKR...[/bold green]"):
         try:
-            # 1. Fetch XML
             console.print("[blue]Fetching full report...[/blue]")
-            xml_content = ibkr.fetch_latest_report()
-            filename = f"flex_report_{int(time.time())}.xml"
-            storage.save_raw_report(xml_content, filename)
-
-            # 2. Parse
-            transactions = ibkr.parse_report(xml_content)
-
-            # 3. Save
-            count_inserted, count_updated = storage.save_transactions(transactions)
+            transactions, count_inserted, count_updated = operation.execute()
             msg = f"Fetched {len(transactions)} transactions."
             stats = f"({count_inserted} new, {count_updated} updated)"
             console.print(f"[green]{msg} {stats}[/green]")
 
         except Exception as e:  # noqa: BLE001
-            # Stop if XML fetch/parse fails
             console.print(f"[bold red]Error:[/bold red] {e}")
             console.print_exception()
             return
 
-    # 4. Sync Rates (Priming Cache) - OUTSIDE status context
+    # Show rate sync status
     try:
         console.print("[blue]Syncing NBS exchange rates...[/blue]")
         dates_to_fetch = set()
@@ -155,7 +142,7 @@ def get():
                 dates_to_fetch.add((tx.open_date, tx.currency))
 
         for d, curr in track(dates_to_fetch, description="Fetching rates...", console=console):
-            nbs.get_rate(d, curr)
+            operation.nbs.get_rate(d, curr)
 
         console.print("[bold green]Sync Complete![/bold green]")
 
@@ -198,8 +185,6 @@ def import_file(file_path: Path):
             dates_to_fetch.add((tx.date, tx.currency))
             if tx.open_date:
                 dates_to_fetch.add((tx.open_date, tx.currency))
-
-        from rich.progress import track
 
         for d, curr in track(dates_to_fetch, description="Fetching rates...", console=console):
             nbs.get_rate(d, curr)

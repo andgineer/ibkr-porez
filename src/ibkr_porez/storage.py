@@ -1,24 +1,34 @@
 import json
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
 import pandas as pd
 from platformdirs import user_data_dir
 
-from ibkr_porez.models import Currency, ExchangeRate, Transaction
+from ibkr_porez.models import (
+    Currency,
+    Declaration,
+    DeclarationStatus,
+    DeclarationType,
+    ExchangeRate,
+    Transaction,
+)
 
 
 class Storage:
     APP_NAME = "ibkr-porez"
     RATES_FILENAME = "rates.json"
+    DECLARATIONS_FILENAME = "declarations.json"
     RAW_DIR = "raw_reports"
     PARTITION_DIR = "partitions"
+    LAST_DECLARATION_DATE_KEY = "last_declaration_date"
 
     def __init__(self):
         self._data_dir = Path(user_data_dir(self.APP_NAME))
         self._partition_dir = self._data_dir / self.PARTITION_DIR
         self._rates_file = self._data_dir / self.RATES_FILENAME
+        self._declarations_file = self._data_dir / self.DECLARATIONS_FILENAME
         self._raw_dir = self._data_dir / self.RAW_DIR
         self._ensure_dirs()
 
@@ -457,3 +467,113 @@ class Storage:
                 return json.load(f)
         except (json.JSONDecodeError, OSError):
             return {}
+
+    # --- Declarations (JSON) ---
+
+    def _load_declarations(self) -> dict:
+        """Load declarations data from JSON file."""
+        if not self._declarations_file.exists():
+            return {"declarations": [], "last_declaration_date": None}
+        try:
+            with open(self._declarations_file, encoding="utf-8") as f:
+                data = json.load(f)
+                # Ensure required keys exist
+                if "declarations" not in data:
+                    data["declarations"] = []
+                if "last_declaration_date" not in data:
+                    data["last_declaration_date"] = None
+                return data
+        except (json.JSONDecodeError, OSError):
+            return {"declarations": [], "last_declaration_date": None}
+
+    def _save_declarations(self, data: dict) -> None:
+        """Save declarations data to JSON file."""
+        with open(self._declarations_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, default=str, ensure_ascii=False)
+
+    def save_declaration(self, declaration: Declaration) -> None:
+        """Save or update declaration."""
+        data = self._load_declarations()
+        declarations = [Declaration(**d) for d in data["declarations"]]
+
+        # Find existing declaration by ID
+        existing_idx = None
+        for idx, decl in enumerate(declarations):
+            if decl.declaration_id == declaration.declaration_id:
+                existing_idx = idx
+                break
+
+        if existing_idx is not None:
+            declarations[existing_idx] = declaration
+        else:
+            declarations.append(declaration)
+
+        # Convert back to dicts
+        data["declarations"] = [d.model_dump(mode="json") for d in declarations]
+        self._save_declarations(data)
+
+    def get_declarations(
+        self,
+        status: DeclarationStatus | None = None,
+        declaration_type: DeclarationType | None = None,
+    ) -> list[Declaration]:
+        """Get declarations with optional filtering."""
+        data = self._load_declarations()
+        declarations = [Declaration(**d) for d in data["declarations"]]
+
+        # Apply filters
+        if status is not None:
+            declarations = [d for d in declarations if d.status == status]
+        if declaration_type is not None:
+            declarations = [d for d in declarations if d.type == declaration_type]
+
+        return declarations
+
+    def get_declaration(self, declaration_id: str) -> Declaration | None:
+        """Get specific declaration by ID."""
+        data = self._load_declarations()
+        declarations = [Declaration(**d) for d in data["declarations"]]
+
+        for decl in declarations:
+            if decl.declaration_id == declaration_id:
+                return decl
+        return None
+
+    def declaration_exists(self, declaration_id: str) -> bool:
+        """Check if declaration exists."""
+        return self.get_declaration(declaration_id) is not None
+
+    def update_declaration_status(
+        self,
+        declaration_id: str,
+        status: DeclarationStatus,
+        timestamp: datetime,
+    ) -> None:
+        """Update declaration status and timestamp."""
+        decl = self.get_declaration(declaration_id)
+        if not decl:
+            raise ValueError(f"Declaration {declaration_id} not found")
+
+        decl.status = status
+        if status == DeclarationStatus.SUBMITTED:
+            decl.submitted_at = timestamp
+        elif status == DeclarationStatus.PAID:
+            decl.paid_at = timestamp
+
+        self.save_declaration(decl)
+
+    def get_last_declaration_date(self) -> date | None:
+        """Get last date for which declarations were created."""
+        data = self._load_declarations()
+        date_str = data.get("last_declaration_date")
+        if date_str:
+            return (
+                datetime.fromisoformat(date_str).date() if isinstance(date_str, str) else date_str
+            )
+        return None
+
+    def set_last_declaration_date(self, date_obj: date) -> None:
+        """Set last date for which declarations were created."""
+        data = self._load_declarations()
+        data["last_declaration_date"] = date_obj.isoformat()
+        self._save_declarations(data)
