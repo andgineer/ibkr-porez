@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for src/ibkr_porez/report_income.py: 89%</title>
+    <title>Coverage for src/ibkr_porez/report_income.py: 90%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_9ff733b0.css" type="text/css">
     <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
@@ -12,7 +12,7 @@
     <div class="content">
         <h1>
             <span class="text">Coverage for </span><b>src&#8201;/&#8201;ibkr_porez&#8201;/&#8201;report_income.py</b>:
-            <span class="pc_cov">89%</span>
+            <span class="pc_cov">90%</span>
         </h1>
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
@@ -54,9 +54,9 @@
             </div>
         </aside>
         <h2>
-            <span class="text">148 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">132<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">16<span class="text"> missing</span></button>
+            <span class="text">147 statements &nbsp;</span>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">133<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">14<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_554927f107f7791a_storage_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-03 05:02 +0000
+            created at 2026-02-03 07:21 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -510,21 +510,20 @@
     <p class="run run2"><span class="n"><a id="t428" href="#t428">428</a></span><span class="t">            <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t429" href="#t429">429</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t430" href="#t430">430</a></span><span class="t">            <span class="com"># Generate filename</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t431" href="#t431">431</a></span><span class="t">            <span class="com"># For interest: use currency code in filename; for dividends: use symbol</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t432" href="#t432">432</a></span><span class="t">            <span class="nam">filename_key</span> <span class="op">=</span> <span class="nam">currency</span><span class="op">.</span><span class="nam">value</span> <span class="key">if</span> <span class="nam">income_type</span> <span class="op">==</span> <span class="str">"coupon"</span> <span class="key">else</span> <span class="nam">symbol</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t433" href="#t433">433</a></span><span class="t">            <span class="key">if</span> <span class="nam">filename</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t434" href="#t434">434</a></span><span class="t">                <span class="com"># If base filename provided, append date, key and type</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t435" href="#t435">435</a></span><span class="t">                <span class="nam">base</span> <span class="op">=</span> <span class="nam">filename</span><span class="op">.</span><span class="nam">replace</span><span class="op">(</span><span class="str">".xml"</span><span class="op">,</span> <span class="str">""</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t436" href="#t436">436</a></span><span class="t">                <span class="nam">file_path</span> <span class="op">=</span> <span class="fst">f"</span><span class="op">{</span><span class="nam">base</span><span class="op">}</span><span class="fst">_</span><span class="op">{</span><span class="nam">declaration_date</span><span class="op">}</span><span class="fst">_</span><span class="op">{</span><span class="nam">filename_key</span><span class="op">}</span><span class="fst">_</span><span class="op">{</span><span class="nam">income_type</span><span class="op">}</span><span class="fst">.xml</span><span class="fst">"</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t437" href="#t437">437</a></span><span class="t">            <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t438" href="#t438">438</a></span><span class="t">                <span class="nam">file_path</span> <span class="op">=</span> <span class="fst">f"</span><span class="fst">ppopo_</span><span class="op">{</span><span class="nam">declaration_date</span><span class="op">}</span><span class="fst">_</span><span class="op">{</span><span class="nam">filename_key</span><span class="op">}</span><span class="fst">_</span><span class="op">{</span><span class="nam">income_type</span><span class="op">}</span><span class="fst">.xml</span><span class="fst">"</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t439" href="#t439">439</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t440" href="#t440">440</a></span><span class="t">            <span class="com"># Write file</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t441" href="#t441">441</a></span><span class="t">            <span class="key">with</span> <span class="nam">open</span><span class="op">(</span><span class="nam">file_path</span><span class="op">,</span> <span class="str">"w"</span><span class="op">,</span> <span class="nam">encoding</span><span class="op">=</span><span class="str">"utf-8"</span><span class="op">)</span> <span class="key">as</span> <span class="nam">f</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t442" href="#t442">442</a></span><span class="t">                <span class="nam">f</span><span class="op">.</span><span class="nam">write</span><span class="op">(</span><span class="nam">xml_content</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t443" href="#t443">443</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t444" href="#t444">444</a></span><span class="t">            <span class="com"># Yield declaration entry (one per declaration)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t445" href="#t445">445</a></span><span class="t">            <span class="key">yield</span> <span class="nam">file_path</span><span class="op">,</span> <span class="op">[</span><span class="nam">declaration_entry</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t431" href="#t431">431</a></span><span class="t">            <span class="com"># Format: ppopo-{symbol}-{yyyy}-{mmdd}.xml</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t432" href="#t432">432</a></span><span class="t">            <span class="com"># (matching sync style, without declaration number)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t433" href="#t433">433</a></span><span class="t">            <span class="com"># For interest: use currency code in filename; for dividends: use symbol</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t434" href="#t434">434</a></span><span class="t">            <span class="nam">filename_key</span> <span class="op">=</span> <span class="nam">currency</span><span class="op">.</span><span class="nam">value</span> <span class="key">if</span> <span class="nam">income_type</span> <span class="op">==</span> <span class="str">"coupon"</span> <span class="key">else</span> <span class="nam">symbol</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t435" href="#t435">435</a></span><span class="t">            <span class="nam">symbol_lower</span> <span class="op">=</span> <span class="nam">filename_key</span><span class="op">.</span><span class="nam">lower</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t436" href="#t436">436</a></span><span class="t">            <span class="nam">date_str</span> <span class="op">=</span> <span class="nam">declaration_date</span><span class="op">.</span><span class="nam">strftime</span><span class="op">(</span><span class="str">"%Y-%m%d"</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t437" href="#t437">437</a></span><span class="t">            <span class="nam">file_path</span> <span class="op">=</span> <span class="nam">filename</span> <span class="key">if</span> <span class="nam">filename</span> <span class="key">else</span> <span class="fst">f"</span><span class="fst">ppopo-</span><span class="op">{</span><span class="nam">symbol_lower</span><span class="op">}</span><span class="fst">-</span><span class="op">{</span><span class="nam">date_str</span><span class="op">}</span><span class="fst">.xml</span><span class="fst">"</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t438" href="#t438">438</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t439" href="#t439">439</a></span><span class="t">            <span class="com"># Write file</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t440" href="#t440">440</a></span><span class="t">            <span class="key">with</span> <span class="nam">open</span><span class="op">(</span><span class="nam">file_path</span><span class="op">,</span> <span class="str">"w"</span><span class="op">,</span> <span class="nam">encoding</span><span class="op">=</span><span class="str">"utf-8"</span><span class="op">)</span> <span class="key">as</span> <span class="nam">f</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t441" href="#t441">441</a></span><span class="t">                <span class="nam">f</span><span class="op">.</span><span class="nam">write</span><span class="op">(</span><span class="nam">xml_content</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t442" href="#t442">442</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t443" href="#t443">443</a></span><span class="t">            <span class="com"># Yield declaration entry (one per declaration)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t444" href="#t444">444</a></span><span class="t">            <span class="key">yield</span> <span class="nam">file_path</span><span class="op">,</span> <span class="op">[</span><span class="nam">declaration_entry</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -534,7 +533,7 @@
             <a class="nav" href="z_554927f107f7791a_storage_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-03 05:02 +0000
+            created at 2026-02-03 07:21 +0000
         </p>
     </div>
 </footer>
