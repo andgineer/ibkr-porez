@@ -115,6 +115,53 @@ class TestSyncOperation:
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")
     @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
     @patch("ibkr_porez.report_base.NBSClient")
+    def test_sync_skips_income_when_no_income_found(
+        self,
+        mock_nbs_cls,
+        mock_income_gen_cls,
+        mock_gains_gen_cls,
+        mock_get_op_cls,
+        mock_config,
+        mock_user_data_dir,
+    ):
+        """Test that sync skips income declarations when no income found (not an error)."""
+        # Mock GetOperation
+        mock_get_op = mock_get_op_cls.return_value
+        mock_get_op.execute.return_value = ([], 0, 0)
+
+        # Mock GainsReportGenerator (no gains) - should skip silently
+        mock_gains_gen = MagicMock()
+        mock_gains_gen.generate.side_effect = ValueError("No taxable sales found in this period.")
+        mock_gains_gen_cls.return_value = mock_gains_gen
+
+        # Mock IncomeReportGenerator - no income found (should skip, not error)
+        mock_income_gen = MagicMock()
+        mock_income_gen.generate.side_effect = ValueError(
+            "No income (dividends/coupons) found in this period.",
+        )
+        mock_income_gen_cls.return_value = mock_income_gen
+
+        # Create sync operation
+        sync_op = SyncOperation(mock_config)
+
+        # Set last_declaration_date
+        storage = Storage()
+        storage.set_last_declaration_date(date(2023, 6, 30))
+
+        # Mock current date to be in H2 2023
+        with patch("ibkr_porez.operation_sync.datetime") as mock_dt:
+            mock_dt.now.return_value.date.return_value = date(2023, 8, 15)
+            mock_dt.now.return_value = datetime(2023, 8, 15, 12, 0, 0)
+
+            declarations = sync_op.execute()
+
+        # Verify: no declarations created, but no error raised
+        assert len(declarations) == 0
+
+    @patch("ibkr_porez.operation_sync.GetOperation")
+    @patch("ibkr_porez.operation_sync.GainsReportGenerator")
+    @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
+    @patch("ibkr_porez.report_base.NBSClient")
     def test_sync_creates_income_declaration(
         self,
         mock_nbs_cls,

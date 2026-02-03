@@ -4,9 +4,19 @@ from unittest.mock import patch
 from click.testing import CliRunner
 from ibkr_porez.main import ibkr_porez
 from ibkr_porez.storage import Storage
-from ibkr_porez.models import Transaction, TransactionType, Currency
+from ibkr_porez.models import (
+    Transaction,
+    TransactionType,
+    Currency,
+    Declaration,
+    DeclarationType,
+    DeclarationStatus,
+    TaxReportEntry,
+    IncomeDeclarationEntry,
+    INCOME_CODE_DIVIDEND,
+)
 from decimal import Decimal
-from datetime import date
+from datetime import date, datetime
 
 
 @pytest.fixture
@@ -192,3 +202,225 @@ class TestE2EShow:
 
         assert result.exit_code == 0
         assert "No transactions found" in result.output
+
+    def test_show_declaration_gains(self, runner, mock_user_data_dir):
+        """
+        Scenario: Run `show 1` where declaration_id=1 is a PPDG-3R (gains) declaration.
+        Expect: Declaration details with table showing entries.
+        """
+        storage = Storage()
+
+        # Create a gains declaration
+        gains_entry = TaxReportEntry(
+            ticker="AAPL",
+            sale_date=date(2023, 3, 15),
+            quantity=Decimal("10"),
+            sale_price=Decimal("120"),
+            sale_exchange_rate=Decimal("117.0"),
+            sale_value_rsd=Decimal("12000"),
+            purchase_date=date(2023, 1, 10),
+            purchase_price=Decimal("100"),
+            purchase_exchange_rate=Decimal("117.0"),
+            purchase_value_rsd=Decimal("10000"),
+            capital_gain_rsd=Decimal("2000.00"),
+        )
+
+        declaration = Declaration(
+            declaration_id="1",
+            type=DeclarationType.PPDG3R,
+            status=DeclarationStatus.DRAFT,
+            period_start=date(2023, 1, 1),
+            period_end=date(2023, 6, 30),
+            created_at=datetime(2023, 7, 1, 12, 0, 0),
+            file_path=str(mock_user_data_dir / "001-ppdg3r-2023-H1.xml"),
+            xml_content="<?xml version='1.0'?><test>gains</test>",
+            report_data=[gains_entry],
+            metadata={"total_gain": 2000.00, "entry_count": 1},
+        )
+
+        storage.save_declaration(declaration)
+
+        result = runner.invoke(ibkr_porez, ["show", "1"], env={"COLUMNS": "200"})
+
+        assert result.exit_code == 0
+        # Check declaration header
+        assert "Declaration ID: 1" in result.output
+        assert "PPDG-3R" in result.output
+        assert "draft" in result.output
+        assert "2023-01-01 to 2023-06-30" in result.output
+
+        # Check declaration data table
+        assert "Declaration Data" in result.output
+        assert "Declaration Data (Part 4)" in result.output
+        assert "AAPL" in result.output
+        assert "2023-0" in result.output  # Date may be truncated in table
+        assert "10.00" in result.output
+        assert "12000" in result.output
+        assert "2000.00" in result.output  # Gain amount
+
+        # Check metadata
+        assert "Metadata" in result.output
+        assert "total_gain" in result.output
+        assert "2000.00" in result.output
+        assert "entry_count" in result.output
+        assert "1" in result.output
+
+    def test_show_declaration_income(self, runner, mock_user_data_dir):
+        """
+        Scenario: Run `show 2` where declaration_id=2 is a PP OPO (income) declaration.
+        Expect: Declaration details with income fields.
+        """
+        storage = Storage()
+
+        # Create an income declaration
+        income_entry = IncomeDeclarationEntry(
+            date=date(2023, 12, 24),
+            sifra_vrste_prihoda=INCOME_CODE_DIVIDEND,
+            bruto_prihod=Decimal("8706.70"),
+            osnovica_za_porez=Decimal("8706.70"),
+            obracunati_porez=Decimal("1306.01"),
+            porez_placen_drugoj_drzavi=Decimal("2612.51"),
+            porez_za_uplatu=Decimal("0.00"),
+        )
+
+        declaration = Declaration(
+            declaration_id="2",
+            type=DeclarationType.PPO,
+            status=DeclarationStatus.DRAFT,
+            period_start=date(2023, 12, 24),
+            period_end=date(2023, 12, 24),
+            created_at=datetime(2023, 12, 25, 10, 0, 0),
+            file_path=str(mock_user_data_dir / "002-ppopo-sgov-2023-1224.xml"),
+            xml_content="<?xml version='1.0'?><test>income</test>",
+            report_data=[income_entry],
+            metadata={"symbol": "SGOV", "income_type": "dividend"},
+        )
+
+        storage.save_declaration(declaration)
+
+        result = runner.invoke(ibkr_porez, ["show", "2"], env={"COLUMNS": "200"})
+
+        assert result.exit_code == 0
+        # Check declaration header
+        assert "Declaration ID: 2" in result.output
+        assert "PP OPO" in result.output
+        assert "draft" in result.output
+        assert "2023-12-24 to 2023-12-24" in result.output
+
+        # Check declaration data fields
+        assert "Declaration Data" in result.output
+        assert "Date: 2023-12-24" in result.output
+        assert f"SifraVrstePrihoda: {INCOME_CODE_DIVIDEND}" in result.output
+        assert "BrutoPrihod: 8706.70 RSD" in result.output
+        assert "OsnovicaZaPorez: 8706.70 RSD" in result.output
+        assert "ObracunatiPorez: 1306.01 RSD" in result.output
+        assert "PorezPlacenDrugojDrzavi: 2612.51 RSD" in result.output
+        assert "PorezZaUplatu: 0.00 RSD" in result.output
+
+        # Check metadata
+        assert "Metadata" in result.output
+        assert "symbol" in result.output
+        assert "SGOV" in result.output
+        assert "income_type" in result.output
+        assert "dividend" in result.output
+
+    def test_show_declaration_with_submitted_status(self, runner, mock_user_data_dir):
+        """
+        Scenario: Run `show 3` where declaration has been submitted.
+        Expect: Declaration details including submitted timestamp.
+        """
+        storage = Storage()
+
+        gains_entry = TaxReportEntry(
+            ticker="MSFT",
+            sale_date=date(2023, 9, 10),
+            quantity=Decimal("5"),
+            sale_price=Decimal("350"),
+            sale_exchange_rate=Decimal("117.0"),
+            sale_value_rsd=Decimal("204750"),
+            purchase_date=date(2023, 7, 1),
+            purchase_price=Decimal("300"),
+            purchase_exchange_rate=Decimal("117.0"),
+            purchase_value_rsd=Decimal("175500"),
+            capital_gain_rsd=Decimal("29250.00"),
+        )
+
+        declaration = Declaration(
+            declaration_id="3",
+            type=DeclarationType.PPDG3R,
+            status=DeclarationStatus.SUBMITTED,
+            period_start=date(2023, 7, 1),
+            period_end=date(2023, 12, 31),
+            created_at=datetime(2024, 1, 5, 10, 0, 0),
+            submitted_at=datetime(2024, 1, 10, 14, 30, 0),
+            file_path=str(mock_user_data_dir / "003-ppdg3r-2023-H2.xml"),
+            xml_content="<?xml version='1.0'?><test>gains</test>",
+            report_data=[gains_entry],
+            metadata={"total_gain": 29250.00, "entry_count": 1},
+        )
+
+        storage.save_declaration(declaration)
+
+        result = runner.invoke(ibkr_porez, ["show", "3"], env={"COLUMNS": "200"})
+
+        assert result.exit_code == 0
+        assert "Declaration ID: 3" in result.output
+        assert "submitted" in result.output
+        assert "Submitted:" in result.output
+        assert "2024-01-10" in result.output
+
+    def test_show_declaration_with_paid_status(self, runner, mock_user_data_dir):
+        """
+        Scenario: Run `show 4` where declaration has been paid.
+        Expect: Declaration details including paid timestamp.
+        """
+        storage = Storage()
+
+        income_entry = IncomeDeclarationEntry(
+            date=date(2023, 6, 15),
+            sifra_vrste_prihoda=INCOME_CODE_DIVIDEND,
+            bruto_prihod=Decimal("5000.00"),
+            osnovica_za_porez=Decimal("5000.00"),
+            obracunati_porez=Decimal("750.00"),
+            porez_placen_drugoj_drzavi=Decimal("750.00"),
+            porez_za_uplatu=Decimal("0.00"),
+        )
+
+        declaration = Declaration(
+            declaration_id="4",
+            type=DeclarationType.PPO,
+            status=DeclarationStatus.PAID,
+            period_start=date(2023, 6, 15),
+            period_end=date(2023, 6, 15),
+            created_at=datetime(2023, 6, 16, 9, 0, 0),
+            submitted_at=datetime(2023, 6, 20, 11, 0, 0),
+            paid_at=datetime(2023, 6, 25, 15, 45, 0),
+            file_path=str(mock_user_data_dir / "004-ppopo-ko-2023-0615.xml"),
+            xml_content="<?xml version='1.0'?><test>income</test>",
+            report_data=[income_entry],
+            metadata={"symbol": "KO", "income_type": "dividend"},
+        )
+
+        storage.save_declaration(declaration)
+
+        result = runner.invoke(ibkr_porez, ["show", "4"], env={"COLUMNS": "200"})
+
+        assert result.exit_code == 0
+        assert "Declaration ID: 4" in result.output
+        assert "paid" in result.output
+        assert "Submitted:" in result.output
+        assert "Paid:" in result.output
+        assert "2023-06-25" in result.output
+
+    def test_show_declaration_not_found(self, runner, mock_user_data_dir):
+        """
+        Scenario: Run `show 999` where declaration_id=999 does not exist.
+        Expect: Error message indicating declaration not found.
+        """
+        storage = Storage()
+        # Don't create any declarations
+
+        result = runner.invoke(ibkr_porez, ["show", "999"])
+
+        assert result.exit_code == 0  # Command succeeds but shows error message
+        assert "Declaration '999' not found" in result.output

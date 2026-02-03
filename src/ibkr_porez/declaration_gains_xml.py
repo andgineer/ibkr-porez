@@ -5,6 +5,11 @@ from ibkr_porez.models import TaxReportEntry, UserConfig
 
 
 class XMLGenerator:
+    """Generator for PPDG-3R XML declarations."""
+
+    # Tax declaration due date: 30 days after period end (legal requirement)
+    TAX_DUE_DATE_DAYS = 30
+
     def __init__(self, config: UserConfig):
         self.config = config
 
@@ -55,14 +60,14 @@ class XMLGenerator:
 
         create_text(p_prijavi, "IsplataUDelovima", "0")
 
-        # 1.3 DatumDospelosti: 30 days after period end.
+        # 1.3 DatumDospelosti: TAX_DUE_DATE_DAYS days after period end.
         # If weekend/holiday -> first next working day.
         from datetime import timedelta
 
         import holidays
 
         saturday = 5
-        base_due = period_end + timedelta(days=30)
+        base_due = period_end + timedelta(days=self.TAX_DUE_DATE_DAYS)
         # Use country_holidays to avoid pyrefly dynamic attribute error
         rs_holidays = holidays.country_holidays("RS")
 

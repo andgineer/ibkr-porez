@@ -38,21 +38,26 @@ class SyncOperation:
     # Constants for half-year calculation
     JULY_MONTH = 7
     JUNE_MONTH = 6
+    DEFAULT_FIRST_SYNC_LOOKBACK_DAYS = 45
 
     def __init__(self, config: UserConfig):
         self.config = config
         self.storage = Storage()
         self.get_operation = GetOperation(config)
 
-    def _get_next_declaration_number(self, declaration_type: DeclarationType) -> int:
-        existing_declarations = self.storage.get_declarations(declaration_type=declaration_type)
+    def _get_next_declaration_number(self) -> int:
+        """Get next sequential declaration number for all types."""
+        existing_declarations = self.storage.get_declarations()
         return len(existing_declarations) + 1
 
     def _generate_declaration_filename(
         self,
-        declaration_number: int,
+        declaration_id: str,
         generator_filename: str,
     ) -> str:
+        """Generate filename with declaration ID prefix."""
+        # declaration_id is a string like "1", "2", etc.
+        declaration_number = int(declaration_id)
         return f"{declaration_number:03d}-{generator_filename}"
 
     def _get_last_complete_half_year(self) -> tuple[date, date, int, int]:
@@ -145,7 +150,6 @@ class SyncOperation:
     def _create_declaration(  # noqa: PLR0913
         self,
         declaration_type: DeclarationType,
-        declaration_number: int,
         declaration_id: str,
         period_start: date,
         period_end: date,
@@ -159,8 +163,7 @@ class SyncOperation:
 
         Args:
             declaration_type: Type of declaration
-            declaration_number: Sequential declaration number
-            declaration_id: Declaration ID (sequential number as string)
+            declaration_id: Declaration ID (sequential number as string, e.g., "1", "2")
             period_start: Period start date
             period_end: Period end date
             generator_filename: Filename from generator (e.g., "ppdg3r-2023-H1.xml")
@@ -171,9 +174,9 @@ class SyncOperation:
         Returns:
             Declaration object
         """
-        # Generate proper filename with number prefix
+        # Generate proper filename with ID prefix
         proper_filename = self._generate_declaration_filename(
-            declaration_number,
+            declaration_id,
             generator_filename,
         )
         file_path = self.storage.data_dir / proper_filename
@@ -224,9 +227,6 @@ class SyncOperation:
                 )
 
                 for filename, xml_content, entries in results:
-                    declaration_number = self._get_next_declaration_number(config.declaration_type)
-                    declaration_id = str(declaration_number)
-
                     metadata = config.metadata_extractor(entries, period_start)
 
                     # Check if declaration already exists by checking if any declaration
@@ -242,9 +242,10 @@ class SyncOperation:
                     ):
                         continue
 
+                    declaration_id = str(self._get_next_declaration_number())
+
                     declaration = self._create_declaration(
                         declaration_type=config.declaration_type,
-                        declaration_number=declaration_number,
                         declaration_id=declaration_id,
                         period_start=period_start,
                         period_end=period_end,
@@ -258,10 +259,15 @@ class SyncOperation:
                     created_declarations.append(declaration)
 
             except ValueError as e:
+                error_msg = str(e)
                 # For gains: skip if no taxable sales
                 if config.declaration_type == DeclarationType.PPDG3R:
                     continue
-                # For income: raise error (tax not found, etc.)
+                # For income: skip if no income found (normal case)
+                # But raise error for other issues (tax not found, etc.)
+                if "No income (dividends/coupons) found in this period" in error_msg:
+                    continue
+                # For other errors (tax not found, etc.): raise
                 raise ValueError(
                     f"Error creating {config.declaration_type.value} declarations: {e}. "
                     "Fix the issue and run sync again.",
@@ -304,7 +310,8 @@ class SyncOperation:
                 declaration_type=DeclarationType.PPO,
                 generator_factory=IncomeReportGenerator,
                 period_getter=lambda: self._get_income_periods(
-                    last_declaration_date or date.today() - timedelta(days=30),
+                    last_declaration_date
+                    or date.today() - timedelta(days=self.DEFAULT_FIRST_SYNC_LOOKBACK_DAYS),
                     new_last_declaration_date,
                 ),
                 declaration_id_generator=None,  # Not needed, filename is used as ID
@@ -331,8 +338,8 @@ class SyncOperation:
         # Get current last_declaration_date
         last_declaration_date = self.storage.get_last_declaration_date()
         if last_declaration_date is None:
-            # First sync: set to 30 days ago
-            last_declaration_date = today - timedelta(days=30)
+            # First sync: set to DEFAULT_FIRST_SYNC_LOOKBACK_DAYS days ago
+            last_declaration_date = today - timedelta(days=self.DEFAULT_FIRST_SYNC_LOOKBACK_DAYS)
 
         # 3. Process declaration types
         declaration_configs = self._get_declaration_configs(

@@ -10,13 +10,16 @@ from rich.progress import track
 
 from ibkr_porez import __version__
 from ibkr_porez.config import UserConfig, config_manager
+from ibkr_porez.error_handling import get_user_friendly_error_message
 from ibkr_porez.ibkr_csv import CSVParser
-from ibkr_porez.models import IncomeDeclarationEntry
+from ibkr_porez.logging_config import get_error_log_path, setup_logger
+from ibkr_porez.models import IncomeDeclarationEntry, TaxReportEntry
 from ibkr_porez.nbs import NBSClient
 from ibkr_porez.operation_get import GetOperation
 from ibkr_porez.operation_report import display_income_declaration, execute_report_command
 from ibkr_porez.operation_report_tables import render_declaration_table
 from ibkr_porez.operation_show import ShowStatistics
+from ibkr_porez.operation_show_declaration import show_declaration
 from ibkr_porez.operation_sync import SyncOperation
 from ibkr_porez.storage import Storage
 
@@ -24,6 +27,10 @@ OUTPUT_FILE_DEFAULT = "output"
 
 # Global Console instance to ensure logs and progress bars share the same stream
 console = Console()
+
+# Setup file logger for error logging
+logger = setup_logger()
+_error_log_file = get_error_log_path()
 
 
 def _setup_logging_callback(ctx, param, value):  # noqa: ARG001
@@ -131,8 +138,12 @@ def get():
             console.print(f"[green]{msg} {stats}[/green]")
 
         except Exception as e:  # noqa: BLE001
-            console.print(f"[bold red]Error:[/bold red] {e}")
-            console.print_exception()
+            # Log full traceback to error log
+            logger.exception("Error in get command")
+            # Show user-friendly error message
+            user_message = get_user_friendly_error_message(e)
+            console.print(f"[bold red]Error:[/bold red] {user_message}")
+            console.print(f"[dim]Full error details logged to: {_error_log_file}[/dim]")
             return
 
     # Show rate sync status
@@ -150,8 +161,12 @@ def get():
         console.print("[bold green]Sync Complete![/bold green]")
 
     except Exception as e:  # noqa: BLE001
-        console.print(f"[bold red]Rate Sync Error:[/bold red] {e}")
-        console.print_exception()
+        # Log full traceback to error log
+        logger.exception("Error syncing exchange rates")
+        # Show user-friendly error message
+        user_message = get_user_friendly_error_message(e)
+        console.print(f"[bold red]Rate Sync Error:[/bold red] {user_message}")
+        console.print(f"[dim]Full error details logged to: {_error_log_file}[/dim]")
 
 
 @ibkr_porez.command(
@@ -195,13 +210,18 @@ def import_file(file_path: Path):
         console.print("[bold green]Import Complete![/bold green]")
 
     except Exception as e:  # noqa: BLE001
-        console.print(f"[bold red]Import Failed:[/bold red] {e}")
-        console.print_exception()
+        # Log full traceback to error log
+        logger.exception("Error in import command")
+        # Show user-friendly error message
+        user_message = get_user_friendly_error_message(e)
+        console.print(f"[bold red]Import Failed:[/bold red] {user_message}")
+        console.print(f"[dim]Full error details logged to: {_error_log_file}[/dim]")
 
 
 @ibkr_porez.command(
     epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#show-statistics-show",
 )
+@click.argument("declaration_id", required=False, type=str)
 @click.option("-y", "--year", type=int, help="Filter by year (e.g. 2026)")
 @click.option("-t", "--ticker", type=str, help="Show detailed breakdown for specific ticker")
 @click.option(
@@ -211,8 +231,19 @@ def import_file(file_path: Path):
     help="Show detailed breakdown for specific month (YYYY-MM, YYYYMM, or MM)",
 )
 @verbose_option
-def show(year: int | None, ticker: str | None, month: str | None):
-    """Show tax report (Sales only)."""
+def show(declaration_id: str | None, year: int | None, ticker: str | None, month: str | None):
+    """
+    Show tax report (Sales only) or declaration details.
+
+    If DECLARATION_ID is provided, shows details for that declaration.
+    Otherwise, shows statistics filtered by year/ticker/month.
+    """
+    # If declaration_id is provided, show declaration details
+    if declaration_id:
+        show_declaration(declaration_id, console)
+        return
+
+    # Otherwise, show statistics
     generator = ShowStatistics()
 
     try:
@@ -252,16 +283,14 @@ def sync():
 
         if not declarations:
             console.print("[yellow]No new declarations created.[/yellow]")
-        return
+            return
 
-        console.print(f"[bold green]Created {len(declarations)} declaration(s):[/bold green]")
+        console.print(f"\n[bold green]Created {len(declarations)} declaration(s):[/bold green]")
         for decl in declarations:
             console.print(f"  [green]{decl.declaration_id}[/green]")
             if decl.report_data:
                 if decl.type.value == "PPDG-3R":
                     # Gains: render table
-                    from ibkr_porez.models import TaxReportEntry
-
                     gains_entries = [e for e in decl.report_data if isinstance(e, TaxReportEntry)]
                     if gains_entries:
                         table = render_declaration_table(gains_entries)
@@ -273,8 +302,12 @@ def sync():
                             display_income_declaration(entry, console)
 
     except Exception as e:  # noqa: BLE001
-        console.print(f"[bold red]Error:[/bold red] {e}")
-        console.print_exception()
+        # Log full traceback to error log
+        logger.exception("Error in sync command")
+        # Show user-friendly error message
+        user_message = get_user_friendly_error_message(e)
+        console.print(f"[bold red]Error:[/bold red] {user_message}")
+        console.print(f"[dim]Full error details logged to: {_error_log_file}[/dim]")
 
 
 @ibkr_porez.command(

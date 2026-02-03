@@ -17,6 +17,9 @@ from ibkr_porez.models import (
 class IncomeXMLGenerator:
     """Generator for PP OPO XML declarations."""
 
+    # Tax declaration due date: 30 days after declaration date (legal requirement)
+    TAX_DUE_DATE_DAYS = 30
+
     def __init__(self, config: UserConfig):
         self.config = config
 
@@ -75,10 +78,10 @@ class IncomeXMLGenerator:
         # 1.4 Rok: 1 (standard)
         create_text(p_prijavi, "Rok", "1")
 
-        # 1.5 DatumDospelostiObaveze: 30 days after declaration_date
+        # 1.5 DatumDospelostiObaveze: TAX_DUE_DATE_DAYS days after declaration_date
         # If weekend/holiday -> first next working day
         saturday = 5
-        base_due = declaration_date + timedelta(days=30)
+        base_due = declaration_date + timedelta(days=self.TAX_DUE_DATE_DAYS)
         rs_holidays = holidays.country_holidays("RS")
 
         # Shift if weekend (5=Sat, 6=Sun) or Holiday

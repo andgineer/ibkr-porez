@@ -501,7 +501,7 @@ class Storage:
         data = self._load_declarations()
         declarations = [Declaration(**d) for d in data["declarations"]]
 
-        # Find existing declaration by ID
+        # Find existing declaration by ID (ID is unique across all types)
         existing_idx = None
         for idx, decl in enumerate(declarations):
             if decl.declaration_id == declaration.declaration_id:
