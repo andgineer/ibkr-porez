@@ -3,6 +3,7 @@ from datetime import date
 from decimal import Decimal
 
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 
 from ibkr_porez.models import Currency, TaxReportEntry
 from ibkr_porez.nbs import NBSClient
@@ -140,7 +141,6 @@ class TaxCalculator:
         purchase_date: date,
         purchase_price: Decimal,
     ):
-        # 1. Get Exchange Rates
         rate_sale = self.nbs.get_rate(sale_date, sale_currency)
         rate_purchase = self.nbs.get_rate(
             purchase_date,
@@ -155,19 +155,14 @@ class TaxCalculator:
             print(f"DEBUG: Missing Purchase Rate for {purchase_date}")
             rate_purchase = Decimal(0)
 
-        # 2. Calculate Values in RSD
         sale_value_rsd = quantity * sale_price * rate_sale
         purchase_value_rsd = quantity * purchase_price * rate_purchase
 
         capital_gain = sale_value_rsd - purchase_value_rsd
 
-        # 3. Check Tax Exemption (10 years)
-        # 10 years = 365 * 10? Or Date comparison.
+        # Check Tax Exemption (10 years)
         # Logic: If sale_year - purchase_year > 10... specific rules.
         # Generally 10 full years.
-
-        from dateutil.relativedelta import relativedelta
-
         ten_years_ago = sale_date - relativedelta(years=10)
         is_exempt = purchase_date <= ten_years_ago
 

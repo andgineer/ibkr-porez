@@ -24,14 +24,12 @@ def runner():
 @allure.feature("Fetching from IBKR")
 class TestE2EFetching:
     @patch("ibkr_porez.operation_get.NBSClient")
-    @patch("ibkr_porez.main.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.config_manager")
     def test_get_command_complex_fetch(
         self,
         mock_cfg_mgr,
         mock_fetch,
-        mock_nbs_cls_main,
         mock_nbs_cls_get,
         runner,
         mock_user_data_dir,
@@ -46,9 +44,7 @@ class TestE2EFetching:
             ibkr_token="test_token", ibkr_query_id="test_query"
         )
 
-        # Mock NBS (both in main and operation_get)
-        mock_nbs_main = mock_nbs_cls_main.return_value
-        mock_nbs_main.get_rate.return_value = None
+        # Mock NBS (in operation_get)
         mock_nbs_get = mock_nbs_cls_get.return_value
         mock_nbs_get.get_rate.return_value = None
 
@@ -90,12 +86,12 @@ class TestE2EFetching:
         tax = txs[(txs["symbol"] == "KO") & (txs["type"] == "WITHHOLDING_TAX")].iloc[0]
         assert abs(tax["amount"]) == 7.5
 
-    @patch("ibkr_porez.main.NBSClient")
+    @patch("ibkr_porez.operation_import.NBSClient")
     @patch("ibkr_porez.main.config_manager")
     def test_import_command_complex(
         self, mock_cfg_mgr, mock_nbs_cls, runner, mock_user_data_dir, resources_path
     ):
-        # Import doesn't use operation_get, so only main.NBSClient needs patching
+        # Import uses operation_import, so patch NBSClient there
         """
         Scenario: Import complex CSV.
         Expect: All transactions parsed.
@@ -124,14 +120,14 @@ class TestE2EFetching:
         assert msft["transaction_id"] == "csv-MSFT_ONLY_CSV"
 
     @patch("ibkr_porez.operation_get.NBSClient")
-    @patch("ibkr_porez.main.NBSClient")
+    @patch("ibkr_porez.operation_import.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.config_manager")
     def test_workflow_partial_upgrade(
         self,
         mock_cfg_mgr,
         mock_fetch,
-        mock_nbs_cls_main,
+        mock_nbs_cls_import,
         mock_nbs_cls_get,
         runner,
         mock_user_data_dir,
@@ -149,8 +145,8 @@ class TestE2EFetching:
         """
         mock_cfg_mgr.load_config.return_value = MagicMock(ibkr_token="t", ibkr_query_id="q")
 
-        mock_nbs_main = mock_nbs_cls_main.return_value
-        mock_nbs_main.get_rate.return_value = None
+        mock_nbs_import = mock_nbs_cls_import.return_value
+        mock_nbs_import.get_rate.return_value = None
         mock_nbs_get = mock_nbs_cls_get.return_value
         mock_nbs_get.get_rate.return_value = None
 
@@ -195,14 +191,14 @@ class TestE2EFetching:
         assert msft["transaction_id"] == "csv-MSFT_ONLY_CSV"
 
     @patch("ibkr_porez.operation_get.NBSClient")
-    @patch("ibkr_porez.main.NBSClient")
+    @patch("ibkr_porez.operation_import.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.config_manager")
     def test_workflow_skip_duplicates(
         self,
         mock_cfg_mgr,
         mock_fetch,
-        mock_nbs_cls_main,
+        mock_nbs_cls_import,
         mock_nbs_cls_get,
         runner,
         mock_user_data_dir,
@@ -219,8 +215,8 @@ class TestE2EFetching:
         """
         mock_cfg_mgr.load_config.return_value = MagicMock(ibkr_token="t", ibkr_query_id="q")
 
-        mock_nbs_main = mock_nbs_cls_main.return_value
-        mock_nbs_main.get_rate.return_value = None
+        mock_nbs_import = mock_nbs_cls_import.return_value
+        mock_nbs_import.get_rate.return_value = None
         mock_nbs_get = mock_nbs_cls_get.return_value
         mock_nbs_get.get_rate.return_value = None
 
@@ -254,7 +250,7 @@ class TestE2EFetching:
         assert "Parsed 4 transactions" in result.output
         assert "(1 new" in result.output
 
-    @patch("ibkr_porez.main.NBSClient")
+    @patch("ibkr_porez.operation_import.NBSClient")
     @patch("ibkr_porez.main.config_manager")
     def test_import_invalid_file(self, mock_cfg_mgr, mock_nbs_cls, runner, mock_user_data_dir):
         mock_cfg_mgr.load_config.return_value = MagicMock()

@@ -1,27 +1,29 @@
 """ibkr-porez."""
 
 import logging
+import sys
+from datetime import datetime
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 import rich_click as click
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.progress import track
 
 from ibkr_porez import __version__
 from ibkr_porez.config import UserConfig, config_manager
 from ibkr_porez.error_handling import get_user_friendly_error_message
-from ibkr_porez.ibkr_csv import CSVParser
 from ibkr_porez.logging_config import get_error_log_path, setup_logger
 from ibkr_porez.models import IncomeDeclarationEntry, TaxReportEntry
-from ibkr_porez.nbs import NBSClient
 from ibkr_porez.operation_get import GetOperation
+from ibkr_porez.operation_import import ImportOperation, ImportType
 from ibkr_porez.operation_report import display_income_declaration, execute_report_command
 from ibkr_porez.operation_report_tables import render_declaration_table
 from ibkr_porez.operation_show import ShowStatistics
 from ibkr_porez.operation_show_declaration import show_declaration
 from ibkr_porez.operation_sync import SyncOperation
 from ibkr_porez.storage import Storage
+from ibkr_porez.storage_flex_queries import restore_report
 
 OUTPUT_FILE_DEFAULT = "output"
 
@@ -146,70 +148,102 @@ def get():
             console.print(f"[dim]Full error details logged to: {_error_log_file}[/dim]")
             return
 
-    # Show rate sync status
-    try:
-        console.print("[blue]Syncing NBS exchange rates...[/blue]")
-        dates_to_fetch = set()
-        for tx in transactions:
-            dates_to_fetch.add((tx.date, tx.currency))
-            if tx.open_date:
-                dates_to_fetch.add((tx.open_date, tx.currency))
+    # Rate sync is already done in process_flex_query
+    console.print("[bold green]Sync Complete![/bold green]")
 
-        for d, curr in track(dates_to_fetch, description="Fetching rates...", console=console):
-            operation.nbs.get_rate(d, curr)
 
-        console.print("[bold green]Sync Complete![/bold green]")
+def _determine_input_source(file_path: str | None) -> tuple[bool, Path]:
+    """
+    Determine input source (stdin or file) and return path.
 
-    except Exception as e:  # noqa: BLE001
-        # Log full traceback to error log
-        logger.exception("Error syncing exchange rates")
-        # Show user-friendly error message
-        user_message = get_user_friendly_error_message(e)
-        console.print(f"[bold red]Rate Sync Error:[/bold red] {user_message}")
-        console.print(f"[dim]Full error details logged to: {_error_log_file}[/dim]")
+    Returns:
+        tuple[bool, Path]: (read_from_stdin, file_path)
+    """
+    # Check if we should read from stdin
+    if file_path is None or file_path == "-":
+        return True, Path()
+
+    file_path_obj = Path(file_path)
+    # If file doesn't exist and stdin is piped, use stdin
+    if not file_path_obj.exists() and not sys.stdin.isatty():
+        return True, Path()
+
+    if not file_path_obj.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    return False, file_path_obj
 
 
 @ibkr_porez.command(
     "import",
     epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#import-historical-data-import",
 )
-@click.argument("file_path", type=click.Path(exists=True, path_type=Path))
+@click.argument("file_path", type=str, required=False)
+@click.option(
+    "-t",
+    "--type",
+    "import_type",
+    type=click.Choice(["auto", "csv", "flex"], case_sensitive=False),
+    default="auto",
+    help="Import type: 'auto' (detect from file), 'csv', or 'flex' (XML)",
+)
 @verbose_option
-def import_file(file_path: Path):
-    """Import historical transactions from CSV Activity Statement."""
-    storage = Storage()
-    nbs = NBSClient(storage)
+def import_file(file_path: str | None, import_type: str):
+    """Import historical transactions from CSV Activity Statement or Flex Query XML."""
+    operation = ImportOperation()
 
-    console.print(f"[blue]Importing from {file_path}...[/blue]")
+    # Convert string to ImportType enum
+    type_map = {
+        "auto": ImportType.AUTO,
+        "csv": ImportType.CSV,
+        "flex": ImportType.FLEX,
+    }
+    import_type_enum = type_map.get(import_type.lower(), ImportType.AUTO)
 
+    read_from_stdin = False
+    input_path = Path()
     try:
-        parser = CSVParser()
-        with open(file_path, encoding="utf-8-sig") as f:
-            transactions = parser.parse(f)
+        # Determine input source
+        read_from_stdin, input_path = _determine_input_source(file_path)
+
+        if read_from_stdin:
+            console.print("[blue]Importing from stdin...[/blue]")
+            # Read from stdin and create temporary file
+            content = sys.stdin.read()
+
+            with NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as tmp_file:
+                tmp_file.write(content)
+                input_path = Path(tmp_file.name)
+        else:
+            console.print(f"[blue]Importing from {file_path}...[/blue]")
+
+        with console.status("[bold green]Processing import...[/bold green]"):
+            transactions, count_inserted, count_updated = operation.execute(
+                input_path,
+                import_type_enum,
+            )
+
+        # Clean up temp file if we created one
+        if read_from_stdin and input_path.exists():
+            input_path.unlink()
 
         if not transactions:
             console.print("[yellow]No valid transactions found in file.[/yellow]")
             return
 
-        count_inserted, count_updated = storage.save_transactions(transactions)
         msg = f"Parsed {len(transactions)} transactions."
         stats = f"({count_inserted} new, {count_updated} updated)"
         console.print(f"[green]{msg} {stats}[/green]")
 
-        # Sync Rates
-        console.print("[blue]Syncing NBS exchange rates for imported data...[/blue]")
-        dates_to_fetch = set()
-        for tx in transactions:
-            dates_to_fetch.add((tx.date, tx.currency))
-            if tx.open_date:
-                dates_to_fetch.add((tx.open_date, tx.currency))
-
-        for d, curr in track(dates_to_fetch, description="Fetching rates...", console=console):
-            nbs.get_rate(d, curr)
-
+        # Rate sync is already done in ImportOperation
         console.print("[bold green]Import Complete![/bold green]")
 
+    except FileNotFoundError as e:
+        console.print(f"[bold red]{e}[/bold red]")
     except Exception as e:  # noqa: BLE001
+        # Clean up temp file on error
+        if read_from_stdin and input_path.exists():
+            input_path.unlink()
         # Log full traceback to error log
         logger.exception("Error in import command")
         # Show user-friendly error message
@@ -370,6 +404,75 @@ def report(
 ):
     """Generate tax reports (PPDG-3R for capital gains or PP OPO for capital income)."""
     execute_report_command(type, half, start_date, end_date, console, force=force)
+
+
+@ibkr_porez.command("export-flex")
+@click.argument("date", type=str)
+@click.option(
+    "-o",
+    "--output",
+    "output_path",
+    type=str,
+    required=False,
+    help=(
+        "Output file path or '-' for stdout (default: flex_query_YYYYMMDD.xml in current directory)"
+    ),
+)
+@verbose_option
+def export_flex(date: str, output_path: str | None):
+    """Export full flex query XML file for the given date."""
+    # Parse date
+    try:
+        report_date = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError as e:
+        console.print(f"[bold red]Invalid date format:[/bold red] {date}")
+        console.print("[dim]Use YYYY-MM-DD format (e.g. 2026-01-29)[/dim]")
+        raise click.BadParameter(f"Invalid date format: {date}. Use YYYY-MM-DD") from e
+
+    storage = Storage()
+
+    try:
+        # Export the report
+        restored_content = restore_report(storage, report_date)
+
+        if restored_content is None:
+            console.print(
+                f"[bold red]No flex query found for date {date}[/bold red]",
+            )
+            return
+
+        # Determine output: stdout if -o - or if output_path is None and stdout is not a TTY (piped)
+        write_to_stdout = False
+        if output_path == "-":
+            write_to_stdout = True
+        elif output_path is None:
+            # Auto-detect: if stdout is piped (not a TTY), write to stdout
+            write_to_stdout = not sys.stdout.isatty()
+
+        if write_to_stdout:
+            # Write to stdout (for piping)
+            sys.stdout.write(restored_content)
+            sys.stdout.flush()
+        else:
+            # Write to file
+            if output_path is None:
+                output_path = f"flex_query_{report_date.strftime('%Y%m%d')}.xml"
+            file_path = Path(output_path)
+            # Ensure .xml extension if not provided
+            if file_path.suffix != ".xml":
+                file_path = file_path.with_suffix(".xml")
+            file_path.write_text(restored_content, encoding="utf-8")
+            console.print(
+                f"[bold green]Exported flex query saved to:[/bold green] {file_path.absolute()}",
+            )
+
+    except Exception as e:  # noqa: BLE001
+        # Log full traceback to error log
+        logger.exception("Error in export-flex command")
+        # Show user-friendly error message
+        user_message = get_user_friendly_error_message(e)
+        console.print(f"[bold red]Error:[/bold red] {user_message}")
+        console.print(f"[dim]Full error details logged to: {_error_log_file}[/dim]")
 
 
 if __name__ == "__main__":  # pragma: no cover

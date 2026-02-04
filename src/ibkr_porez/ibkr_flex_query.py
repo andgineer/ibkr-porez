@@ -1,5 +1,6 @@
 import logging
 import xml.etree.ElementTree as ET
+from datetime import datetime
 from decimal import Decimal
 
 import requests
@@ -95,24 +96,11 @@ class IBKRClient:
         flex_statements = root.findall(".//FlexStatement")
 
         for stmt in flex_statements:
-            # 1. Trades
-            # trades_el = stmt.find("FlexQuery/FlexStatements/FlexStatement/Trades")
-            # Actually findall searches recursively with .// if at root.
-            # But inside stmt, we look for direct children usually.
-            # Structure matches the configured Flex Query.
-            # It's usually <Trades> under <FlexStatement>.
-
-            # Using findall with .//Trade to be safe but check parent?
-            # Safer: iterate all children and match tag name or use findall("Trades/Trade")?
-            # Let's use Iteration for robustness against nesting variations.
-
             # Find all Trade elements under this statement
             for trade_el in stmt.findall(".//Trade"):
                 t = self._convert_trade(trade_el)
                 if t:
                     transactions.append(t)
-
-            # 2. CashTransactions
             for cash_el in stmt.findall(".//CashTransaction"):
                 t = self._convert_cash_transaction(cash_el)
                 if t:
@@ -144,8 +132,6 @@ class IBKRClient:
         # "20230101".
 
         # Actually models expects python date object.
-        from datetime import datetime
-
         try:
             if "-" in date_str:
                 d = datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -222,8 +208,6 @@ class IBKRClient:
 
         if not (amount and currency_str and date_str and tx_id):
             return None
-
-        from datetime import datetime
 
         d = None
         # Date parsing

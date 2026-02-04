@@ -329,21 +329,17 @@ class SyncOperation:
         Returns:
             list[Declaration]: List of newly created declarations
         """
-        # 1. Fetch fresh data from IBKR
         self.get_operation.execute()
 
-        # 2. Calculate new_last_declaration_date (previous day)
         # IBKR Flex Query data appears with 1-2 day delay
         today = datetime.now().date()
         new_last_declaration_date = today - timedelta(days=1)
 
-        # Get current last_declaration_date
         last_declaration_date = self.storage.get_last_declaration_date()
         if last_declaration_date is None:
             # First sync: set to DEFAULT_FIRST_SYNC_LOOKBACK_DAYS days ago
             last_declaration_date = today - timedelta(days=self.DEFAULT_FIRST_SYNC_LOOKBACK_DAYS)
 
-        # 3. Process declaration types
         declaration_configs = self._get_declaration_configs(
             last_declaration_date,
             new_last_declaration_date,
@@ -354,7 +350,7 @@ class SyncOperation:
             declarations = self._process_declaration_type(config)
             created_declarations.extend(declarations)
 
-        # 4. Update last_declaration_date only if all declarations created successfully
+        # Update last_declaration_date only if all declarations created successfully
         # Update if declarations were created OR if last_declaration_date is None or in the past
         if (
             created_declarations

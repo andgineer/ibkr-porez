@@ -36,11 +36,8 @@ class ShowStatistics:
         if not month:
             return None, None
 
-        # 1. YYYY-MM
         m_dash = re.match(r"^(\d{4})-(\d{1,2})$", month)
-        # 2. YYYYMM
         m_compact = re.match(r"^(\d{4})(\d{2})$", month)
-        # 3. MM or M
         m_only = re.match(r"^(\d{1,2})$", month)
 
         if m_dash:

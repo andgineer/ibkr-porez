@@ -1,5 +1,8 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
+from xml.dom import minidom
+
+import holidays
 
 from ibkr_porez.models import TaxReportEntry, UserConfig
 
@@ -20,8 +23,6 @@ class XMLGenerator:
         period_end: date,
     ) -> str:
         """Generate PPDG-3R XML content."""
-        from xml.dom import minidom
-
         doc = minidom.Document()
 
         # Root Element: ns1:PodaciPoreskeDeklaracije
@@ -45,27 +46,14 @@ class XMLGenerator:
             el.appendChild(cdata)
             parent.appendChild(el)
 
-        # 1. PodaciOPrijavi
         p_prijavi = doc.createElement("ns1:PodaciOPrijavi")
         root.appendChild(p_prijavi)
 
-        # 1.1 VrstaPrijave: 1 (Utvrđivanje)
         create_text(p_prijavi, "VrstaPrijave", "1")
-
-        # 1.1a OsnovZaPrijavu: 4 (Transfer of Shares/Securities)
         create_text(p_prijavi, "OsnovZaPrijavu", "4")
-
-        # 1.2 DatumOstvarenjaPrihoda: End of period usually, or last sale.
         create_text(p_prijavi, "DatumOstvarenjaPrihodaDelaPrihoda", period_end.strftime("%Y-%m-%d"))
-
         create_text(p_prijavi, "IsplataUDelovima", "0")
-
-        # 1.3 DatumDospelosti: TAX_DUE_DATE_DAYS days after period end.
         # If weekend/holiday -> first next working day.
-        from datetime import timedelta
-
-        import holidays
-
         saturday = 5
         base_due = period_end + timedelta(days=self.TAX_DUE_DATE_DAYS)
         # Use country_holidays to avoid pyrefly dynamic attribute error
@@ -86,7 +74,6 @@ class XMLGenerator:
         create_text(d_nacin, "DatumPodnosenjaPrijave", date.today().strftime("%Y-%m-%d"))
         create_text(d_nacin, "NacinPodnosenjaPrijave", "E")
 
-        # 2. PodaciOPoreskomObvezniku
         p_obveznik = doc.createElement("ns1:PodaciOPoreskomObvezniku")
         root.appendChild(p_obveznik)
 
@@ -98,18 +85,13 @@ class XMLGenerator:
         create_text(p_obveznik, "PrebivalisteBoravistePoreskogObveznika", self.config.city_code)
         create_cdata(p_obveznik, "AdresaPoreskogObveznika", self.config.address.upper())
 
-        # 2.6 Telefon: Mandatory
         create_text(p_obveznik, "TelefonKontaktOsobe", self.config.phone)
-        # 2.7 Email: Mandatory
         create_cdata(p_obveznik, "ElektronskaPosta", self.config.email)
 
         create_text(p_obveznik, "JMBGPodnosiocaPrijave", self.config.personal_id)
 
-        # 3. PodaciZaUtvrdjivanjePorezaKodPrenosaPravaIliUdela
         # VALID FILE DOES NOT HAVE Part 3 when Osnov=4.
         # Removing Part 3 completely.
-
-        # 4. DeklarisanoPrenosHOVInvesticionihJed (Our Data)
         gains_section = doc.createElement("ns1:DeklarisanoPrenosHOVInvesticionihJed")
         root.appendChild(gains_section)
 
@@ -158,7 +140,6 @@ class XMLGenerator:
 
             i += 1
 
-        # 7/Summary
         summary = doc.createElement("ns1:PodaciOUtvrđivanju")
         root.appendChild(summary)
 
@@ -178,7 +159,6 @@ class XMLGenerator:
         create_text(summary, "Osnovica", f"{net_gain:.2f}")
         create_text(summary, "PorezZaUplatu", f"{tax:.2f}")
 
-        # 8. DokaziUzPrijavu
         # Validator demands 'Part 8', and previous 'DokaziUzPrijavu' with Opis failed.
         # Valid files use 'DeklarisanoPriloziUzPrijavu' with file details.
         # We fill this with a placeholder so the XML structure is complete,

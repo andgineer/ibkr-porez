@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -87,7 +88,6 @@ class Storage:
     def _save_partition(self, year: int, half: int, new_df: pd.DataFrame) -> tuple[int, int]:
         file_path = self._transactions_dir / f"transactions_{year}_H{half}.json"
 
-        # 1. Load Existing
         existing_df = pd.DataFrame()
         if file_path.exists():
             try:
@@ -100,9 +100,6 @@ class Storage:
         if existing_df.empty:
             count = self._write_df(new_df, file_path)
             return count, 0
-
-        # 2. Smart Deduplication
-        from collections import Counter
 
         # Build Counter of EXISTING transactions
         existing_keys = Counter()
@@ -156,7 +153,7 @@ class Storage:
         # XML Supremacy: Dates that will be covered by new OFFICIAL records
         official_new_dates = self._get_official_dates(new_df)
 
-        # 1. Identify Existing CSVs to remove due to XML Supremacy
+        # Identify Existing CSVs to remove due to XML Supremacy
         if official_new_dates:
             for _, row in existing_df.iterrows():
                 if str(row["transaction_id"]).startswith("csv-"):
@@ -165,7 +162,6 @@ class Storage:
                     if d_str in official_new_dates:
                         ids_to_remove.add(row["transaction_id"])
 
-        # 2. Process New Rows
         official_existing_dates = self._get_official_dates(existing_df)
         dedup_index = (existing_keys, existing_id_map)
         results = (to_add, ids_to_remove)
@@ -273,13 +269,11 @@ class Storage:
         Returns True if identical.
         """
         try:
-            # 1. Date
             d1 = str(pd.to_datetime(row_new.get("date")).date())
             d2 = str(pd.to_datetime(row_existing.get("date")).date())
             if d1 != d2:
                 return False
 
-            # 2. Key Numeric Fields
             # Use rounding to ignore floating point noise
             fields = ["quantity", "price", "amount"]
             float_tolerance = 0.0001
@@ -288,8 +282,6 @@ class Storage:
                 v2 = float(row_existing.get(f, 0) or 0)
                 if abs(v1 - v2) > float_tolerance:
                     return False
-
-            # 3. Strings
             str_fields = ["symbol", "type", "currency", "description"]
             for f in str_fields:
                 v1 = row_new.get(f, "")
@@ -343,10 +335,8 @@ class Storage:
     ) -> pd.DataFrame:
         """Load transactions into a DataFrame."""
 
-        # 1. Identify partitions to load
         # If no dates, load ALL.
         # If range, calculate years pairs.
-
         files_to_load = []
         if start_date is None and end_date is None:
             files_to_load = list(self._transactions_dir.glob("transactions_*.json"))

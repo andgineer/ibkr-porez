@@ -1,7 +1,7 @@
 """Generator for PP OPO (Capital Income) XML declarations."""
 
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from xml.dom import minidom
 
 import holidays
@@ -61,24 +61,14 @@ class IncomeXMLGenerator:
             el.appendChild(cdata)
             parent.appendChild(el)
 
-        # 1. PodaciOPrijavi
         p_prijavi = doc.createElement("ns1:PodaciOPrijavi")
         root.appendChild(p_prijavi)
 
-        # 1.1 VrstaPrijave: 1 (Utvrđivanje)
         create_text(p_prijavi, "VrstaPrijave", "1")
-
-        # 1.2 ObracunskiPeriod: YYYY-MM format
         period_str = declaration_date.strftime("%Y-%m")
         create_text(p_prijavi, "ObracunskiPeriod", period_str)
-
-        # 1.3 DatumOstvarivanjaPrihoda: Date of income realization
         create_text(p_prijavi, "DatumOstvarivanjaPrihoda", declaration_date.strftime("%Y-%m-%d"))
-
-        # 1.4 Rok: 1 (standard)
         create_text(p_prijavi, "Rok", "1")
-
-        # 1.5 DatumDospelostiObaveze: TAX_DUE_DATE_DAYS days after declaration_date
         # If weekend/holiday -> first next working day
         saturday = 5
         base_due = declaration_date + timedelta(days=self.TAX_DUE_DATE_DAYS)
@@ -90,7 +80,6 @@ class IncomeXMLGenerator:
 
         create_text(p_prijavi, "DatumDospelostiObaveze", base_due.strftime("%Y-%m-%d"))
 
-        # 2. PodaciOPoreskomObvezniku
         p_obveznik = doc.createElement("ns1:PodaciOPoreskomObvezniku")
         root.appendChild(p_obveznik)
 
@@ -102,15 +91,12 @@ class IncomeXMLGenerator:
         create_text(p_obveznik, "TelefonKontaktOsobe", self.config.phone)
         create_cdata(p_obveznik, "ElektronskaPosta", self.config.email)
 
-        # 3. PodaciONacinuOstvarivanjaPrihoda
         p_nacin = doc.createElement("ns1:PodaciONacinuOstvarivanjaPrihoda")
         root.appendChild(p_nacin)
 
-        # NacinIsplate: 3 (Other - broker account)
         create_text(p_nacin, "NacinIsplate", "3")
         create_text(p_nacin, "Ostalo", "Isplata na brokerski racun")
 
-        # 4. DeklarisaniPodaciOVrstamaPrihoda
         deklaracija = doc.createElement("ns1:DeklarisaniPodaciOVrstamaPrihoda")
         root.appendChild(deklaracija)
 
@@ -123,7 +109,6 @@ class IncomeXMLGenerator:
         tax_rate = Decimal("0.15")
         osnovica = total_bruto
         # Use quantize with ROUND_HALF_UP for taxes (standard rounding)
-        from decimal import ROUND_HALF_UP
 
         obracunati_porez = (osnovica * tax_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -153,7 +138,6 @@ class IncomeXMLGenerator:
         create_text(podaci_vrsta, "PorezPlacenDrugojDrzavi", f"{porez_placen_drugoj_drzavi:.2f}")
         create_text(podaci_vrsta, "PorezZaUplatu", f"{porez_za_uplatu:.2f}")
 
-        # 5. Ukupno (Summary)
         ukupno = doc.createElement("ns1:Ukupno")
         root.appendChild(ukupno)
 
@@ -168,7 +152,6 @@ class IncomeXMLGenerator:
         create_text(ukupno, "ZDRAVSTVO", "0.00")
         create_text(ukupno, "NEZAPOSLENOST", "0.00")
 
-        # 6. Kamata (Penalty - empty for new declarations)
         kamata = doc.createElement("ns1:Kamata")
         root.appendChild(kamata)
 
@@ -178,7 +161,6 @@ class IncomeXMLGenerator:
         create_text(kamata, "ZDRAVSTVO", "0")
         create_text(kamata, "NEZAPOSLENOST", "0")
 
-        # 7. PodaciODodatnojKamati (Additional penalty - empty)
         dodatna_kamata = doc.createElement("ns1:PodaciODodatnojKamati")
         root.appendChild(dodatna_kamata)
 
