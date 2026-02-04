@@ -62,10 +62,10 @@
         <p class="text">
             <a id="prevFileLink" class="nav" href="z_554927f107f7791a_operation_show_declaration_py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
-            <a id="nextFileLink" class="nav" href="z_554927f107f7791a_raw_reports_py.html">&#xbb; next</a>
+            <a id="nextFileLink" class="nav" href="z_554927f107f7791a_report_base_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-04 05:02 +0000
+            created at 2026-02-04 13:42 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -411,51 +411,47 @@
     <p class="pln"><span class="n"><a id="t329" href="#t329">329</a></span><span class="t"><span class="str">        Returns:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t330" href="#t330">330</a></span><span class="t"><span class="str">            list[Declaration]: List of newly created declarations</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t331" href="#t331">331</a></span><span class="t"><span class="str">        """</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t332" href="#t332">332</a></span><span class="t">        <span class="com"># 1. Fetch fresh data from IBKR</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t333" href="#t333">333</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">get_operation</span><span class="op">.</span><span class="nam">execute</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t334" href="#t334">334</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t335" href="#t335">335</a></span><span class="t">        <span class="com"># 2. Calculate new_last_declaration_date (previous day)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t336" href="#t336">336</a></span><span class="t">        <span class="com"># IBKR Flex Query data appears with 1-2 day delay</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t337" href="#t337">337</a></span><span class="t">        <span class="nam">today</span> <span class="op">=</span> <span class="nam">datetime</span><span class="op">.</span><span class="nam">now</span><span class="op">(</span><span class="op">)</span><span class="op">.</span><span class="nam">date</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t338" href="#t338">338</a></span><span class="t">        <span class="nam">new_last_declaration_date</span> <span class="op">=</span> <span class="nam">today</span> <span class="op">-</span> <span class="nam">timedelta</span><span class="op">(</span><span class="nam">days</span><span class="op">=</span><span class="num">1</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t339" href="#t339">339</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t340" href="#t340">340</a></span><span class="t">        <span class="com"># Get current last_declaration_date</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t341" href="#t341">341</a></span><span class="t">        <span class="nam">last_declaration_date</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">storage</span><span class="op">.</span><span class="nam">get_last_declaration_date</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t342" href="#t342">342</a></span><span class="t">        <span class="key">if</span> <span class="nam">last_declaration_date</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t343" href="#t343">343</a></span><span class="t">            <span class="com"># First sync: set to DEFAULT_FIRST_SYNC_LOOKBACK_DAYS days ago</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t344" href="#t344">344</a></span><span class="t">            <span class="nam">last_declaration_date</span> <span class="op">=</span> <span class="nam">today</span> <span class="op">-</span> <span class="nam">timedelta</span><span class="op">(</span><span class="nam">days</span><span class="op">=</span><span class="nam">self</span><span class="op">.</span><span class="nam">DEFAULT_FIRST_SYNC_LOOKBACK_DAYS</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t345" href="#t345">345</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t346" href="#t346">346</a></span><span class="t">        <span class="com"># 3. Process declaration types</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t347" href="#t347">347</a></span><span class="t">        <span class="nam">declaration_configs</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_get_declaration_configs</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t348" href="#t348">348</a></span><span class="t">            <span class="nam">last_declaration_date</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t349" href="#t349">349</a></span><span class="t">            <span class="nam">new_last_declaration_date</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t350" href="#t350">350</a></span><span class="t">        <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t351" href="#t351">351</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t352" href="#t352">352</a></span><span class="t">        <span class="nam">created_declarations</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t353" href="#t353">353</a></span><span class="t">        <span class="key">for</span> <span class="nam">config</span> <span class="key">in</span> <span class="nam">declaration_configs</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t354" href="#t354">354</a></span><span class="t">            <span class="nam">declarations</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_process_declaration_type</span><span class="op">(</span><span class="nam">config</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t355" href="#t355">355</a></span><span class="t">            <span class="nam">created_declarations</span><span class="op">.</span><span class="nam">extend</span><span class="op">(</span><span class="nam">declarations</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t356" href="#t356">356</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t357" href="#t357">357</a></span><span class="t">        <span class="com"># 4. Update last_declaration_date only if all declarations created successfully</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t358" href="#t358">358</a></span><span class="t">        <span class="com"># Update if declarations were created OR if last_declaration_date is None or in the past</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t359" href="#t359">359</a></span><span class="t">        <span class="key">if</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t360" href="#t360">360</a></span><span class="t">            <span class="nam">created_declarations</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t361" href="#t361">361</a></span><span class="t">            <span class="key">or</span> <span class="nam">last_declaration_date</span> <span class="key">is</span> <span class="key">None</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t362" href="#t362">362</a></span><span class="t">            <span class="key">or</span> <span class="nam">last_declaration_date</span> <span class="op">&lt;</span> <span class="nam">new_last_declaration_date</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t363" href="#t363">363</a></span><span class="t">        <span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t364" href="#t364">364</a></span><span class="t">            <span class="nam">self</span><span class="op">.</span><span class="nam">storage</span><span class="op">.</span><span class="nam">set_last_declaration_date</span><span class="op">(</span><span class="nam">new_last_declaration_date</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t365" href="#t365">365</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t366" href="#t366">366</a></span><span class="t">        <span class="key">return</span> <span class="nam">created_declarations</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t332" href="#t332">332</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">get_operation</span><span class="op">.</span><span class="nam">execute</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t333" href="#t333">333</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t334" href="#t334">334</a></span><span class="t">        <span class="com"># IBKR Flex Query data appears with 1-2 day delay</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t335" href="#t335">335</a></span><span class="t">        <span class="nam">today</span> <span class="op">=</span> <span class="nam">datetime</span><span class="op">.</span><span class="nam">now</span><span class="op">(</span><span class="op">)</span><span class="op">.</span><span class="nam">date</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t336" href="#t336">336</a></span><span class="t">        <span class="nam">new_last_declaration_date</span> <span class="op">=</span> <span class="nam">today</span> <span class="op">-</span> <span class="nam">timedelta</span><span class="op">(</span><span class="nam">days</span><span class="op">=</span><span class="num">1</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t337" href="#t337">337</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t338" href="#t338">338</a></span><span class="t">        <span class="nam">last_declaration_date</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">storage</span><span class="op">.</span><span class="nam">get_last_declaration_date</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t339" href="#t339">339</a></span><span class="t">        <span class="key">if</span> <span class="nam">last_declaration_date</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t340" href="#t340">340</a></span><span class="t">            <span class="com"># First sync: set to DEFAULT_FIRST_SYNC_LOOKBACK_DAYS days ago</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t341" href="#t341">341</a></span><span class="t">            <span class="nam">last_declaration_date</span> <span class="op">=</span> <span class="nam">today</span> <span class="op">-</span> <span class="nam">timedelta</span><span class="op">(</span><span class="nam">days</span><span class="op">=</span><span class="nam">self</span><span class="op">.</span><span class="nam">DEFAULT_FIRST_SYNC_LOOKBACK_DAYS</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t342" href="#t342">342</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t343" href="#t343">343</a></span><span class="t">        <span class="nam">declaration_configs</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_get_declaration_configs</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t344" href="#t344">344</a></span><span class="t">            <span class="nam">last_declaration_date</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t345" href="#t345">345</a></span><span class="t">            <span class="nam">new_last_declaration_date</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t346" href="#t346">346</a></span><span class="t">        <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t347" href="#t347">347</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t348" href="#t348">348</a></span><span class="t">        <span class="nam">created_declarations</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t349" href="#t349">349</a></span><span class="t">        <span class="key">for</span> <span class="nam">config</span> <span class="key">in</span> <span class="nam">declaration_configs</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t350" href="#t350">350</a></span><span class="t">            <span class="nam">declarations</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">_process_declaration_type</span><span class="op">(</span><span class="nam">config</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t351" href="#t351">351</a></span><span class="t">            <span class="nam">created_declarations</span><span class="op">.</span><span class="nam">extend</span><span class="op">(</span><span class="nam">declarations</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t352" href="#t352">352</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t353" href="#t353">353</a></span><span class="t">        <span class="com"># Update last_declaration_date only if all declarations created successfully</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t354" href="#t354">354</a></span><span class="t">        <span class="com"># Update if declarations were created OR if last_declaration_date is None or in the past</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t355" href="#t355">355</a></span><span class="t">        <span class="key">if</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t356" href="#t356">356</a></span><span class="t">            <span class="nam">created_declarations</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t357" href="#t357">357</a></span><span class="t">            <span class="key">or</span> <span class="nam">last_declaration_date</span> <span class="key">is</span> <span class="key">None</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t358" href="#t358">358</a></span><span class="t">            <span class="key">or</span> <span class="nam">last_declaration_date</span> <span class="op">&lt;</span> <span class="nam">new_last_declaration_date</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t359" href="#t359">359</a></span><span class="t">        <span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t360" href="#t360">360</a></span><span class="t">            <span class="nam">self</span><span class="op">.</span><span class="nam">storage</span><span class="op">.</span><span class="nam">set_last_declaration_date</span><span class="op">(</span><span class="nam">new_last_declaration_date</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t361" href="#t361">361</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t362" href="#t362">362</a></span><span class="t">        <span class="key">return</span> <span class="nam">created_declarations</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
         <p>
             <a class="nav" href="z_554927f107f7791a_operation_show_declaration_py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
-            <a class="nav" href="z_554927f107f7791a_raw_reports_py.html">&#xbb; next</a>
+            <a class="nav" href="z_554927f107f7791a_report_base_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-04 05:02 +0000
+            created at 2026-02-04 13:42 +0000
         </p>
     </div>
 </footer>
