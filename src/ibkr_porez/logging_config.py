@@ -18,7 +18,7 @@ def setup_logger() -> logging.Logger:
     Returns:
         Configured logger instance
     """
-    log_dir = Path(user_data_dir("ibkr-porez"))
+    log_dir = Path(user_data_dir("ibkr-porez")) / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     error_log_file = log_dir / "error.log"
 
@@ -49,5 +49,5 @@ def get_error_log_path() -> Path:
     Returns:
         Path to error.log file
     """
-    log_dir = Path(user_data_dir("ibkr-porez"))
+    log_dir = Path(user_data_dir("ibkr-porez")) / "logs"
     return log_dir / "error.log"

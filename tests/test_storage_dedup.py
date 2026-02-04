@@ -11,7 +11,7 @@ def storage(tmp_path):
     s = Storage()
     # Mock data dir
     s._data_dir = tmp_path
-    s._partition_dir = tmp_path / "partitions"
+    s._transactions_dir = tmp_path / "transactions"
     s._ensure_dirs()
     return s
 
@@ -221,7 +221,7 @@ class TestStorageDeduplication:
             ]
         )
 
-        p = storage._partition_dir / "transactions_2025_H1.json"
+        p = storage._transactions_dir / "transactions_2025_H1.json"
         p.parent.mkdir(exist_ok=True, parents=True)
         df.to_json(p, orient="records")
 

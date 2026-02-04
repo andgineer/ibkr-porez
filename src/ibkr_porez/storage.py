@@ -20,16 +20,16 @@ class Storage:
     APP_NAME = "ibkr-porez"
     RATES_FILENAME = "rates.json"
     DECLARATIONS_FILENAME = "declarations.json"
-    RAW_DIR = "raw_reports"
-    PARTITION_DIR = "partitions"
+    FLEX_QUERIES_DIR = "flex_queries"
+    TRANSACTIONS_DIR = "transactions"
     LAST_DECLARATION_DATE_KEY = "last_declaration_date"
 
     def __init__(self):
         self._data_dir = Path(user_data_dir(self.APP_NAME))
-        self._partition_dir = self._data_dir / self.PARTITION_DIR
+        self._transactions_dir = self._data_dir / self.TRANSACTIONS_DIR
         self._rates_file = self._data_dir / self.RATES_FILENAME
         self._declarations_file = self._data_dir / self.DECLARATIONS_FILENAME
-        self._raw_dir = self._data_dir / self.RAW_DIR
+        self._flex_queries_dir = self._data_dir / self.FLEX_QUERIES_DIR
         self._ensure_dirs()
 
     @property
@@ -37,13 +37,18 @@ class Storage:
         """Get the data directory path."""
         return self._data_dir
 
+    @property
+    def flex_queries_dir(self) -> Path:
+        """Get the flex queries directory path."""
+        return self._flex_queries_dir
+
     def _ensure_dirs(self):
         self._data_dir.mkdir(parents=True, exist_ok=True)
-        self._partition_dir.mkdir(parents=True, exist_ok=True)
-        self._raw_dir.mkdir(parents=True, exist_ok=True)
+        self._transactions_dir.mkdir(parents=True, exist_ok=True)
+        self._flex_queries_dir.mkdir(parents=True, exist_ok=True)
 
     def save_raw_report(self, content: str | bytes, filename: str):
-        path = self._raw_dir / filename
+        path = self._flex_queries_dir / filename
         mode = "wb" if isinstance(content, bytes) else "w"
         with open(path, mode) as f:
             f.write(content)
@@ -80,7 +85,7 @@ class Storage:
         return total_inserted, total_updated
 
     def _save_partition(self, year: int, half: int, new_df: pd.DataFrame) -> tuple[int, int]:
-        file_path = self._partition_dir / f"transactions_{year}_H{half}.json"
+        file_path = self._transactions_dir / f"transactions_{year}_H{half}.json"
 
         # 1. Load Existing
         existing_df = pd.DataFrame()
@@ -344,7 +349,7 @@ class Storage:
 
         files_to_load = []
         if start_date is None and end_date is None:
-            files_to_load = list(self._partition_dir.glob("transactions_*.json"))
+            files_to_load = list(self._transactions_dir.glob("transactions_*.json"))
         else:
             # Smart loading based on range
             # Range might span multiple years/halves
@@ -356,7 +361,7 @@ class Storage:
             # But user asked for "transparent sharding... load needed halfyears".
 
             # Let's parse filenames to filter.
-            all_files = list(self._partition_dir.glob("transactions_*_H*.json"))
+            all_files = list(self._transactions_dir.glob("transactions_*_H*.json"))
             files_to_load = []
 
             s_year = start_date.year if start_date else 0
@@ -406,7 +411,7 @@ class Storage:
 
     def get_last_transaction_date(self) -> date | None:
         """Find the date of the latest transaction across all partitions."""
-        all_files = list(self._partition_dir.glob("transactions_*.json"))
+        all_files = list(self._transactions_dir.glob("transactions_*.json"))
         if not all_files:
             return None
 

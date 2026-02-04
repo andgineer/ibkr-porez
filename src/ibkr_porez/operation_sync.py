@@ -179,7 +179,9 @@ class SyncOperation:
             declaration_id,
             generator_filename,
         )
-        file_path = self.storage.data_dir / proper_filename
+        declarations_dir = self.storage.data_dir / "declarations"
+        declarations_dir.mkdir(parents=True, exist_ok=True)
+        file_path = declarations_dir / proper_filename
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(xml_content)
 
