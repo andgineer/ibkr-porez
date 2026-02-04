@@ -5,11 +5,19 @@ from datetime import date
 
 from ibkr_porez.storage_flex_queries import restore_report, save_raw_report_with_delta
 from ibkr_porez.storage import Storage
+from ibkr_porez.models import UserConfig
+
+
+def _mock_storage_config(monkeypatch, tmp_path):
+    """Helper to mock storage config for tests."""
+    monkeypatch.setattr("ibkr_porez.storage.user_data_dir", lambda _: str(tmp_path))
+    mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
+    monkeypatch.setattr("ibkr_porez.storage.config_manager.load_config", lambda: mock_config)
 
 
 def test_save_first_report_as_base(tmp_path, monkeypatch):
     """Test that first report is saved as base file."""
-    monkeypatch.setattr("ibkr_porez.storage.user_data_dir", lambda _: str(tmp_path))
+    _mock_storage_config(monkeypatch, tmp_path)
     storage = Storage()
 
     xml_content = '<?xml version="1.0"?><root><data>test</data></root>'
@@ -17,17 +25,17 @@ def test_save_first_report_as_base(tmp_path, monkeypatch):
 
     save_raw_report_with_delta(storage, xml_content, report_date)
 
-    base_file = storage._flex_queries_dir / "base_20260129.xml.zip"
+    base_file = storage._flex_queries_dir / "base-20260129.xml.zip"
     assert base_file.exists()
 
     with zipfile.ZipFile(base_file, "r") as zf:
-        content = zf.read("base_20260129.xml").decode("utf-8")
+        content = zf.read("base-20260129.xml").decode("utf-8")
     assert content == xml_content
 
 
 def test_save_second_report_as_delta(tmp_path, monkeypatch):
     """Test that second report is saved (as delta or new base if delta too large)."""
-    monkeypatch.setattr("ibkr_porez.storage.user_data_dir", lambda _: str(tmp_path))
+    _mock_storage_config(monkeypatch, tmp_path)
     storage = Storage()
 
     # Use XML files that will create a small delta
@@ -39,9 +47,9 @@ def test_save_second_report_as_delta(tmp_path, monkeypatch):
     save_raw_report_with_delta(storage, base_xml, date(2026, 1, 29))
     save_raw_report_with_delta(storage, new_xml, date(2026, 1, 30))
 
-    base_file = storage._flex_queries_dir / "base_20260129.xml.zip"
-    delta_file = storage._flex_queries_dir / "delta_20260130.patch.zip"
-    base_file_30 = storage._flex_queries_dir / "base_20260130.xml.zip"
+    base_file = storage._flex_queries_dir / "base-20260129.xml.zip"
+    delta_file = storage._flex_queries_dir / "delta-20260130.patch.zip"
+    base_file_30 = storage._flex_queries_dir / "base-20260130.xml.zip"
 
     assert base_file.exists()
     # Either delta or base should exist (depending on delta size)
@@ -100,8 +108,8 @@ def test_large_delta_creates_new_base(tmp_path, monkeypatch):
     save_raw_report_with_delta(storage, base_xml, date(2026, 1, 29))
     save_raw_report_with_delta(storage, new_xml, date(2026, 1, 30))
 
-    base_file = storage._flex_queries_dir / "base_20260130.xml.zip"
-    delta_file = storage._flex_queries_dir / "delta_20260130.patch.zip"
+    base_file = storage._flex_queries_dir / "base-20260130.xml.zip"
+    delta_file = storage._flex_queries_dir / "delta-20260130.patch.zip"
 
     # Large delta should create new base instead
     assert base_file.exists()
@@ -215,7 +223,7 @@ def test_replace_delta_with_new_delta_when_base_exists_for_different_day(tmp_pat
     )
     save_raw_report_with_delta(storage, base_xml, date(2026, 2, 1))
 
-    base_20260201 = storage._flex_queries_dir / "base_20260201.xml.zip"
+    base_20260201 = storage._flex_queries_dir / "base-20260201.xml.zip"
     assert base_20260201.exists()
 
     # First sync for 2026-02-04: create small delta (change only last line)
@@ -226,8 +234,8 @@ def test_replace_delta_with_new_delta_when_base_exists_for_different_day(tmp_pat
     )
     save_raw_report_with_delta(storage, second_xml, date(2026, 2, 4))
 
-    delta_20260204 = storage._flex_queries_dir / "delta_20260204.patch.zip"
-    base_20260204 = storage._flex_queries_dir / "base_20260204.xml.zip"
+    delta_20260204 = storage._flex_queries_dir / "delta-20260204.patch.zip"
+    base_20260204 = storage._flex_queries_dir / "base-20260204.xml.zip"
     assert delta_20260204.exists(), (
         "First delta should be created (adding one transaction creates small delta)"
     )
@@ -249,7 +257,7 @@ def test_replace_delta_with_new_delta_when_base_exists_for_different_day(tmp_pat
     assert delta_20260204.exists(), "Delta should still exist (replaced, not converted to base)"
     assert not base_20260204.exists(), "Base should not exist"
 
-    # Verify base_20260201.xml.zip still exists (not replaced)
+    # Verify base-20260201.xml.zip still exists (not replaced)
     assert base_20260201.exists()
 
     # Verify restored content is correct
@@ -273,7 +281,7 @@ def test_replace_delta_with_base_when_new_delta_too_large(tmp_path, monkeypatch)
     )
     save_raw_report_with_delta(storage, base_xml, date(2026, 2, 1))
 
-    base_20260201 = storage._flex_queries_dir / "base_20260201.xml.zip"
+    base_20260201 = storage._flex_queries_dir / "base-20260201.xml.zip"
     assert base_20260201.exists()
 
     # First sync for 2026-02-04: create small delta (change only last line)
@@ -284,8 +292,8 @@ def test_replace_delta_with_base_when_new_delta_too_large(tmp_path, monkeypatch)
     )
     save_raw_report_with_delta(storage, second_xml, date(2026, 2, 4))
 
-    delta_20260204 = storage._flex_queries_dir / "delta_20260204.patch.zip"
-    base_20260204 = storage._flex_queries_dir / "base_20260204.xml.zip"
+    delta_20260204 = storage._flex_queries_dir / "delta-20260204.patch.zip"
+    base_20260204 = storage._flex_queries_dir / "base-20260204.xml.zip"
     assert delta_20260204.exists(), (
         "First delta should be created (adding one transaction creates small delta)"
     )
@@ -309,7 +317,7 @@ def test_replace_delta_with_base_when_new_delta_too_large(tmp_path, monkeypatch)
     assert base_20260204.exists(), "Base should exist (delta was too large)"
     assert not delta_20260204.exists(), "Delta should be replaced with base"
 
-    # Verify base_20260201.xml.zip still exists (not replaced)
+    # Verify base-20260201.xml.zip still exists (not replaced)
     assert base_20260201.exists()
 
     # Verify restored content is correct

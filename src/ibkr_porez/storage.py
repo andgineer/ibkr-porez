@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 from platformdirs import user_data_dir
 
+from ibkr_porez.config import config_manager
 from ibkr_porez.models import (
     Currency,
     Declaration,
@@ -19,24 +20,39 @@ from ibkr_porez.models import (
 
 class Storage:
     APP_NAME = "ibkr-porez"
+    DATA_SUBDIR = "ibkr-porez-data"
     RATES_FILENAME = "rates.json"
     DECLARATIONS_FILENAME = "declarations.json"
-    FLEX_QUERIES_DIR = "flex_queries"
-    TRANSACTIONS_DIR = "transactions"
+    TRANSACTIONS_FILENAME = "transactions.json"
+    DECLARATIONS_DIR = "declarations"
+    FLEX_QUERIES_DIR = "flex-queries"
     LAST_DECLARATION_DATE_KEY = "last_declaration_date"
 
     def __init__(self):
-        self._data_dir = Path(user_data_dir(self.APP_NAME))
-        self._transactions_dir = self._data_dir / self.TRANSACTIONS_DIR
+        config = config_manager.load_config()
+        app_data_dir = Path(user_data_dir(self.APP_NAME))
+        # data_dir in config points directly to the folder with transactions.json
+        # (default: ibkr-porez-data subfolder in app data directory)
+        if config.data_dir:
+            self._data_dir = Path(config.data_dir)
+        else:
+            self._data_dir = app_data_dir / self.DATA_SUBDIR
+        self._transactions_file = self._data_dir / self.TRANSACTIONS_FILENAME
         self._rates_file = self._data_dir / self.RATES_FILENAME
         self._declarations_file = self._data_dir / self.DECLARATIONS_FILENAME
-        self._flex_queries_dir = self._data_dir / self.FLEX_QUERIES_DIR
+        self._declarations_dir = self._data_dir / self.DECLARATIONS_DIR
+        self._flex_queries_dir = app_data_dir / self.FLEX_QUERIES_DIR
         self._ensure_dirs()
 
     @property
     def data_dir(self) -> Path:
-        """Get the data directory path."""
+        """Get the data directory path (ibkr-porez-data subfolder)."""
         return self._data_dir
+
+    @property
+    def declarations_dir(self) -> Path:
+        """Get the declarations directory path."""
+        return self._declarations_dir
 
     @property
     def flex_queries_dir(self) -> Path:
@@ -45,7 +61,7 @@ class Storage:
 
     def _ensure_dirs(self):
         self._data_dir.mkdir(parents=True, exist_ok=True)
-        self._transactions_dir.mkdir(parents=True, exist_ok=True)
+        self._declarations_dir.mkdir(parents=True, exist_ok=True)
         self._flex_queries_dir.mkdir(parents=True, exist_ok=True)
 
     def save_raw_report(self, content: str | bytes, filename: str):
@@ -63,42 +79,24 @@ class Storage:
         if not transactions:
             return 0, 0
 
-        df = pd.DataFrame([t.__dict__ for t in transactions])
+        new_df = pd.DataFrame([t.__dict__ for t in transactions])
 
         # Ensure date format
-        df["date"] = pd.to_datetime(df["date"]).dt.date
-
-        # Partition data by year and half
-        june_month = 6
-        df["year"] = df["date"].apply(lambda d: d.year)
-        df["half"] = df["date"].apply(lambda d: 1 if d.month <= june_month else 2)
-
-        grouped = df.groupby(["year", "half"])
-
-        total_inserted = 0
-        total_updated = 0
-
-        for (year, half), group in grouped:
-            inserted, updated = self._save_partition(year, half, group)
-            total_inserted += inserted
-            total_updated += updated
-
-        return total_inserted, total_updated
-
-    def _save_partition(self, year: int, half: int, new_df: pd.DataFrame) -> tuple[int, int]:
-        file_path = self._transactions_dir / f"transactions_{year}_H{half}.json"
+        new_df["date"] = pd.to_datetime(new_df["date"]).dt.date
 
         existing_df = pd.DataFrame()
-        if file_path.exists():
+        if self._transactions_file.exists():
             try:
-                existing_df = pd.read_json(file_path, orient="records")
+                existing_df = pd.read_json(self._transactions_file, orient="records")
                 if "transaction_id" in existing_df.columns:
                     existing_df["transaction_id"] = existing_df["transaction_id"].astype(str)
+                if "date" in existing_df.columns:
+                    existing_df["date"] = pd.to_datetime(existing_df["date"]).dt.date
             except ValueError as e:
-                print(f"[WARNING] Failed to load existing partition {file_path.name}: {e}")
+                print(f"[WARNING] Failed to load existing transactions file: {e}")
 
         if existing_df.empty:
-            count = self._write_df(new_df, file_path)
+            count = self._write_df(new_df, self._transactions_file)
             return count, 0
 
         # Build Counter of EXISTING transactions
@@ -126,7 +124,7 @@ class Storage:
         # Construct Final DF
         final_df = self._construct_final_df(existing_df, pd.DataFrame(to_add), ids_to_remove)
 
-        self._write_df(final_df, file_path)
+        self._write_df(final_df, self._transactions_file)
         return inserted, updated
 
     def _make_transaction_key(self, row):
@@ -335,53 +333,13 @@ class Storage:
     ) -> pd.DataFrame:
         """Load transactions into a DataFrame."""
 
-        # If no dates, load ALL.
-        # If range, calculate years pairs.
-        files_to_load = []
-        if start_date is None and end_date is None:
-            files_to_load = list(self._transactions_dir.glob("transactions_*.json"))
-        else:
-            # Smart loading based on range
-            # Range might span multiple years/halves
-            # Simplest logic: Load partitions that *might* overlap.
-            # But "transactions_YYYY_HX.json"
-            # Let's just iterate all files and filter by name if we want optimization,
-            # Or simpler: load all and filter in memory (given 20k rows total).
-            # For 20k rows, full scan is fastest to implement vs regex parsing filename.
-            # But user asked for "transparent sharding... load needed halfyears".
-
-            # Let's parse filenames to filter.
-            all_files = list(self._transactions_dir.glob("transactions_*_H*.json"))
-            files_to_load = []
-
-            s_year = start_date.year if start_date else 0
-            e_year = end_date.year if end_date else 9999
-
-            for f in all_files:
-                # transactions_2023_H1.json
-                try:
-                    parts = f.stem.split("_")  # ['transactions', '2023', 'H1']
-                    f_year = int(parts[1])
-                    if s_year <= f_year <= e_year:
-                        files_to_load.append(f)
-                except (IndexError, ValueError):
-                    continue
-
-        if not files_to_load:
-            return pd.DataFrame()  # Empty
-
-        dfs = []
-        for f in files_to_load:
-            try:
-                df = pd.read_json(f, orient="records")
-                dfs.append(df)
-            except ValueError:
-                continue
-
-        if not dfs:
+        if not self._transactions_file.exists():
             return pd.DataFrame()
 
-        full_df = pd.concat(dfs, ignore_index=True)
+        try:
+            full_df = pd.read_json(self._transactions_file, orient="records")
+        except ValueError:
+            return pd.DataFrame()
 
         # Convert date column back to date object (or timestamp) for filtering
         if "date" in full_df.columns:
@@ -400,45 +358,18 @@ class Storage:
         return full_df
 
     def get_last_transaction_date(self) -> date | None:
-        """Find the date of the latest transaction across all partitions."""
-        all_files = list(self._transactions_dir.glob("transactions_*.json"))
-        if not all_files:
+        """Find the date of the latest transaction."""
+        if not self._transactions_file.exists():
             return None
 
-        max_date = None
-
-        # Optimization: Check file names first?
-        # filenames usually transactions_YYYY_HX.json
-        # We can sort files by year/half descending, then check content.
-
-        def parse_file_key(f):
-            try:
-                parts = f.stem.split("_")
-                return (int(parts[1]), int(parts[2][1:]))  # (Year, Half)
-            except (ValueError, IndexError):
-                return (0, 0)
-
-        sorted_files = sorted(all_files, key=parse_file_key, reverse=True)
-
-        for f in sorted_files:
-            try:
-                df = pd.read_json(f, orient="records")
-                if not df.empty and "date" in df.columns:
-                    # Calculate max in this file
-                    # Ensure date is date object
-                    df["date"] = pd.to_datetime(df["date"]).dt.date
-                    local_max = df["date"].max()
-                    if local_max and (max_date is None or local_max > max_date):
-                        # Since we iterate descending, the first valid max found in
-                        # the newest partition MIGHT be the global max, provided partitions
-                        # are strictly time-ordered. But a transaction from Jan could be in H2
-                        # file if mis-saved? No, we shard by date.
-                        # So yes, the max date in the newest non-empty partition is the global max.
-                        return local_max
-            except ValueError:
-                continue
-
-        return max_date
+        try:
+            df = pd.read_json(self._transactions_file, orient="records")
+            if df.empty or "date" not in df.columns:
+                return None
+            df["date"] = pd.to_datetime(df["date"]).dt.date
+            return df["date"].max()
+        except (ValueError, TypeError):
+            return None
 
     # --- Exchange Rates (Simple JSON) ---
 

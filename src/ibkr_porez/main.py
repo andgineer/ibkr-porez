@@ -7,13 +7,14 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import rich_click as click
+from platformdirs import user_data_dir
 from rich.console import Console
 from rich.logging import RichHandler
 
 from ibkr_porez import __version__
 from ibkr_porez.config import UserConfig, config_manager
 from ibkr_porez.error_handling import get_user_friendly_error_message
-from ibkr_porez.logging_config import get_error_log_path, setup_logger
+from ibkr_porez.logging_config import ERROR_LOG_FILE, setup_logger
 from ibkr_porez.models import IncomeDeclarationEntry, TaxReportEntry
 from ibkr_porez.operation_get import GetOperation
 from ibkr_porez.operation_import import ImportOperation, ImportType
@@ -32,7 +33,6 @@ console = Console()
 
 # Setup file logger for error logging
 logger = setup_logger()
-_error_log_file = get_error_log_path()
 
 
 def _setup_logging_callback(ctx, param, value):  # noqa: ARG001
@@ -103,6 +103,23 @@ def config():
     phone = click.prompt("Phone Number", default=current_config.phone)
     email = click.prompt("Email", default=current_config.email)
 
+    default_data_dir = current_config.data_dir or str(
+        Path(user_data_dir("ibkr-porez")) / Storage.DATA_SUBDIR,
+    )
+    data_dir_input = click.prompt(
+        "Data Directory (absolute path to folder with transactions.json, "
+        "default: ibkr-porez-data in app folder)",
+        default=default_data_dir,
+        show_default=True,
+    )
+    # If user entered the default ibkr-porez-data folder, set to None to use default
+    default_ibkr_porez_data = str(Path(user_data_dir("ibkr-porez")) / Storage.DATA_SUBDIR)
+    data_dir = (
+        None
+        if data_dir_input.strip() == default_ibkr_porez_data
+        else (data_dir_input.strip() if data_dir_input.strip() else None)
+    )
+
     new_config = UserConfig(
         ibkr_token=ibkr_token,
         ibkr_query_id=ibkr_query_id,
@@ -112,6 +129,7 @@ def config():
         city_code=city_code,
         phone=phone,
         email=email,
+        data_dir=data_dir,
     )
 
     config_manager.save_config(new_config)
@@ -145,7 +163,7 @@ def get():
             # Show user-friendly error message
             user_message = get_user_friendly_error_message(e)
             console.print(f"[bold red]Error:[/bold red] {user_message}")
-            console.print(f"[dim]Full error details logged to: {_error_log_file}[/dim]")
+            console.print(f"[dim]Full error details logged to: {ERROR_LOG_FILE}[/dim]")
             return
 
     # Rate sync is already done in process_flex_query
@@ -249,7 +267,7 @@ def import_file(file_path: str | None, import_type: str):
         # Show user-friendly error message
         user_message = get_user_friendly_error_message(e)
         console.print(f"[bold red]Import Failed:[/bold red] {user_message}")
-        console.print(f"[dim]Full error details logged to: {_error_log_file}[/dim]")
+        console.print(f"[dim]Full error details logged to: {ERROR_LOG_FILE}[/dim]")
 
 
 @ibkr_porez.command(
@@ -341,7 +359,7 @@ def sync():
         # Show user-friendly error message
         user_message = get_user_friendly_error_message(e)
         console.print(f"[bold red]Error:[/bold red] {user_message}")
-        console.print(f"[dim]Full error details logged to: {_error_log_file}[/dim]")
+        console.print(f"[dim]Full error details logged to: {ERROR_LOG_FILE}[/dim]")
 
 
 @ibkr_porez.command(
@@ -472,7 +490,7 @@ def export_flex(date: str, output_path: str | None):
         # Show user-friendly error message
         user_message = get_user_friendly_error_message(e)
         console.print(f"[bold red]Error:[/bold red] {user_message}")
-        console.print(f"[dim]Full error details logged to: {_error_log_file}[/dim]")
+        console.print(f"[dim]Full error details logged to: {ERROR_LOG_FILE}[/dim]")
 
 
 if __name__ == "__main__":  # pragma: no cover

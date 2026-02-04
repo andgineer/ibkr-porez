@@ -6,6 +6,9 @@ import json
 from ibkr_porez.main import ibkr_porez
 
 
+pytestmark = pytest.mark.no_config_mock
+
+
 @pytest.fixture
 def mock_config_dir(tmp_path):
     # Patch where ConfigManager looks for config dir

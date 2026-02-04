@@ -14,10 +14,14 @@ from ibkr_porez.models import Transaction, TransactionType, Currency
 
 @pytest.fixture
 def mock_user_data_dir(tmp_path):
+    from ibkr_porez.models import UserConfig
+
     with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
-        s = Storage()
-        s._ensure_dirs()
-        yield tmp_path
+        mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
+        with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
+            s = Storage()
+            s._ensure_dirs()
+            yield tmp_path
 
 
 @pytest.fixture
@@ -31,7 +35,14 @@ class TestE2EIncome:
     @pytest.fixture
     def setup_data(self, mock_user_data_dir):
         """Populate storage with dividend transactions."""
-        s = Storage()
+        from ibkr_porez.models import UserConfig
+        from unittest.mock import patch
+
+        with patch(
+            "ibkr_porez.storage.config_manager.load_config",
+            return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
+        ):
+            s = Storage()
         # Add dividend transactions
         txs = [
             Transaction(
@@ -141,7 +152,14 @@ class TestE2EIncome:
     ):
         """Test that error is raised when withholding tax is not found."""
         # Setup storage with dividend but NO withholding tax
-        s = Storage()
+        from ibkr_porez.models import UserConfig
+        from unittest.mock import patch
+
+        with patch(
+            "ibkr_porez.storage.config_manager.load_config",
+            return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
+        ):
+            s = Storage()
         txs = [
             Transaction(
                 transaction_id="div_voo_1",
@@ -196,7 +214,14 @@ class TestE2EIncome:
     ):
         """Test that --force flag allows creation with zero tax."""
         # Setup storage with dividend but NO withholding tax
-        s = Storage()
+        from ibkr_porez.models import UserConfig
+        from unittest.mock import patch
+
+        with patch(
+            "ibkr_porez.storage.config_manager.load_config",
+            return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
+        ):
+            s = Storage()
         txs = [
             Transaction(
                 transaction_id="div_voo_1",
@@ -256,7 +281,14 @@ class TestE2EIncome:
         mock_nbs = mock_nbs_cls.return_value
 
         # Empty storage
-        Storage()
+        from ibkr_porez.models import UserConfig
+        from unittest.mock import patch
+
+        with patch(
+            "ibkr_porez.storage.config_manager.load_config",
+            return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
+        ):
+            Storage()
 
         with runner.isolated_filesystem():
             result = runner.invoke(

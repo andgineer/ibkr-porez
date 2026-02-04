@@ -6,6 +6,9 @@ from ibkr_porez.config import ConfigManager
 from ibkr_porez.models import UserConfig
 
 
+pytestmark = pytest.mark.no_config_mock
+
+
 @allure.epic("ConfigManager")
 class TestConfigManager:
     @pytest.fixture

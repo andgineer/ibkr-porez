@@ -8,12 +8,18 @@ from ibkr_porez.storage import Storage
 
 @pytest.fixture
 def storage(tmp_path):
-    s = Storage()
-    # Mock data dir
-    s._data_dir = tmp_path
-    s._transactions_dir = tmp_path / "transactions"
-    s._ensure_dirs()
-    return s
+    from unittest.mock import patch
+    from ibkr_porez.models import UserConfig
+
+    with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
+        mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
+        with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
+            s = Storage()
+            # Mock data dir
+            s._data_dir = tmp_path
+            s._transactions_file = tmp_path / "transactions.json"
+            s._ensure_dirs()
+            return s
 
 
 def make_tx(tx_id, d_str, symbol, qty, price, t_type=TransactionType.TRADE):
@@ -221,7 +227,7 @@ class TestStorageDeduplication:
             ]
         )
 
-        p = storage._transactions_dir / "transactions_2025_H1.json"
+        p = storage._transactions_file
         p.parent.mkdir(exist_ok=True, parents=True)
         df.to_json(p, orient="records")
 

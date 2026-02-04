@@ -43,8 +43,8 @@ def save_raw_report_with_delta(
         report_date: Date of the report
     """
     flex_queries_dir = storage.flex_queries_dir
-    base_file = flex_queries_dir / f"base_{report_date.strftime('%Y%m%d')}.xml.zip"
-    delta_file = flex_queries_dir / f"delta_{report_date.strftime('%Y%m%d')}.patch.zip"
+    base_file = flex_queries_dir / f"base-{report_date.strftime('%Y%m%d')}.xml.zip"
+    delta_file = flex_queries_dir / f"delta-{report_date.strftime('%Y%m%d')}.patch.zip"
 
     # Remove any existing files for this date (only one query per day)
     if base_file.exists():
@@ -66,7 +66,7 @@ def save_raw_report_with_delta(
     previous_lines = previous_xml.splitlines(keepends=True)
     current_lines = xml_content.splitlines(keepends=True)
     # Use the inner filename (without .zip) for the delta header
-    inner_delta_name = f"delta_{report_date.strftime('%Y%m%d')}.patch"
+    inner_delta_name = f"delta-{report_date.strftime('%Y%m%d')}.patch"
     delta = list(
         difflib.unified_diff(
             previous_lines,
@@ -139,7 +139,7 @@ def _get_latest_report_content_any_date(flex_queries_dir: Path) -> tuple[str, Pa
         tuple[str, Path] | None: (content, base_file_path) or None if no report found
     """
     # Find the most recent base file (by date in filename)
-    base_files = sorted(flex_queries_dir.glob("base_*.xml.zip"), reverse=True)
+    base_files = sorted(flex_queries_dir.glob("base-*.xml.zip"), reverse=True)
     if not base_files:
         return None
 
@@ -154,7 +154,7 @@ def _get_latest_report_content_any_date(flex_queries_dir: Path) -> tuple[str, Pa
     # Apply ALL deltas after this base file (regardless of date)
     lines = content.splitlines(keepends=True)
     # Get all delta files sorted by date
-    all_delta_files = sorted(flex_queries_dir.glob("delta_*.patch.zip"))
+    all_delta_files = sorted(flex_queries_dir.glob("delta-*.patch.zip"))
     for delta_file in all_delta_files:
         delta_date = _parse_date_from_filename(delta_file.name)
         if delta_date and delta_date >= base_date:
@@ -188,7 +188,7 @@ def _get_latest_report_content(flex_queries_dir: Path, before_date: date) -> str
 
 def _find_base_file(flex_queries_dir: Path, before_date: date) -> Path | None:
     """Find base file closest to (before or equal to) given date."""
-    base_files = sorted(flex_queries_dir.glob("base_*.xml.zip"), reverse=True)
+    base_files = sorted(flex_queries_dir.glob("base-*.xml.zip"), reverse=True)
     for base_file in base_files:
         file_date = _parse_date_from_filename(base_file.name)
         if file_date and file_date <= before_date:
@@ -203,7 +203,7 @@ def _get_delta_files_between(
 ) -> list[Path]:
     """Get all delta files between start_date and end_date (inclusive)."""
     delta_files = []
-    for delta_file in sorted(flex_queries_dir.glob("delta_*.patch.zip")):
+    for delta_file in sorted(flex_queries_dir.glob("delta-*.patch.zip")):
         file_date = _parse_date_from_filename(delta_file.name)
         if file_date and start_date < file_date <= end_date:
             delta_files.append(delta_file)
@@ -287,15 +287,15 @@ def _apply_patch(lines: list[str], patch_file: Path) -> list[str]:  # noqa: C901
 
 
 def _parse_date_from_filename(filename: str) -> date | None:
-    """Parse date from filename like 'base_20260129.xml.zip' or 'delta_20260130.patch.zip'."""
+    """Parse date from filename like 'base-20260129.xml.zip' or 'delta-20260130.patch.zip'."""
     try:
         # Remove .zip extension if present
         name_without_zip = filename.removesuffix(".zip")
         # Extract date part (YYYYMMDD)
-        if name_without_zip.startswith("base_"):
-            date_str = name_without_zip[5:13]  # "base_YYYYMMDD.xml"
-        elif name_without_zip.startswith("delta_"):
-            date_str = name_without_zip[6:14]  # "delta_YYYYMMDD.patch"
+        if name_without_zip.startswith("base-"):
+            date_str = name_without_zip[5:13]  # "base-YYYYMMDD.xml"
+        elif name_without_zip.startswith("delta-"):
+            date_str = name_without_zip[6:14]  # "delta-YYYYMMDD.patch"
         else:
             return None
 
@@ -306,7 +306,7 @@ def _parse_date_from_filename(filename: str) -> date | None:
 
 def _cleanup_old_base(flex_queries_dir: Path, keep_date: date) -> None:
     """Remove old base files, keeping only the one for keep_date."""
-    for base_file in flex_queries_dir.glob("base_*.xml.zip"):
+    for base_file in flex_queries_dir.glob("base-*.xml.zip"):
         file_date = _parse_date_from_filename(base_file.name)
         if file_date and file_date < keep_date:
             base_file.unlink()

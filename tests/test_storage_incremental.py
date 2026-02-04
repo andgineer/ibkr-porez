@@ -1,15 +1,18 @@
 import allure
 import pytest
-import pandas as pd
 from datetime import date
 from ibkr_porez.storage import Storage
 
 
 @pytest.fixture
 def storage(tmp_path):
-    # Mock user_data_dir to return tmp_path
+    # Mock user_data_dir and config_manager to return tmp_path
+    from ibkr_porez.models import UserConfig
+
     with pytest.MonkeyPatch.context() as m:
         m.setattr("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path))
+        mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
+        m.setattr("ibkr_porez.storage.config_manager.load_config", lambda: mock_config)
         s = Storage()
         # Ensure dirs for test
         s._ensure_dirs()
@@ -25,55 +28,87 @@ class TestStorageIncremental:
 
         # Add some data
         from datetime import date
+        from ibkr_porez.models import Transaction, TransactionType, Currency
+        from decimal import Decimal
 
-        # 2023 H1
-        df1 = pd.DataFrame(
-            [
-                {"transaction_id": "1", "date": date(2023, 1, 1), "amount": 100},
-                {"transaction_id": "2", "date": date(2023, 6, 1), "amount": 200},
-            ]
+        # Create transactions and save them
+        tx1 = Transaction(
+            transaction_id="1",
+            date=date(2023, 1, 1),
+            type=TransactionType.TRADE,
+            symbol="AAPL",
+            description="test",
+            quantity=Decimal("10"),
+            price=Decimal("100"),
+            amount=Decimal("1000"),
+            currency=Currency.USD,
         )
-        storage._save_partition(2023, 1, df1)
+        tx2 = Transaction(
+            transaction_id="2",
+            date=date(2023, 6, 1),
+            type=TransactionType.TRADE,
+            symbol="AAPL",
+            description="test",
+            quantity=Decimal("20"),
+            price=Decimal("100"),
+            amount=Decimal("2000"),
+            currency=Currency.USD,
+        )
+        storage.save_transactions([tx1, tx2])
 
         assert storage.get_last_transaction_date() == date(2023, 6, 1)
 
-        # 2023 H2
-        df2 = pd.DataFrame(
-            [
-                {"transaction_id": "3", "date": date(2023, 7, 15), "amount": 100},
-            ]
+        # Add more transactions
+        tx3 = Transaction(
+            transaction_id="3",
+            date=date(2023, 7, 15),
+            type=TransactionType.TRADE,
+            symbol="AAPL",
+            description="test",
+            quantity=Decimal("15"),
+            price=Decimal("100"),
+            amount=Decimal("1500"),
+            currency=Currency.USD,
         )
-        storage._save_partition(2023, 2, df2)
+        storage.save_transactions([tx3])
 
         assert storage.get_last_transaction_date() == date(2023, 7, 15)
 
-        # 2022 H1 (Older)
-        df3 = pd.DataFrame(
-            [
-                {"transaction_id": "0", "date": date(2022, 1, 1), "amount": 100},
-            ]
+        # Add older transaction
+        tx4 = Transaction(
+            transaction_id="0",
+            date=date(2022, 1, 1),
+            type=TransactionType.TRADE,
+            symbol="AAPL",
+            description="test",
+            quantity=Decimal("5"),
+            price=Decimal("100"),
+            amount=Decimal("500"),
+            currency=Currency.USD,
         )
-        storage._save_partition(2022, 1, df3)
+        storage.save_transactions([tx4])
 
         # Still 2023-07-15
         assert storage.get_last_transaction_date() == date(2023, 7, 15)
 
     def test_get_transactions_open_date_conversion(self, storage):
         # Test that open_date is converted to date object
-        import pandas as pd
+        from ibkr_porez.models import Transaction, TransactionType, Currency
+        from decimal import Decimal
 
-        df = pd.DataFrame(
-            [
-                {
-                    "transaction_id": "100",
-                    "date": date(2023, 1, 1),
-                    "open_date": "2022-06-01",  # String
-                    "amount": 100,
-                    "currency": "USD",
-                },
-            ]
+        tx = Transaction(
+            transaction_id="100",
+            date=date(2023, 1, 1),
+            open_date=date(2022, 6, 1),
+            type=TransactionType.TRADE,
+            symbol="AAPL",
+            description="test",
+            quantity=Decimal("10"),
+            price=Decimal("100"),
+            amount=Decimal("1000"),
+            currency=Currency.USD,
         )
-        storage._save_partition(2023, 1, df)
+        storage.save_transactions([tx])
 
         loaded_df = storage.get_transactions()
 

@@ -6,6 +6,10 @@ from pathlib import Path
 
 from platformdirs import user_data_dir
 
+# Module-level constants
+LOG_DIR = Path(user_data_dir("ibkr-porez")) / "logs"
+ERROR_LOG_FILE = LOG_DIR / "error.log"
+
 
 def setup_logger() -> logging.Logger:
     """
@@ -18,12 +22,10 @@ def setup_logger() -> logging.Logger:
     Returns:
         Configured logger instance
     """
-    log_dir = Path(user_data_dir("ibkr-porez")) / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    error_log_file = log_dir / "error.log"
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
 
     file_handler = TimedRotatingFileHandler(
-        filename=str(error_log_file),
+        filename=str(ERROR_LOG_FILE),
         when="midnight",
         interval=1,  # Rotate daily
         backupCount=90,  # Keep 90 days (approximately 3 months)
@@ -40,14 +42,3 @@ def setup_logger() -> logging.Logger:
     logger.setLevel(logging.ERROR)
 
     return logger
-
-
-def get_error_log_path() -> Path:
-    """
-    Get path to error log file.
-
-    Returns:
-        Path to error.log file
-    """
-    log_dir = Path(user_data_dir("ibkr-porez")) / "logs"
-    return log_dir / "error.log"

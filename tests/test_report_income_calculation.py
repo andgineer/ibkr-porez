@@ -190,92 +190,102 @@ class TestIncomeCalculationAccuracy:
         mock_nbs.get_rate.side_effect = get_rate_side_effect
 
         # Setup storage with real data
+        from ibkr_porez.models import UserConfig
+
         with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
-            storage = Storage()
-            storage._ensure_dirs()
+            mock_storage_config = UserConfig(full_name="Test", address="Test", data_dir=None)
+            with patch(
+                "ibkr_porez.storage.config_manager.load_config", return_value=mock_storage_config
+            ):
+                storage = Storage()
+                storage._ensure_dirs()
 
-            # Add transactions for 2025-12-24
-            transactions = [
-                Transaction(
-                    transaction_id="div_sgov",
-                    date=date(2025, 12, 24),
-                    type=TransactionType.DIVIDEND,
-                    symbol="SGOV",
-                    description="SGOV CASH DIVIDEND",
-                    quantity=Decimal(0),
-                    price=Decimal(0),
-                    amount=Decimal("87.55"),
-                    currency=Currency.USD,
-                ),
-                Transaction(
-                    transaction_id="tax_sgov",
-                    date=date(2025, 12, 24),
-                    type=TransactionType.WITHHOLDING_TAX,
-                    symbol="SGOV",
-                    description="SGOV US TAX",
-                    quantity=Decimal(0),
-                    price=Decimal(0),
-                    amount=Decimal("-26.27"),  # Negative
-                    currency=Currency.USD,
-                ),
-                Transaction(
-                    transaction_id="div_voo",
-                    date=date(2025, 12, 24),
-                    type=TransactionType.DIVIDEND,
-                    symbol="VOO",
-                    description="VOO CASH DIVIDEND",
-                    quantity=Decimal(0),
-                    price=Decimal(0),
-                    amount=Decimal("21.25"),
-                    currency=Currency.USD,
-                ),
-                Transaction(
-                    transaction_id="tax_voo",
-                    date=date(2025, 12, 24),
-                    type=TransactionType.WITHHOLDING_TAX,
-                    symbol="VOO",
-                    description="VOO US TAX",
-                    quantity=Decimal(0),
-                    price=Decimal(0),
-                    amount=Decimal("-6.38"),  # Negative
-                    currency=Currency.USD,
-                ),
-            ]
+                # Add transactions for 2025-12-24
+                transactions = [
+                    Transaction(
+                        transaction_id="div_sgov",
+                        date=date(2025, 12, 24),
+                        type=TransactionType.DIVIDEND,
+                        symbol="SGOV",
+                        description="SGOV CASH DIVIDEND",
+                        quantity=Decimal(0),
+                        price=Decimal(0),
+                        amount=Decimal("87.55"),
+                        currency=Currency.USD,
+                    ),
+                    Transaction(
+                        transaction_id="tax_sgov",
+                        date=date(2025, 12, 24),
+                        type=TransactionType.WITHHOLDING_TAX,
+                        symbol="SGOV",
+                        description="SGOV US TAX",
+                        quantity=Decimal(0),
+                        price=Decimal(0),
+                        amount=Decimal("-26.27"),  # Negative
+                        currency=Currency.USD,
+                    ),
+                    Transaction(
+                        transaction_id="div_voo",
+                        date=date(2025, 12, 24),
+                        type=TransactionType.DIVIDEND,
+                        symbol="VOO",
+                        description="VOO CASH DIVIDEND",
+                        quantity=Decimal(0),
+                        price=Decimal(0),
+                        amount=Decimal("21.25"),
+                        currency=Currency.USD,
+                    ),
+                    Transaction(
+                        transaction_id="tax_voo",
+                        date=date(2025, 12, 24),
+                        type=TransactionType.WITHHOLDING_TAX,
+                        symbol="VOO",
+                        description="VOO US TAX",
+                        quantity=Decimal(0),
+                        price=Decimal(0),
+                        amount=Decimal("-6.38"),  # Negative
+                        currency=Currency.USD,
+                    ),
+                ]
 
-            storage.save_transactions(transactions)
+                storage.save_transactions(transactions)
 
-            # Generate reports
-            generator = IncomeReportGenerator()
-            results = list(
-                generator.generate(
-                    start_date=date(2025, 12, 24),
-                    end_date=date(2025, 12, 24),
+                # Generate reports
+                generator = IncomeReportGenerator()
+                results = list(
+                    generator.generate(
+                        start_date=date(2025, 12, 24),
+                        end_date=date(2025, 12, 24),
+                    )
                 )
-            )
 
-            # Should create 2 separate declarations (one for SGOV, one for VOO)
-            assert len(results) == 2
+                # Should create 2 separate declarations (one for SGOV, one for VOO)
+                assert len(results) == 2
 
-            # Find SGOV declaration (filename format: ppopo-sgov-yyyy-mmdd.xml)
-            sgov_result = next((r for r in results if "sgov" in r[0].lower()), None)
-            assert sgov_result is not None, "SGOV declaration not found"
+                # Find SGOV declaration (filename format: ppopo-sgov-yyyy-mmdd.xml)
+                sgov_result = next((r for r in results if "sgov" in r[0].lower()), None)
+                assert sgov_result is not None, "SGOV declaration not found"
 
-            # Verify SGOV XML content
-            sgov_filename, sgov_xml, sgov_entries = sgov_result
-            assert "sgov" in sgov_filename.lower()
+                # Verify SGOV XML content
+                sgov_filename, sgov_xml, sgov_entries = sgov_result
+                assert "sgov" in sgov_filename.lower()
 
-            assert "<ns1:BrutoPrihod>8706.70</ns1:BrutoPrihod>" in sgov_xml
-            assert "<ns1:ObracunatiPorez>1306.01</ns1:ObracunatiPorez>" in sgov_xml
-            assert "<ns1:PorezPlacenDrugojDrzavi>2612.51</ns1:PorezPlacenDrugojDrzavi>" in sgov_xml
+                assert "<ns1:BrutoPrihod>8706.70</ns1:BrutoPrihod>" in sgov_xml
+                assert "<ns1:ObracunatiPorez>1306.01</ns1:ObracunatiPorez>" in sgov_xml
+                assert (
+                    "<ns1:PorezPlacenDrugojDrzavi>2612.51</ns1:PorezPlacenDrugojDrzavi>" in sgov_xml
+                )
 
-            # Find VOO declaration (filename format: ppopo-voo-yyyy-mmdd.xml)
-            voo_result = next((r for r in results if "voo" in r[0].lower()), None)
-            assert voo_result is not None, "VOO declaration not found"
+                # Find VOO declaration (filename format: ppopo-voo-yyyy-mmdd.xml)
+                voo_result = next((r for r in results if "voo" in r[0].lower()), None)
+                assert voo_result is not None, "VOO declaration not found"
 
-            # Verify VOO XML content
-            voo_filename, voo_xml, voo_entries = voo_result
-            assert "voo" in voo_filename.lower()
+                # Verify VOO XML content
+                voo_filename, voo_xml, voo_entries = voo_result
+                assert "voo" in voo_filename.lower()
 
-            assert "<ns1:BrutoPrihod>2113.28</ns1:BrutoPrihod>" in voo_xml
-            assert "<ns1:ObracunatiPorez>316.99</ns1:ObracunatiPorez>" in voo_xml
-            assert "<ns1:PorezPlacenDrugojDrzavi>634.48</ns1:PorezPlacenDrugojDrzavi>" in voo_xml
+                assert "<ns1:BrutoPrihod>2113.28</ns1:BrutoPrihod>" in voo_xml
+                assert "<ns1:ObracunatiPorez>316.99</ns1:ObracunatiPorez>" in voo_xml
+                assert (
+                    "<ns1:PorezPlacenDrugojDrzavi>634.48</ns1:PorezPlacenDrugojDrzavi>" in voo_xml
+                )

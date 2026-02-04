@@ -242,74 +242,78 @@ class TestWithholdingTaxMatching:
 
     def test_interest_grouping_by_currency(self, generator, tmp_path):
         """Test that interest transactions are grouped by currency, not symbol."""
+        from ibkr_porez.models import UserConfig
+
         with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
-            # Create fresh storage
-            storage = Storage()
-            storage._ensure_dirs()
+            mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
+            with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
+                # Create fresh storage
+                storage = Storage()
+                storage._ensure_dirs()
 
-            # Add multiple interest transactions in same currency but different symbols
-            transactions = [
-                Transaction(
-                    transaction_id="int1",
-                    date=date(2025, 12, 24),
-                    type=TransactionType.INTEREST,
-                    symbol="",  # Empty symbol
-                    description="USD Credit Interest",
-                    quantity=Decimal(0),
-                    price=Decimal(0),
-                    amount=Decimal("100.00"),
-                    currency=Currency.USD,
-                ),
-                Transaction(
-                    transaction_id="int2",
-                    date=date(2025, 12, 24),
-                    type=TransactionType.INTEREST,
-                    symbol="CASH",  # Different symbol
-                    description="USD Debit Interest",
-                    quantity=Decimal(0),
-                    price=Decimal(0),
-                    amount=Decimal("50.00"),
-                    currency=Currency.USD,
-                ),
-                Transaction(
-                    transaction_id="tax1",
-                    date=date(2025, 12, 24),
-                    type=TransactionType.WITHHOLDING_TAX,
-                    symbol="",  # Empty symbol
-                    description="USD Interest Tax",
-                    quantity=Decimal(0),
-                    price=Decimal(0),
-                    amount=Decimal("-15.00"),
-                    currency=Currency.USD,
-                ),
-            ]
+                # Add multiple interest transactions in same currency but different symbols
+                transactions = [
+                    Transaction(
+                        transaction_id="int1",
+                        date=date(2025, 12, 24),
+                        type=TransactionType.INTEREST,
+                        symbol="",  # Empty symbol
+                        description="USD Credit Interest",
+                        quantity=Decimal(0),
+                        price=Decimal(0),
+                        amount=Decimal("100.00"),
+                        currency=Currency.USD,
+                    ),
+                    Transaction(
+                        transaction_id="int2",
+                        date=date(2025, 12, 24),
+                        type=TransactionType.INTEREST,
+                        symbol="CASH",  # Different symbol
+                        description="USD Debit Interest",
+                        quantity=Decimal(0),
+                        price=Decimal(0),
+                        amount=Decimal("50.00"),
+                        currency=Currency.USD,
+                    ),
+                    Transaction(
+                        transaction_id="tax1",
+                        date=date(2025, 12, 24),
+                        type=TransactionType.WITHHOLDING_TAX,
+                        symbol="",  # Empty symbol
+                        description="USD Interest Tax",
+                        quantity=Decimal(0),
+                        price=Decimal(0),
+                        amount=Decimal("-15.00"),
+                        currency=Currency.USD,
+                    ),
+                ]
 
-            storage.save_transactions(transactions)
+                storage.save_transactions(transactions)
 
-            # Create new generator with fresh storage
-            with patch("ibkr_porez.report_base.NBSClient") as mock_nbs_cls:
-                mock_nbs = mock_nbs_cls.return_value
-                mock_nbs.get_rate.return_value = Decimal("100.0")
-                gen = IncomeReportGenerator()
-                gen.nbs = mock_nbs
+                # Create new generator with fresh storage
+                with patch("ibkr_porez.report_base.NBSClient") as mock_nbs_cls:
+                    mock_nbs = mock_nbs_cls.return_value
+                    mock_nbs.get_rate.return_value = Decimal("100.0")
+                    gen = IncomeReportGenerator()
+                    gen.nbs = mock_nbs
 
-                # Generate reports
-                results = list(
-                    gen.generate(
-                        start_date=date(2025, 12, 24),
-                        end_date=date(2025, 12, 24),
+                    # Generate reports
+                    results = list(
+                        gen.generate(
+                            start_date=date(2025, 12, 24),
+                            end_date=date(2025, 12, 24),
+                        )
                     )
-                )
 
-                # Should create ONE declaration (grouped by currency, not symbol)
-                assert len(results) == 1
+                    # Should create ONE declaration (grouped by currency, not symbol)
+                    assert len(results) == 1
 
-                # Check that both interest amounts are included (100 + 50 = 150)
-                # Format: (filename, xml_content, entries)
-                filename, xml_content, entries = results[0]
-                declaration_entry = entries[0]
-                # Total should be sum of both: 150.00 USD * 100 = 15000.00 RSD
-                assert declaration_entry.bruto_prihod == Decimal("15000.00")
+                    # Check that both interest amounts are included (100 + 50 = 150)
+                    # Format: (filename, xml_content, entries)
+                    filename, xml_content, entries = results[0]
+                    declaration_entry = entries[0]
+                    # Total should be sum of both: 150.00 USD * 100 = 15000.00 RSD
+                    assert declaration_entry.bruto_prihod == Decimal("15000.00")
 
     def test_multiple_taxes_summed(self, generator):
         """Test that multiple taxes in range are summed."""
