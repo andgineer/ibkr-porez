@@ -28,6 +28,15 @@ from ibkr_porez.storage_flex_queries import restore_report
 
 OUTPUT_FILE_DEFAULT = "output"
 
+
+def _get_output_folder() -> Path:
+    """Get output folder from config or default to Downloads."""
+    config = config_manager.load_config()
+    if config.output_folder:
+        return Path(config.output_folder)
+    return Path.home() / "Downloads"
+
+
 # Global Console instance to ensure logs and progress bars share the same stream
 console = Console()
 
@@ -120,6 +129,19 @@ def config():
         else (data_dir_input.strip() if data_dir_input.strip() else None)
     )
 
+    default_output_folder = current_config.output_folder or str(Path.home() / "Downloads")
+    output_folder_input = click.prompt(
+        "Output Folder (absolute path to folder for saving files from sync, export, "
+        "export-flex, report commands, default: Downloads)",
+        default=default_output_folder,
+        show_default=True,
+    )
+    output_folder = (
+        None
+        if output_folder_input.strip() == str(Path.home() / "Downloads")
+        else (output_folder_input.strip() if output_folder_input.strip() else None)
+    )
+
     new_config = UserConfig(
         ibkr_token=ibkr_token,
         ibkr_query_id=ibkr_query_id,
@@ -130,6 +152,7 @@ def config():
         phone=phone,
         email=email,
         data_dir=data_dir,
+        output_folder=output_folder,
     )
 
     config_manager.save_config(new_config)
@@ -271,9 +294,18 @@ def import_file(file_path: str | None, import_type: str):
 
 
 @ibkr_porez.command(
-    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#show-statistics-show",
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#show-declaration-show",
 )
-@click.argument("declaration_id", required=False, type=str)
+@click.argument("declaration_id", type=str)
+@verbose_option
+def show(declaration_id: str):
+    """Show declaration details by ID."""
+    show_declaration(declaration_id, console)
+
+
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#show-statistics-stat",
+)
 @click.option("-y", "--year", type=int, help="Filter by year (e.g. 2026)")
 @click.option("-t", "--ticker", type=str, help="Show detailed breakdown for specific ticker")
 @click.option(
@@ -283,19 +315,8 @@ def import_file(file_path: str | None, import_type: str):
     help="Show detailed breakdown for specific month (YYYY-MM, YYYYMM, or MM)",
 )
 @verbose_option
-def show(declaration_id: str | None, year: int | None, ticker: str | None, month: str | None):
-    """
-    Show tax report (Sales only) or declaration details.
-
-    If DECLARATION_ID is provided, shows details for that declaration.
-    Otherwise, shows statistics filtered by year/ticker/month.
-    """
-    # If declaration_id is provided, show declaration details
-    if declaration_id:
-        show_declaration(declaration_id, console)
-        return
-
-    # Otherwise, show statistics
+def stat(year: int | None, ticker: str | None, month: str | None):
+    """Show transaction statistics with optional filters."""
     generator = ShowStatistics()
 
     try:
@@ -474,11 +495,14 @@ def export_flex(date: str, output_path: str | None):
         else:
             # Write to file
             if output_path is None:
-                output_path = f"flex_query_{report_date.strftime('%Y%m%d')}.xml"
-            file_path = Path(output_path)
-            # Ensure .xml extension if not provided
-            if file_path.suffix != ".xml":
-                file_path = file_path.with_suffix(".xml")
+                output_folder = _get_output_folder()
+                output_folder.mkdir(parents=True, exist_ok=True)
+                file_path = output_folder / f"flex_query_{report_date.strftime('%Y%m%d')}.xml"
+            else:
+                file_path = Path(output_path)
+                # Ensure .xml extension if not provided
+                if file_path.suffix != ".xml":
+                    file_path = file_path.with_suffix(".xml")
             file_path.write_text(restored_content, encoding="utf-8")
             console.print(
                 f"[bold green]Exported flex query saved to:[/bold green] {file_path.absolute()}",

@@ -160,3 +160,4 @@ class UserConfig(BaseModel):
     phone: str = "0600000000"
     email: str = "email@example.com"
     data_dir: str | None = None  # Absolute path to data directory (default: app data folder)
+    output_folder: str | None = None  # Absolute path to output folder (default: Downloads)

@@ -2,16 +2,26 @@
 
 import re
 from datetime import date
+from pathlib import Path
 
 from pydantic import ValidationError
 from rich.console import Console
 
+from ibkr_porez.config import config_manager
 from ibkr_porez.models import IncomeDeclarationEntry
 from ibkr_porez.operation_report_params import ReportParams, ReportType
 from ibkr_porez.operation_report_tables import render_declaration_table
 from ibkr_porez.report_gains import GainsReportGenerator
 from ibkr_porez.report_income import IncomeReportGenerator
 from ibkr_porez.validation import handle_validation_error
+
+
+def _get_output_folder() -> Path:
+    """Get output folder from config or default to Downloads."""
+    config = config_manager.load_config()
+    if config.output_folder:
+        return Path(config.output_folder)
+    return Path.home() / "Downloads"
 
 
 def generate_gains_filename(half: str | None) -> str | None:
@@ -62,17 +72,21 @@ def process_gains_report(
             end_date=end_date,
         )
 
+        output_folder = _get_output_folder()
+        output_folder.mkdir(parents=True, exist_ok=True)
+
         declaration_count = 0
         total_entries = 0
         for filename_result, xml_content, entries in results:
             output_filename = filename or filename_result
-            with open(output_filename, "w", encoding="utf-8") as f:
+            output_path = output_folder / output_filename
+            with open(output_path, "w", encoding="utf-8") as f:
                 f.write(xml_content)
 
             if declaration_count == 0:
                 console.print("[bold green]Generated declaration(s):[/bold green]")
             declaration_count += 1
-            console.print(f"  [green]{output_filename}[/green] ({len(entries)} entries)")
+            console.print(f"  [green]{output_path}[/green] ({len(entries)} entries)")
             total_entries += len(entries)
 
             table = render_declaration_table(entries)
@@ -150,15 +164,19 @@ def process_income_report(
             force=force,
         )
 
+        output_folder = _get_output_folder()
+        output_folder.mkdir(parents=True, exist_ok=True)
+
         declaration_count = 0
         for filename, xml_content, entries in results:
-            with open(filename, "w", encoding="utf-8") as f:
+            output_path = output_folder / filename
+            with open(output_path, "w", encoding="utf-8") as f:
                 f.write(xml_content)
 
             if declaration_count == 0:
                 console.print("[bold green]Generated declaration(s):[/bold green]")
             declaration_count += 1
-            console.print(f"  [green]{filename}[/green]")
+            console.print(f"  [green]{output_path}[/green]")
             # Each entry represents one declaration (aggregated if multiple income sources)
             for entry in entries:
                 display_income_declaration(entry, console)

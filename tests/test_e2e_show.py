@@ -107,15 +107,15 @@ class TestE2EShow:
         return s
 
     @patch("ibkr_porez.operation_show.NBSClient")
-    def test_show_default_summary(self, mock_nbs_cls, runner, mock_user_data_dir, setup_data):
+    def test_stat_default_summary(self, mock_nbs_cls, runner, mock_user_data_dir, setup_data):
         """
-        Scenario: Run `show` without arguments.
+        Scenario: Run `stat` without arguments.
         Expect: Monthly summary table.
         """
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = Decimal("100.0")  # 1 USD = 100 RSD
 
-        result = runner.invoke(ibkr_porez, ["show"], env={"COLUMNS": "200"})
+        result = runner.invoke(ibkr_porez, ["stat"], env={"COLUMNS": "200"})
 
         assert result.exit_code == 0
         assert "Monthly Report Breakdown" in result.output
@@ -137,15 +137,15 @@ class TestE2EShow:
         assert "5,000.00" in result.output
 
     @patch("ibkr_porez.operation_show.NBSClient")
-    def test_show_detailed_ticker(self, mock_nbs_cls, runner, mock_user_data_dir, setup_data):
+    def test_stat_detailed_ticker(self, mock_nbs_cls, runner, mock_user_data_dir, setup_data):
         """
-        Scenario: Run `show --ticker AAPL`.
+        Scenario: Run `stat --ticker AAPL`.
         Expect: Detailed execution list for AAPL.
         """
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = Decimal("100.0")
 
-        result = runner.invoke(ibkr_porez, ["show", "--ticker", "AAPL"], env={"COLUMNS": "200"})
+        result = runner.invoke(ibkr_porez, ["stat", "--ticker", "AAPL"], env={"COLUMNS": "200"})
 
         assert result.exit_code == 0
         assert "Detailed Report: AAPL" in result.output
@@ -164,24 +164,15 @@ class TestE2EShow:
         assert "MSFT" not in result.output
 
     @patch("ibkr_porez.operation_show.NBSClient")
-    def test_show_detailed_month(self, mock_nbs_cls, runner, mock_user_data_dir, setup_data):
+    def test_stat_detailed_month(self, mock_nbs_cls, runner, mock_user_data_dir, setup_data):
         """
-        Scenario: Run `show --month 2023-02`.
-        Expect: Summary filtered by month (or detailed? logic says if ticker OR simple filter... wait.
-        Let's check logic: if ticker IS passed -> Detailed. If ONLY month -> Summary filtered?
-        Code: `if show_detailed_list: ...` where `show_detailed_list = True if ticker else False`.
-        So `show -m 2023-02` shows SUMMARY filtered (NOT Detailed).
-        Wait, I should verify what I implemented.
+        Scenario: Run `stat --month 2026-02`.
+        Expect: Summary filtered by month.
         """
-        # Re-reading main.py from previous task (Step 3688):
-        # show_detailed_list = False
-        # if ticker: show_detailed_list = True
-        # So providing only month keeps it as SUMMARY.
-
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = Decimal("100.0")
 
-        result = runner.invoke(ibkr_porez, ["show", "--month", "2026-02"], env={"COLUMNS": "200"})
+        result = runner.invoke(ibkr_porez, ["stat", "--month", "2026-02"], env={"COLUMNS": "200"})
 
         assert result.exit_code == 0
         assert "Monthly Report Breakdown" in result.output
@@ -195,14 +186,14 @@ class TestE2EShow:
         assert "AAPL" not in result.output
 
     @patch("ibkr_porez.operation_show.NBSClient")
-    def test_show_empty(self, mock_nbs_cls, runner, mock_user_data_dir):
+    def test_stat_empty(self, mock_nbs_cls, runner, mock_user_data_dir):
         """Scenario: No transactions."""
         mock_nbs = mock_nbs_cls.return_value
 
         # Empty storage
         Storage()
 
-        result = runner.invoke(ibkr_porez, ["show"])
+        result = runner.invoke(ibkr_porez, ["stat"])
 
         assert result.exit_code == 0
         assert "No transactions found" in result.output

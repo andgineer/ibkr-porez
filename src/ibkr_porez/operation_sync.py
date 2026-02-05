@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from ibkr_porez.config import UserConfig
+from ibkr_porez.config import UserConfig, config_manager
 from ibkr_porez.models import (
     INCOME_CODE_DIVIDEND,
     Declaration,
@@ -18,6 +18,14 @@ from ibkr_porez.operation_get import GetOperation
 from ibkr_porez.report_gains import GainsReportGenerator
 from ibkr_porez.report_income import IncomeReportGenerator
 from ibkr_porez.storage import Storage
+
+
+def _get_output_folder() -> Path:
+    """Get output folder from config or default to Downloads."""
+    config = config_manager.load_config()
+    if config.output_folder:
+        return Path(config.output_folder)
+    return Path.home() / "Downloads"
 
 
 @dataclass
@@ -181,6 +189,13 @@ class SyncOperation:
         )
         file_path = self.storage.declarations_dir / proper_filename
         with open(file_path, "w", encoding="utf-8") as f:
+            f.write(xml_content)
+
+        # Copy to output folder
+        output_folder = _get_output_folder()
+        output_folder.mkdir(parents=True, exist_ok=True)
+        output_path = output_folder / proper_filename
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write(xml_content)
 
         return Declaration(
