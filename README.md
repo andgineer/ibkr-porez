@@ -8,16 +8,18 @@
 | src/ibkr\_porez/config.py                       |       29 |        0 |    100% |           |
 | src/ibkr\_porez/declaration\_gains\_xml.py      |       98 |        3 |     97% |135-136, 139 |
 | src/ibkr\_porez/declaration\_income\_xml.py     |       94 |        1 |     99% |        79 |
+| src/ibkr\_porez/declaration\_manager.py         |      105 |        8 |     92% |72, 104-108, 116, 120, 173 |
 | src/ibkr\_porez/error\_handling.py              |       18 |       17 |      6% |     18-50 |
 | src/ibkr\_porez/ibkr\_csv.py                    |       98 |       19 |     81% |39, 46, 63, 73, 81-82, 89-90, 95-96, 125, 128, 132-133, 137-138, 142-143, 152 |
 | src/ibkr\_porez/ibkr\_flex\_query.py            |      126 |       27 |     79% |44-48, 52, 60-61, 70, 78-79, 127, 137, 140-141, 158, 161-162, 168-173, 201, 210, 217, 220-221, 225-226 |
 | src/ibkr\_porez/logging\_config.py              |       15 |        0 |    100% |           |
-| src/ibkr\_porez/main.py                         |      241 |       61 |     75% |34-37, 53-62, 170-171, 183-190, 205, 210, 213, 251-257, 269, 282-293, 324-326, 333, 349-350, 373-383, 466-469, 489, 498-500, 505, 511-517 |
-| src/ibkr\_porez/models.py                       |       64 |        0 |    100% |           |
+| src/ibkr\_porez/main.py                         |      348 |       68 |     80% |34-37, 53-62, 170-171, 183-190, 205, 210, 213, 251-257, 269, 282-293, 324-326, 333, 349-350, 373-383, 486-489, 509, 518-520, 525, 531-537, 618-620, 712-713, 722-723 |
+| src/ibkr\_porez/models.py                       |       65 |        0 |    100% |           |
 | src/ibkr\_porez/nbs.py                          |       51 |        1 |     98% |        40 |
 | src/ibkr\_porez/operation\_get.py               |       36 |        0 |    100% |           |
 | src/ibkr\_porez/operation\_import.py            |       76 |       13 |     83% |41-54, 72-73, 112, 131 |
-| src/ibkr\_porez/operation\_report.py            |      105 |        9 |     91% |23, 46, 96-97, 185-186, 226-228 |
+| src/ibkr\_porez/operation\_list.py              |       30 |        0 |    100% |           |
+| src/ibkr\_porez/operation\_report.py            |      105 |        8 |     92% |46, 98-99, 189-190, 232-234 |
 | src/ibkr\_porez/operation\_report\_params.py    |      110 |        6 |     95% |81, 146, 165-166, 169, 188 |
 | src/ibkr\_porez/operation\_report\_tables.py    |       21 |        0 |    100% |           |
 | src/ibkr\_porez/operation\_show.py              |      165 |       38 |     77% |45-50, 73-90, 116, 118, 146-149, 195, 199, 216, 223, 229, 241-242, 359, 379-386 |
@@ -26,11 +28,11 @@
 | src/ibkr\_porez/report\_base.py                 |       18 |        2 |     89% |    34, 54 |
 | src/ibkr\_porez/report\_gains.py                |       28 |        0 |    100% |           |
 | src/ibkr\_porez/report\_income.py               |      143 |       14 |     90% |92-95, 160-161, 165, 191, 202, 229, 234-235, 239, 406, 435 |
-| src/ibkr\_porez/storage.py                      |      319 |       55 |     83% |37, 68-71, 80, 95-96, 143-144, 180-182, 248-249, 273, 282, 298-300, 308, 341-342, 349, 351, 368, 371-372, 377-382, 390, 396-400, 413, 415, 417-418, 434-435, 438, 457, 475, 484-494 |
+| src/ibkr\_porez/storage.py                      |      319 |       43 |     87% |37, 68-71, 80, 95-96, 143-144, 180-182, 248-249, 273, 282, 298-300, 308, 341-342, 349, 351, 368, 371-372, 377-382, 390, 396-400, 413, 415, 417-418, 475, 486 |
 | src/ibkr\_porez/storage\_flex\_queries.py       |      155 |       33 |     79% |125, 149, 159-161, 169-186, 226, 250, 256-257, 261-264, 284, 300, 303-304, 309-312 |
 | src/ibkr\_porez/tax.py                          |       71 |       14 |     80% |27, 33, 57-59, 87-103, 151-152, 155-156 |
 | src/ibkr\_porez/validation.py                   |       13 |        1 |     92% |        29 |
-| **TOTAL**                                       | **2257** |  **318** | **86%** |           |
+| **TOTAL**                                       | **2500** |  **320** | **87%** |           |
 
 
 ## Setup coverage badge
