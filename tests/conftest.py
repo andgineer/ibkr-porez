@@ -23,10 +23,16 @@ def mock_config_for_all_tests(request):
     temp_path = Path(temp_dir)
 
     try:
-        mock_config = UserConfig(full_name="Test User", address="Test Address", data_dir=None)
+        mock_config = UserConfig(
+            full_name="Test User", address="Test Address", data_dir=None, output_folder=None
+        )
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
-            with patch("ibkr_porez.storage.user_data_dir", lambda app: str(temp_path)):
-                yield
+            with patch(
+                "ibkr_porez.declaration_manager.config_manager.load_config",
+                return_value=mock_config,
+            ):
+                with patch("ibkr_porez.storage.user_data_dir", lambda app: str(temp_path)):
+                    yield
     finally:
         # Cleanup: remove the temporary directory
         if temp_path.exists():

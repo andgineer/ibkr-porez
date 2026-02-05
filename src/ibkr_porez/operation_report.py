@@ -51,6 +51,7 @@ def process_gains_report(
     end_date: date,
     filename: str | None,
     console: Console,
+    output_dir: Path | None = None,
 ) -> None:
     """
     Process and display gains report (PPDG-3R).
@@ -60,6 +61,7 @@ def process_gains_report(
         end_date: End date for the report period.
         filename: Optional filename for the report.
         console: Rich console for output.
+        output_dir: Optional output directory (default: from config or Downloads).
     """
     console.print(
         f"[bold blue]Generating PPDG-3R Report for ({start_date} to {end_date})[/bold blue]",
@@ -72,7 +74,7 @@ def process_gains_report(
             end_date=end_date,
         )
 
-        output_folder = _get_output_folder()
+        output_folder = output_dir if output_dir else _get_output_folder()
         output_folder.mkdir(parents=True, exist_ok=True)
 
         declaration_count = 0
@@ -135,6 +137,7 @@ def process_income_report(
     end_date: date,
     console: Console,
     force: bool = False,
+    output_dir: Path | None = None,
 ) -> None:
     """
     Process and display income report (PP OPO).
@@ -144,6 +147,7 @@ def process_income_report(
         end_date: End date for the report period.
         console: Rich console for output.
         force: If True, create declaration with zero tax even if withholding tax not found.
+        output_dir: Optional output directory (default: from config or Downloads).
     """
     console.print(
         f"[bold blue]Generating PP OPO Report for ({start_date} to {end_date})[/bold blue]",
@@ -164,7 +168,7 @@ def process_income_report(
             force=force,
         )
 
-        output_folder = _get_output_folder()
+        output_folder = output_dir if output_dir else _get_output_folder()
         output_folder.mkdir(parents=True, exist_ok=True)
 
         declaration_count = 0
@@ -197,6 +201,7 @@ def execute_report_command(  # noqa: PLR0913
     end_date: str | None,
     console: Console,
     force: bool = False,
+    output_dir: Path | None = None,
 ) -> None:
     """
     Execute the report command.
@@ -208,6 +213,7 @@ def execute_report_command(  # noqa: PLR0913
         end_date: End date string (YYYY-MM-DD).
         console: Rich console for output.
         force: If True, create income declaration with zero tax even if withholding tax not found.
+        output_dir: Optional output directory (default: from config or Downloads).
     """
     try:
         params = ReportParams.model_validate(
@@ -229,6 +235,12 @@ def execute_report_command(  # noqa: PLR0913
 
     if params.type == ReportType.GAINS:
         filename = generate_gains_filename(params.half)
-        process_gains_report(start_date_obj, end_date_obj, filename, console)
+        process_gains_report(start_date_obj, end_date_obj, filename, console, output_dir=output_dir)
     elif params.type == ReportType.INCOME:
-        process_income_report(start_date_obj, end_date_obj, console, force=force)
+        process_income_report(
+            start_date_obj,
+            end_date_obj,
+            console,
+            force=force,
+            output_dir=output_dir,
+        )

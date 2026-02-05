@@ -433,16 +433,36 @@ def sync():
         "even if tax not found. Warning: this means you'll need to pay tax in Serbia."
     ),
 )
+@click.option(
+    "-o",
+    "--output",
+    "output_dir",
+    type=str,
+    required=False,
+    help="Output directory (default: from config or Downloads)",
+)
 @verbose_option
-def report(
+def report(  # noqa: PLR0913
     type: str,
     half: str | None,
     start_date: str | None,
     end_date: str | None,
     force: bool,
+    output_dir: str | None,
 ):
     """Generate tax reports (PPDG-3R for capital gains or PP OPO for capital income)."""
-    execute_report_command(type, half, start_date, end_date, console, force=force)
+    from pathlib import Path
+
+    output_path = Path(output_dir) if output_dir else None
+    execute_report_command(
+        type,
+        half,
+        start_date,
+        end_date,
+        console,
+        force=force,
+        output_dir=output_path,
+    )
 
 
 @ibkr_porez.command("export-flex")
@@ -515,6 +535,204 @@ def export_flex(date: str, output_path: str | None):
         user_message = get_user_friendly_error_message(e)
         console.print(f"[bold red]Error:[/bold red] {user_message}")
         console.print(f"[dim]Full error details logged to: {ERROR_LOG_FILE}[/dim]")
+
+
+@ibkr_porez.command(
+    "list",
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#list-declarations-list",
+)
+@click.option("--all", is_flag=True, help="Show all declarations including submitted/paid")
+@click.option(
+    "--status",
+    type=click.Choice(["draft", "submitted", "paid"], case_sensitive=False),
+    help="Filter by status",
+)
+@click.option(
+    "-1",
+    "--ids-only",
+    "ids_only",
+    is_flag=True,
+    help="Output only declaration IDs (one per line, for piping)",
+)
+@verbose_option
+def list_declarations(all: bool, status: str | None, ids_only: bool):
+    """List declarations (default: active/draft only)."""
+    from ibkr_porez.models import DeclarationStatus
+    from ibkr_porez.operation_list import ListDeclarations
+
+    controller = ListDeclarations()
+    status_enum = DeclarationStatus(status.lower()) if status else None
+    result = controller.generate(show_all=all, status=status_enum, ids_only=ids_only)
+
+    if ids_only:
+        # result is list[str] when ids_only=True
+        assert isinstance(result, list), "Expected list when ids_only=True"
+        for decl_id in result:
+            print(decl_id)
+    else:
+        # result is Table when ids_only=False
+        console.print(result)
+
+
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#submit-declaration-submit",
+)
+@click.argument("declaration_id", type=str)
+@verbose_option
+def submit(declaration_id: str):
+    """Mark declaration as submitted (imported to tax portal).
+
+    Example: ibkr-porez submit 1
+    Example: ibkr-porez list --status draft -1 | xargs -I {} ibkr-porez submit {}
+    """
+    from ibkr_porez.declaration_manager import DeclarationManager
+
+    manager = DeclarationManager()
+
+    try:
+        manager.submit([declaration_id])
+        console.print(f"[green]Submitted: {declaration_id}[/green]")
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise click.ClickException(str(e)) from e
+
+
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#pay-declaration-pay",
+)
+@click.argument("declaration_id", type=str)
+@verbose_option
+def pay(declaration_id: str):
+    """Mark declaration as paid.
+
+    Example: ibkr-porez pay 1
+    Example: ibkr-porez list --status draft -1 | xargs -I {} ibkr-porez pay {}
+    """
+    from ibkr_porez.declaration_manager import DeclarationManager
+
+    manager = DeclarationManager()
+
+    try:
+        manager.pay([declaration_id])
+        console.print(f"[green]Paid: {declaration_id}[/green]")
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise click.ClickException(str(e)) from e
+
+
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#export-declaration-export",
+)
+@click.argument("declaration_id")
+@click.option(
+    "-o",
+    "--output",
+    type=str,
+    help="Output directory (default: from config or Downloads)",
+)
+@verbose_option
+def export(declaration_id: str, output: str | None):
+    """Export declaration XML and all attached files."""
+    from pathlib import Path
+
+    from ibkr_porez.declaration_manager import DeclarationManager
+
+    manager = DeclarationManager()
+    try:
+        output_dir = Path(output) if output else None
+        xml_path, attached_paths = manager.export(declaration_id, output_dir)
+
+        console.print(f"[green]Exported XML: {xml_path}[/green]")
+        if attached_paths:
+            console.print(f"[green]Exported {len(attached_paths)} attached file(s):[/green]")
+            for path in attached_paths:
+                console.print(f"  [green]{path}[/green]")
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise click.ClickException(str(e)) from e
+
+
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#revert-declaration-revert",
+)
+@click.argument("declaration_id", type=str)
+@click.option(
+    "--to",
+    type=click.Choice(["draft", "submitted"], case_sensitive=False),
+    default="draft",
+    help="Target status",
+)
+@verbose_option
+def revert(declaration_id: str, to: str):
+    """Revert declaration status (e.g., paid -> draft).
+
+    Example: ibkr-porez revert 1
+    Example: ibkr-porez list --status paid -1 | xargs -I {} ibkr-porez revert {} --to draft
+    """
+    from ibkr_porez.declaration_manager import DeclarationManager
+    from ibkr_porez.models import DeclarationStatus
+
+    manager = DeclarationManager()
+
+    try:
+        target_status = DeclarationStatus(to.lower())
+        manager.revert([declaration_id], target_status)
+        console.print(f"[green]Reverted {declaration_id} to {to}[/green]")
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise click.ClickException(str(e)) from e
+
+
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#attach-file-attach",
+)
+@click.argument("declaration_id")
+@click.argument("file_path", type=str, required=False)
+@click.option("-d", "--delete", is_flag=True, help="Delete attached file instead of adding")
+@click.option("--file-id", type=str, help="File identifier for deletion (default: filename)")
+@verbose_option
+def attach(declaration_id: str, file_path: str | None, delete: bool, file_id: str | None):
+    """
+    Attach or remove file from declaration.
+
+    To attach: ibkr-porez attach <declaration_id> <file_path>
+    To remove: ibkr-porez attach <declaration_id> <file_id> --delete
+    """
+    from pathlib import Path
+
+    from ibkr_porez.declaration_manager import DeclarationManager
+
+    manager = DeclarationManager()
+
+    try:
+        if delete:
+            # Remove file
+            file_identifier = file_id or file_path
+            if not file_identifier:
+                console.print("[red]File identifier required for deletion[/red]")
+                raise click.ClickException("File identifier required for deletion")
+            manager.detach_file(declaration_id, file_identifier)
+            console.print(
+                f"[green]Removed file '{file_identifier}' "
+                f"from declaration {declaration_id}[/green]",
+            )
+        else:
+            # Add file
+            if not file_path:
+                console.print("[red]File path required[/red]")
+                raise click.ClickException("File path required")
+            source_path = Path(file_path)
+            if not source_path.exists():
+                console.print(f"[red]File not found: {file_path}[/red]")
+                raise click.ClickException(f"File not found: {file_path}")
+
+            file_identifier = manager.attach_file(declaration_id, source_path)
+            console.print(
+                f"[green]Attached file '{file_identifier}' to declaration {declaration_id}[/green]",
+            )
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise click.ClickException(str(e)) from e
 
 
 if __name__ == "__main__":  # pragma: no cover

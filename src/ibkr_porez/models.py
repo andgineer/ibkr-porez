@@ -145,6 +145,10 @@ class Declaration(BaseModel):
         None  # Data for display (for export)
     )
     metadata: dict = Field(default_factory=dict)  # Additional data (count, sums, etc.)
+    attached_files: dict[str, str] = Field(
+        default_factory=dict,
+        description="Attached files: {file_identifier: relative_path}",
+    )
 
 
 class UserConfig(BaseModel):

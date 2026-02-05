@@ -32,16 +32,16 @@ class TestE2EReport:
     @patch("ibkr_porez.nbs.requests.get")
     @patch("ibkr_porez.report_base.NBSClient")
     @patch("ibkr_porez.report_base.config_manager")
-    def test_report_generation_h1(
-        self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
+    def test_report_generation_h1_with_output_option(
+        self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir, tmp_path
     ):
         """
-        Scenario: Generate PPDG-3R report for H1 2023.
+        Scenario: Generate PPDG-3R report for H1 2023 with -o option.
         Data:
         - Buy AAPL 10 @ 100 USD on 2022-12-01 (Outside period context)
         - Sell AAPL 5 @ 120 USD on 2023-01-15 (Inside period)
         Expect:
-        - XML generated.
+        - XML generated in directory specified by -o option.
         - Contains sale of 5 AAPL.
         - Capital gain calculated correctly.
         """
@@ -95,29 +95,124 @@ class TestE2EReport:
         ]
         s.save_transactions(transactions)
 
-        # Run Report Command
-        with runner.isolated_filesystem():
-            result = runner.invoke(ibkr_porez, ["report", "--half", "2023-1"])
+        # Run Report Command with -o option
+        output_dir = tmp_path / "custom_output"
+        output_dir.mkdir()
+        result = runner.invoke(ibkr_porez, ["report", "--half", "2023-1", "-o", str(output_dir)])
 
-            assert result.exit_code == 0
-            assert "Generated" in result.output and "declaration(s)" in result.output
+        assert result.exit_code == 0
+        assert "Generated" in result.output and "declaration(s)" in result.output
 
-            # Verify File Exists
-            import os
+        # Verify File Exists in specified directory
+        output_file = output_dir / "ppdg3r-2023-H1.xml"
+        assert output_file.exists()
 
-            assert os.path.exists("ppdg3r-2023-H1.xml")
+        with open(output_file, "r", encoding="utf-8") as f:
+            content = f.read()
+            assert "AAPL" in content  # Basic check
 
-            with open("ppdg3r-2023-H1.xml", "r", encoding="utf-8") as f:
-                content = f.read()
-                assert "AAPL" in content  # Basic check
+    @patch("ibkr_porez.nbs.requests.get")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.operation_report.config_manager")
+    @patch("ibkr_porez.report_base.config_manager")
+    def test_report_generation_h1_with_config_output_folder(
+        self,
+        mock_report_cfg_mgr,
+        mock_base_cfg_mgr,
+        mock_nbs_cls,
+        mock_requests_get,
+        runner,
+        mock_user_data_dir,
+        tmp_path,
+    ):
+        """
+        Scenario: Generate PPDG-3R report for H1 2023 using config output_folder.
+        Data:
+        - Buy AAPL 10 @ 100 USD on 2022-12-01 (Outside period context)
+        - Sell AAPL 5 @ 120 USD on 2023-01-15 (Inside period)
+        Expect:
+        - XML generated in output_folder from config (default behavior).
+        - Contains sale of 5 AAPL.
+        - Capital gain calculated correctly.
+        """
+        # Setup custom output folder in config
+        output_folder = tmp_path / "config_output"
+        output_folder.mkdir()
+
+        # Mock Config with output_folder for both config_managers
+        mock_config = MagicMock(
+            personal_id="1234567890123",
+            full_name="Test User",
+            address="Test St 1",
+            city_code="223",
+            phone="060123456",
+            email="test@example.com",
+            output_folder=str(output_folder),
+        )
+        mock_report_cfg_mgr.load_config.return_value = mock_config
+        mock_base_cfg_mgr.load_config.return_value = mock_config
+
+        # Mock NBS (Fixed rates for deterministic calc)
+        mock_nbs = mock_nbs_cls.return_value
+        # Rate 117.0 for all dates for simplicity
+        mock_nbs.get_rate.return_value = Decimal("117.0")
+
+        # Setup Data in Storage
+        from ibkr_porez.models import UserConfig
+        from unittest.mock import patch
+
+        with patch(
+            "ibkr_porez.storage.config_manager.load_config",
+            return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
+        ):
+            s = Storage()
+        transactions = [
+            Transaction(
+                transaction_id="buy1",
+                date=date(2022, 12, 1),
+                type=TransactionType.TRADE,
+                symbol="AAPL",
+                description="Buy AAPL",
+                quantity=Decimal(10),
+                price=Decimal(100),
+                amount=Decimal("-1000"),
+                currency=Currency.USD,
+            ),
+            Transaction(
+                transaction_id="sell1",
+                date=date(2023, 1, 15),
+                type=TransactionType.TRADE,
+                symbol="AAPL",
+                description="Sell AAPL",
+                quantity=Decimal(-5),
+                price=Decimal(120),
+                amount=Decimal("600"),
+                currency=Currency.USD,
+            ),
+        ]
+        s.save_transactions(transactions)
+
+        # Run Report Command without -o option (should use config output_folder)
+        result = runner.invoke(ibkr_porez, ["report", "--half", "2023-1"])
+
+        assert result.exit_code == 0
+        assert "Generated" in result.output and "declaration(s)" in result.output
+
+        # Verify File Exists in config output_folder
+        output_file = output_folder / "ppdg3r-2023-H1.xml"
+        assert output_file.exists()
+
+        with open(output_file, "r", encoding="utf-8") as f:
+            content = f.read()
+            assert "AAPL" in content  # Basic check
 
     @patch("ibkr_porez.nbs.requests.get")
     @patch("ibkr_porez.report_base.NBSClient")
     @patch("ibkr_porez.report_base.config_manager")
-    def test_report_generation_file_check(
-        self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
+    def test_report_generation_file_check_with_output_option(
+        self, mock_cfg_mgr, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir, tmp_path
     ):
-        """Verify XML file creation and content."""
+        """Verify XML file creation and content with -o option."""
         mock_cfg_mgr.load_config.return_value = MagicMock(
             personal_id="1234567890123", full_name="Test User", address="Test St 1", city_code="223"
         )
@@ -159,24 +254,112 @@ class TestE2EReport:
             ]
         )
 
-        with runner.isolated_filesystem():
-            # H2 2023
-            result = runner.invoke(ibkr_porez, ["report", "--half", "2023-2"])
+        output_dir = tmp_path / "custom_output"
+        output_dir.mkdir()
+        # H2 2023
+        result = runner.invoke(ibkr_porez, ["report", "--half", "2023-2", "-o", str(output_dir)])
 
-            assert result.exit_code == 0
-            assert "ppdg3r-2023-H2.xml" in result.output
-            assert "declaration(s)" in result.output
+        assert result.exit_code == 0
+        assert "declaration(s)" in result.output
 
-            # Read file
-            with open("ppdg3r-2023-H2.xml", "r", encoding="utf-8") as f:
-                content = f.read()
+        # Read file from specified directory
+        output_file = output_dir / "ppdg3r-2023-H2.xml"
+        assert output_file.exists()
+        with open(output_file, "r", encoding="utf-8") as f:
+            content = f.read()
 
-            # Basic Checks - ignoring namespace prefix issues by partial match or including prefix if needed
-            # The generator uses ns1: prefix for everything.
-            assert "ns1:PodaciOPoreskomObvezniku" in content
-            assert "1234567890123" in content
-            assert "TSLA" in content
-            assert "ns1:ProdajnaCena" in content
+        # Basic Checks - ignoring namespace prefix issues by partial match or including prefix if needed
+        # The generator uses ns1: prefix for everything.
+        assert "ns1:PodaciOPoreskomObvezniku" in content
+        assert "1234567890123" in content
+        assert "TSLA" in content
+        assert "ns1:ProdajnaCena" in content
+
+    @patch("ibkr_porez.nbs.requests.get")
+    @patch("ibkr_porez.report_base.NBSClient")
+    @patch("ibkr_porez.operation_report.config_manager")
+    @patch("ibkr_porez.report_base.config_manager")
+    def test_report_generation_file_check_with_config_output_folder(
+        self,
+        mock_report_cfg_mgr,
+        mock_base_cfg_mgr,
+        mock_nbs_cls,
+        mock_requests_get,
+        runner,
+        mock_user_data_dir,
+        tmp_path,
+    ):
+        """Verify XML file creation and content using config output_folder."""
+        # Setup custom output folder in config
+        output_folder = tmp_path / "config_output"
+        output_folder.mkdir()
+
+        # Mock Config with output_folder for both config_managers
+        mock_config = MagicMock(
+            personal_id="1234567890123",
+            full_name="Test User",
+            address="Test St 1",
+            city_code="223",
+            output_folder=str(output_folder),
+        )
+        mock_report_cfg_mgr.load_config.return_value = mock_config
+        mock_base_cfg_mgr.load_config.return_value = mock_config
+        mock_nbs = mock_nbs_cls.return_value
+        mock_nbs.get_rate.return_value = Decimal("117.3")
+
+        from ibkr_porez.models import UserConfig
+        from unittest.mock import patch
+
+        with patch(
+            "ibkr_porez.storage.config_manager.load_config",
+            return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
+        ):
+            s = Storage()
+        s.save_transactions(
+            [
+                Transaction(
+                    transaction_id="buy_tsla",
+                    date=date(2023, 1, 10),
+                    type=TransactionType.TRADE,
+                    symbol="TSLA",
+                    description="Buy",
+                    quantity=Decimal(1),
+                    price=Decimal(200),
+                    amount=Decimal("-200"),
+                    currency=Currency.USD,
+                ),
+                Transaction(
+                    transaction_id="sell_tsla",
+                    date=date(2023, 8, 15),
+                    type=TransactionType.TRADE,
+                    symbol="TSLA",
+                    description="Sell",
+                    quantity=Decimal(-1),
+                    price=Decimal(250),
+                    amount=Decimal("250"),
+                    currency=Currency.USD,
+                ),
+            ]
+        )
+
+        # H2 2023 - without -o option (should use config output_folder)
+        result = runner.invoke(ibkr_porez, ["report", "--half", "2023-2"])
+
+        assert result.exit_code == 0
+        assert "declaration(s)" in result.output
+
+        # Read file from config output_folder
+        output_file = output_folder / "ppdg3r-2023-H2.xml"
+        assert output_file.exists()
+        with open(output_file, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Basic Checks - ignoring namespace prefix issues by partial match or including prefix if needed
+        # The generator uses ns1: prefix for everything.
+        assert "ns1:PodaciOPoreskomObvezniku" in content
+        assert "1234567890123" in content
+        assert "TSLA" in content
+        assert "ns1:ProdajnaCena" in content
 
     @patch("ibkr_porez.nbs.requests.get")
     @patch("ibkr_porez.report_base.NBSClient")
@@ -193,6 +376,7 @@ class TestE2EReport:
         runner,
         mock_user_data_dir,
         resources_path,
+        tmp_path,
     ):
         """
         Scenario: Complex FIFO (Mutli-Buy/Single-Sell, Single-Buy/Multi-Sell).
@@ -224,15 +408,18 @@ class TestE2EReport:
         assert res_get.exit_code == 0
         assert "Fetched 6 transactions" in res_get.output
 
-        # 2. Generate Report
-        with runner.isolated_filesystem():
-            # H1 2023 (Jan-Jun) covers AAPL sell (Feb), MSFT sells (Apr)
-            result = runner.invoke(ibkr_porez, ["report", "--half", "2023-1"])
+        # 2. Generate Report with -o option
+        output_dir = tmp_path / "fifo_output"
+        output_dir.mkdir()
+        # H1 2023 (Jan-Jun) covers AAPL sell (Feb), MSFT sells (Apr)
+        result = runner.invoke(ibkr_porez, ["report", "--half", "2023-1", "-o", str(output_dir)])
 
-            assert result.exit_code == 0
+        assert result.exit_code == 0
 
-            with open("ppdg3r-2023-H1.xml", "r", encoding="utf-8") as f:
-                content = f.read()
+        output_file = output_dir / "ppdg3r-2023-H1.xml"
+        assert output_file.exists()
+        with open(output_file, "r", encoding="utf-8") as f:
+            content = f.read()
 
             # Verify AAPL (Sell 15 split into 10 + 5 due to different acquisition dates)
             # Lot 1: 10 shares from 2022-12-01
