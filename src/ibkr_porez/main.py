@@ -397,7 +397,7 @@ def sync():
 
 
 @ibkr_porez.command(
-    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#generate-capital-gains-tax-report-report",
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#generate-tax-report-report",
 )
 @click.option(
     "-t",

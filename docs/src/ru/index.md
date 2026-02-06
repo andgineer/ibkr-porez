@@ -4,7 +4,7 @@
 
 1. [Установите ibkr-porez ↗](installation.md)
 
-2. [Настройка (config) ↗](usage.md#configuration)
+2. [Настройка (config) ↗](usage.md#config)
 
 3. [Импорт исторических данных (import) ↗](usage.md/#import)
 

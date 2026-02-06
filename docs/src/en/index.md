@@ -1,31 +1,30 @@
 # Quick Start
+Automated PPDG-3R (Capital Gains) and PP-OPO (Dividends / Interest) tax reports generation for Interactive Brokers in Serbia.
+The application automatically fetches transaction data and creates a ready-to-upload XML file, converting all prices to dinars (RSD).
 
-Automated PPDG-3R (Capital Gains) and PP-OPO (Dividends / Interest) tax reports generation for Interactive Brokers.
-It automatically fetches data from IBKR and generates a ready-to-upload XML files with all prices converted to RSD.
+1. [Install ibkr-porez ↗](installation.md)
 
-1. [Install ibkr-porez](installation.md)
+2. [Configuration (config) ↗](usage.md#config)
 
-2. [Configuration](usage.md#configuration):
-    ```bash
-    ibkr-porez config
-    ```
+3. [Import Historical Data (import) ↗](usage.md/#import-historical-data-import)
 
-3. [Fetch Data](usage.md/#fetch-data-fetch): Download transaction history from Interactive Brokers and official exchange rates from the National Bank of Serbia.
-    ```bash
-    ibkr-porez fetch
-    ```
+    > ⚠️ **Import is only necessary if you have more than a year of transaction history in Interactive Brokers.** Flex Query allows downloading data for no more than the last year, so older data must be loaded from a [full export to CSV file ↗](ibkr.md/#export-full-history-for-import-command).
 
-    > To calculate gains, the application needs full history for sold securities.
-    > Since Flex Query allows downloading data for no more than a year, use [<u>import</u>](usage.md/#import-historical-data-import) from CSV files for older data.
+=== "Quickly create a specific declaration"
 
-    > ⚠️ Do not forget to run `fetch` after `import` so the application adds maximum details at least for the last year
-    > into the less detailed data loaded from CSV.
+    If you want to quickly create a specific declaration.
 
-4. [Generate Report](usage.md/#generate-capital-gains-tax-report-report): Generate PPDG-3R XML file.
-    ```bash
-    ibkr-porez report
-    ```
+    [Fetch Latest Data (fetch) ↗](usage.md/#fetch-data-fetch)
 
-5. Upload the generated XML to the **ePorezi** portal (PPDG-3R section).
+    [Generate Report (report) ↗](usage.md/#generate-tax-report-report)
 
-    ![PPDG-3R](images/ppdg-3r.png)
+    Upload the created XML to the **ePorezi** portal (PPDG-3R section).
+        ![PPDG-3R](images/ppdg-3r.png)
+
+=== "Automatic declaration creation"
+
+    If you want to automatically receive all necessary declarations and track their status (submitted, paid).
+
+    [Fetch Latest Data and Create Declarations (sync) ↗](usage.md/#sync-data-and-create-declarations-sync)
+
+    [Declaration Management ↗](usage.md/#declaration-management)

@@ -14,7 +14,7 @@
 1. **Performance & Reports** > **Flex Queries**.
 2. Кликните **+** да креирате нови **Activity Flex Query**.
 3. **Name**: нпр. `ibkr-porez-data`.
-4.  **Delivery Configuration** (на дну):
+4.  **Delivery Configuration** (на дну странице):
     *   **Period**: Изаберите **Last 365 Calendar Days**.
 5.  **Format**: **XML**.
 
@@ -22,12 +22,12 @@
 
 Омогућите следеће секције и означите **Select All** (Изабери све) за колоне.
 
-Ако никоме не верујете 8-) уместо **Select All** изаберите бар поља наведена у `Потребне колоне`.
+Ако никоме не верујете 8-) уместо **Select All** изаберите бар поља наведена у `Обавезне колоне`.
 
-### Trades - Трговине
+### Trades - Трансакције
 Налази се под Trade Confirmations или Activity.
 
-??? Info "Потребне колоне"
+??? Info "Обавезне колоне"
     *   `Symbol`
     *   `Description`
     *   `Currency`
@@ -41,7 +41,7 @@
     *   `Buy/Sell`
 
 ### Cash Transactions - Новчане трансакције
-??? Info "Потребне колоне"
+??? Info "Обавезне колоне"
     *   `Type`
     *   `Amount`
     *   `Currency`
@@ -77,4 +77,4 @@
 1.  У IBKR идите на **Performance & Reports** > **Statements** > **Activity Statement**.
 2.  **Period**: Изаберите **Custom Date Range** и наведите цео период од отварања рачуна.
 3.  Кликните **Download CSV**.
-4.  Овај фајл се може користити са командом [import](usage.md#import).
+4.  Овај фајл се може користити са командом [import ↗](usage.md#import).

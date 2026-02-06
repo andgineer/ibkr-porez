@@ -14,7 +14,7 @@
 1. **Performance & Reports** > **Flex Queries**.
 2. Click **+** to create a new **Activity Flex Query**.
 3. **Name**: e.g., `ibkr-porez-data`.
-4.  **Delivery Configuration** (at the bottom):
+4.  **Delivery Configuration** (at the bottom of the page):
     *   **Period**: Select **Last 365 Calendar Days**.
 5.  **Format**: **XML**.
 
@@ -24,7 +24,7 @@ Enable the following sections and check **Select All** for columns.
 
 If you don't trust anyone 8-) instead of **Select All**, select at least the fields listed in `Required Columns`.
 
-### Trades
+### Transactions
 Located under Trade Confirmations or Activity.
 
 ??? Info "Required Columns"
@@ -77,4 +77,4 @@ export data to CSV:
 1.  In IBKR go to **Performance & Reports** > **Statements** > **Activity Statement**.
 2.  **Period**: Select **Custom Date Range** and specify the entire period since account opening.
 3.  Click **Download CSV**.
-4.  This file can be used with the [import](usage.md#import-historical-data-import) command.
+4.  This file can be used with the [import ↗](usage.md#import-historical-data-import) command.

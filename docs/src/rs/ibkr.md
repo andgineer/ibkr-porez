@@ -5,7 +5,7 @@
 1. **Performance & Reports** > **Flex Queries**.
 2. Kliknite na ikonu **Settings** (zupčanik) u "Flex Web Service Configuration".
 3. Omogućite **Flex Web Service**.
-4. Generišite **Token**.
+4. Generišite **Token** (Generate Token).
     *   **Važno**: Odmah kopirajte ovaj token. Nećete moći ponovo da ga vidite u celosti.
     *   Postavite rok trajanja (preporučeno max - 1 godina).
 
@@ -14,7 +14,7 @@
 1. **Performance & Reports** > **Flex Queries**.
 2. Kliknite **+** da kreirate novi **Activity Flex Query**.
 3. **Name**: npr. `ibkr-porez-data`.
-4.  **Delivery Configuration** (na dnu):
+4.  **Delivery Configuration** (na dnu stranice):
     *   **Period**: Izaberite **Last 365 Calendar Days**.
 5.  **Format**: **XML**.
 
@@ -22,12 +22,12 @@
 
 Omogućite sledeće sekcije i označite **Select All** (Izaberi sve) za kolone.
 
-Ako nikome ne verujete 8-) umesto **Select All** izaberite bar polja navedena u `Potrebne kolone`.
+Ako nikome ne verujete 8-) umesto **Select All** izaberite bar polja navedena u `Obavezne kolone`.
 
-### Trades - Trgovine
+### Trades - Transakcije
 Nalazi se pod Trade Confirmations ili Activity.
 
-??? Info "Potrebne kolone"
+??? Info "Obavezne kolone"
     *   `Symbol`
     *   `Description`
     *   `Currency`
@@ -41,7 +41,7 @@ Nalazi se pod Trade Confirmations ili Activity.
     *   `Buy/Sell`
 
 ### Cash Transactions - Novčane transakcije
-??? Info "Potrebne kolone"
+??? Info "Obavezne kolone"
     *   `Type`
     *   `Amount`
     *   `Currency`
@@ -77,4 +77,4 @@ izvezite podatke u CSV:
 1.  U IBKR idite na **Performance & Reports** > **Statements** > **Activity Statement**.
 2.  **Period**: Izaberite **Custom Date Range** i navedite ceo period od otvaranja računa.
 3.  Kliknite **Download CSV**.
-4.  Ovaj fajl se može koristiti sa komandom [import](usage.md#uvoz-istorijskih-podataka-import).
+4.  Ovaj fajl se može koristiti sa komandom [import ↗](usage.md#uvoz-istorijskih-podataka-import).

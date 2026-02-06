@@ -7,26 +7,18 @@ It automatically fetches your data and generates a ready-to-upload XML files wit
 
 # Quick Start
 
-1.  [Configure](https://andgineer.github.io/ibkr-porez/usage/#configuration): Save your Interactive Brokers Flex Query credentials and taxpayer details.
-    ```bash
-    ibkr-porez config
-    ```
+1.  [Install ibkr-porez](https://andgineer.github.io/ibkr-porez/installation/)
 
-2.  [Fetch Data](https://andgineer.github.io/ibkr-porez/usage/#fetch-data-fetch): Download transaction history from Interactive Brokers and exchange rates from the National Bank of Serbia.
-    ```bash
-    ibkr-porez fetch
-    ```
+2.  [Configure](https://andgineer.github.io/ibkr-porez/usage/#configuration-config)
 
-3.  [Generate Report](https://andgineer.github.io/ibkr-porez/usage/#generate-capital-gains-tax-report-report): Generate the PPDG-3R XML file.
-    ```bash
-    ibkr-porez report
-    ```
+3.  [Import Historical Data](https://andgineer.github.io/ibkr-porez/usage/#import-historical-data-import)
+(only if you have more than a year of transaction history)
 
-> Simply upload the generated XML to the **ePorezi** portal (PPDG-3R section).
+The application offers two modes:
+- Create a specific declaration [fetch](https://andgineer.github.io/ibkr-porez/usage/#fetch) -> [report](https://andgineer.github.io/ibkr-porez/usage/#generate-tax-report-report)
+- Automatically create and manage declarations [sync](https://andgineer.github.io/ibkr-porez/usage/#sync) -> [submit / pay](https://andgineer.github.io/ibkr-porez/usage/#/#declaration-management)
 
-# Documentation
-
-[Full Documentation](https://andgineer.github.io/ibkr-porez/)
+See detailes in [documentation](https://andgineer.github.io/ibkr-porez/)
 
 ---
 
