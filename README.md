@@ -15,8 +15,8 @@ It automatically fetches your data and generates a ready-to-upload XML files wit
 (only if you have more than a year of transaction history)
 
 The application offers two modes:
-- Create a specific declaration [fetch](https://andgineer.github.io/ibkr-porez/usage/#fetch) -> [report](https://andgineer.github.io/ibkr-porez/usage/#generate-tax-report-report)
-- Automatically create and manage declarations [sync](https://andgineer.github.io/ibkr-porez/usage/#sync) -> [submit / pay](https://andgineer.github.io/ibkr-porez/usage/#/#declaration-management)
+- Create a specific declaration [fetch](https://andgineer.github.io/ibkr-porez/usage/#fetch-data-fetch) -> [report](https://andgineer.github.io/ibkr-porez/usage/#generate-tax-report-report)
+- Automatically create and manage declarations [sync](https://andgineer.github.io/ibkr-porez/usage/#sync-data-and-create-declarations-sync) -> [submit / pay](https://andgineer.github.io/ibkr-porez/usage/#declaration-management)
 
 See detailes in [documentation](https://andgineer.github.io/ibkr-porez/)
 
