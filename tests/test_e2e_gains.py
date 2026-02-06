@@ -1,18 +1,18 @@
 import allure
 import pytest
-from unittest.mock import patch, MagicMock
-from click.testing import CliRunner
-from ibkr_porez.main import ibkr_porez
-from ibkr_porez.models import Transaction, TransactionType, Currency
-from ibkr_porez.storage import Storage
+from datetime import date, datetime
 from decimal import Decimal
-from datetime import date
+from unittest.mock import MagicMock, patch
+
+from click.testing import CliRunner
+
+from ibkr_porez.main import ibkr_porez
+from ibkr_porez.models import Currency, Transaction, TransactionType, UserConfig
+from ibkr_porez.storage import Storage
 
 
 @pytest.fixture
 def mock_user_data_dir(tmp_path):
-    from ibkr_porez.models import UserConfig
-
     with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
         mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
@@ -61,9 +61,6 @@ class TestE2EReport:
         mock_nbs.get_rate.return_value = Decimal("117.0")
 
         # Setup Data in Storage
-        from ibkr_porez.models import UserConfig
-        from unittest.mock import patch
-
         with patch(
             "ibkr_porez.storage.config_manager.load_config",
             return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
@@ -158,9 +155,6 @@ class TestE2EReport:
         mock_nbs.get_rate.return_value = Decimal("117.0")
 
         # Setup Data in Storage
-        from ibkr_porez.models import UserConfig
-        from unittest.mock import patch
-
         with patch(
             "ibkr_porez.storage.config_manager.load_config",
             return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
@@ -218,9 +212,6 @@ class TestE2EReport:
         )
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = Decimal("117.3")
-
-        from ibkr_porez.models import UserConfig
-        from unittest.mock import patch
 
         with patch(
             "ibkr_porez.storage.config_manager.load_config",
@@ -306,9 +297,6 @@ class TestE2EReport:
         mock_base_cfg_mgr.load_config.return_value = mock_config
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = Decimal("117.3")
-
-        from ibkr_porez.models import UserConfig
-        from unittest.mock import patch
 
         with patch(
             "ibkr_porez.storage.config_manager.load_config",
@@ -464,9 +452,6 @@ class TestE2EReport:
         mock_nbs = mock_nbs_cls.return_value
 
         # Only buys, no sales
-        from ibkr_porez.models import UserConfig
-        from unittest.mock import patch
-
         with patch(
             "ibkr_porez.storage.config_manager.load_config",
             return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
@@ -519,8 +504,6 @@ class TestE2EReport:
         self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
         """Scenario: User omits --half, defaults to previous complete half."""
-        from datetime import datetime
-
         now = datetime.now()
         expected_year = now.year - 1 if now.month < 7 else now.year
         expected_half = 2 if now.month < 7 else 1
@@ -537,9 +520,6 @@ class TestE2EReport:
         self, mock_cfg_mgr, mock_fetch, mock_nbs_cls, mock_requests_get, runner, mock_user_data_dir
     ):
         """Scenario: Storage effectively empty (or filtered to empty)."""
-        from ibkr_porez.models import UserConfig
-        from unittest.mock import patch
-
         with patch(
             "ibkr_porez.storage.config_manager.load_config",
             return_value=UserConfig(full_name="Test", address="Test", data_dir=None),

@@ -1,16 +1,16 @@
 import allure
+import pandas as pd
+import pytest
 from datetime import date
 from decimal import Decimal
-import pytest
-from ibkr_porez.models import Transaction, TransactionType, Currency
+from unittest.mock import patch
+
+from ibkr_porez.models import Currency, Transaction, TransactionType, UserConfig
 from ibkr_porez.storage import Storage
 
 
 @pytest.fixture
 def storage(tmp_path):
-    from unittest.mock import patch
-    from ibkr_porez.models import UserConfig
-
     with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
         mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
@@ -209,8 +209,6 @@ class TestStorageDeduplication:
         # With fix, storage converts loaded IDs to strings.
 
         # 1. Create a file with INT ids
-        import pandas as pd
-
         # We must ensure we write a CLEAN int file
         df = pd.DataFrame(
             [

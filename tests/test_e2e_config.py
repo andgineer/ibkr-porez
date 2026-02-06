@@ -1,8 +1,11 @@
 import allure
+import json
 import pytest
 from unittest.mock import patch
+
 from click.testing import CliRunner
-import json
+
+from ibkr_porez.config import config_manager
 from ibkr_porez.main import ibkr_porez
 
 
@@ -24,8 +27,6 @@ def mock_config_dir(tmp_path):
         # However, `config` command uses `config_manager` imported from `config`.
         # Let's patch the instance methods/properties if possible, or create a fresh one?
         # A simpler way is to patch `ibkr_porez.config.config_manager._config_dir`.
-
-        from ibkr_porez.config import config_manager
 
         original_dir = config_manager._config_dir
         original_file = config_manager._config_file

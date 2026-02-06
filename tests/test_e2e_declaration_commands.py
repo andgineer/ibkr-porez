@@ -10,15 +10,14 @@ from ibkr_porez.main import ibkr_porez
 from ibkr_porez.storage import Storage
 from ibkr_porez.models import (
     Declaration,
-    DeclarationType,
     DeclarationStatus,
+    DeclarationType,
+    UserConfig,
 )
 
 
 @pytest.fixture
 def mock_user_data_dir(tmp_path):
-    from ibkr_porez.models import UserConfig
-
     mock_config = UserConfig(full_name="Test", address="Test", data_dir=None, output_folder=None)
     with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
@@ -39,8 +38,6 @@ def runner():
 @pytest.fixture
 def setup_declarations(mock_user_data_dir):
     """Create test declarations."""
-    from ibkr_porez.models import UserConfig
-
     mock_config = UserConfig(full_name="Test", address="Test", data_dir=None, output_folder=None)
     with patch("ibkr_porez.storage.user_data_dir", lambda app: str(mock_user_data_dir)):
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
@@ -105,8 +102,6 @@ def setup_declarations(mock_user_data_dir):
 class TestE2EList:
     def test_list_default_shows_only_draft(self, runner, setup_declarations, mock_user_data_dir):
         """Test that list command shows only DRAFT declarations by default."""
-        from ibkr_porez.models import UserConfig
-
         mock_config = UserConfig(
             full_name="Test", address="Test", data_dir=None, output_folder=None
         )
@@ -121,8 +116,6 @@ class TestE2EList:
 
     def test_list_all_shows_all(self, runner, setup_declarations, mock_user_data_dir):
         """Test that list --all shows all declarations."""
-        from ibkr_porez.models import UserConfig
-
         mock_config = UserConfig(
             full_name="Test", address="Test", data_dir=None, output_folder=None
         )
@@ -137,8 +130,6 @@ class TestE2EList:
 
     def test_list_filter_by_status(self, runner, setup_declarations, mock_user_data_dir):
         """Test that list --status filters correctly."""
-        from ibkr_porez.models import UserConfig
-
         mock_config = UserConfig(
             full_name="Test", address="Test", data_dir=None, output_folder=None
         )
@@ -159,8 +150,6 @@ class TestE2EList:
 
     def test_list_ids_only(self, runner, setup_declarations, mock_user_data_dir):
         """Test that list --ids-only outputs only IDs."""
-        from ibkr_porez.models import UserConfig
-
         mock_config = UserConfig(
             full_name="Test", address="Test", data_dir=None, output_folder=None
         )
@@ -181,8 +170,6 @@ class TestE2EList:
 
     def test_list_ids_only_short_flag(self, runner, setup_declarations, mock_user_data_dir):
         """Test that list -1 outputs only IDs (short flag)."""
-        from ibkr_porez.models import UserConfig
-
         mock_config = UserConfig(
             full_name="Test", address="Test", data_dir=None, output_folder=None
         )

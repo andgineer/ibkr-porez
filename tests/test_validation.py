@@ -1,8 +1,11 @@
 """Tests for validation error handling utilities."""
 
 import allure
+from io import StringIO
 from unittest.mock import MagicMock
-from pydantic import ValidationError, BaseModel, field_validator
+
+from pydantic import BaseModel, ValidationError, field_validator
+from rich.console import Console
 
 from ibkr_porez.operation_report_params import ReportParams
 from ibkr_porez.validation import format_validation_error, handle_validation_error
@@ -174,9 +177,6 @@ class TestValidationErrorHandling:
 
     def test_handle_validation_error_integration(self):
         """Integration test: handle_validation_error with real console."""
-        from rich.console import Console
-        from io import StringIO
-
         console = Console(file=StringIO(), force_terminal=False)
         try:
             SampleModel.model_validate({"field1": "test", "field2": -1})

@@ -8,16 +8,15 @@ from unittest.mock import patch
 from ibkr_porez.declaration_manager import DeclarationManager
 from ibkr_porez.models import (
     Declaration,
-    DeclarationType,
     DeclarationStatus,
+    DeclarationType,
+    UserConfig,
 )
 from ibkr_porez.storage import Storage
 
 
 @pytest.fixture
 def mock_user_data_dir(tmp_path):
-    from ibkr_porez.models import UserConfig
-
     mock_config = UserConfig(full_name="Test", address="Test", data_dir=None, output_folder=None)
     with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):

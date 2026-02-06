@@ -8,14 +8,12 @@ from unittest.mock import patch
 from click.testing import CliRunner
 
 from ibkr_porez.main import ibkr_porez
+from ibkr_porez.models import Currency, Transaction, TransactionType, UserConfig
 from ibkr_porez.storage import Storage
-from ibkr_porez.models import Transaction, TransactionType, Currency
 
 
 @pytest.fixture
 def mock_user_data_dir(tmp_path):
-    from ibkr_porez.models import UserConfig
-
     with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
         mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
@@ -35,9 +33,6 @@ class TestE2EIncome:
     @pytest.fixture
     def setup_data(self, mock_user_data_dir):
         """Populate storage with dividend transactions."""
-        from ibkr_porez.models import UserConfig
-        from unittest.mock import patch
-
         with patch(
             "ibkr_porez.storage.config_manager.load_config",
             return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
@@ -152,9 +147,6 @@ class TestE2EIncome:
     ):
         """Test that error is raised when withholding tax is not found."""
         # Setup storage with dividend but NO withholding tax
-        from ibkr_porez.models import UserConfig
-        from unittest.mock import patch
-
         with patch(
             "ibkr_porez.storage.config_manager.load_config",
             return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
@@ -214,9 +206,6 @@ class TestE2EIncome:
     ):
         """Test that --force flag allows creation with zero tax."""
         # Setup storage with dividend but NO withholding tax
-        from ibkr_porez.models import UserConfig
-        from unittest.mock import patch
-
         with patch(
             "ibkr_porez.storage.config_manager.load_config",
             return_value=UserConfig(full_name="Test", address="Test", data_dir=None),
@@ -281,9 +270,6 @@ class TestE2EIncome:
         mock_nbs = mock_nbs_cls.return_value
 
         # Empty storage
-        from ibkr_porez.models import UserConfig
-        from unittest.mock import patch
-
         with patch(
             "ibkr_porez.storage.config_manager.load_config",
             return_value=UserConfig(full_name="Test", address="Test", data_dir=None),

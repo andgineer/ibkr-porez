@@ -8,12 +8,13 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 
+from decimal import ROUND_HALF_UP
+
 from ibkr_porez.config import UserConfig
 from ibkr_porez.declaration_income_xml import IncomeXMLGenerator
-from ibkr_porez.models import Currency, IncomeEntry
+from ibkr_porez.models import Currency, IncomeEntry, Transaction, TransactionType, UserConfig
 from ibkr_porez.report_income import IncomeReportGenerator
 from ibkr_porez.storage import Storage
-from ibkr_porez.models import Transaction, TransactionType
 
 
 @allure.epic("Tax")
@@ -62,7 +63,6 @@ class TestIncomeCalculationAccuracy:
         )
 
         # Tax calculation: 15% (use ROUND_HALF_UP for taxes)
-        from decimal import ROUND_HALF_UP
 
         expected_tax = Decimal("1306.01")
         tax_calculated = (bruto_calculated * Decimal("0.15")).quantize(
@@ -124,7 +124,6 @@ class TestIncomeCalculationAccuracy:
         )
 
         # Tax calculation: 15% (use ROUND_HALF_UP for taxes)
-        from decimal import ROUND_HALF_UP
 
         expected_tax = Decimal("316.99")
         tax_calculated = (bruto_calculated * Decimal("0.15")).quantize(
@@ -190,7 +189,6 @@ class TestIncomeCalculationAccuracy:
         mock_nbs.get_rate.side_effect = get_rate_side_effect
 
         # Setup storage with real data
-        from ibkr_porez.models import UserConfig
 
         with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
             mock_storage_config = UserConfig(full_name="Test", address="Test", data_dir=None)

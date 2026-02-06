@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from ibkr_porez.models import Currency, IncomeEntry, Transaction, TransactionType
+from ibkr_porez.models import Currency, IncomeEntry, Transaction, TransactionType, UserConfig
 from ibkr_porez.report_income import IncomeReportGenerator
 from ibkr_porez.storage import Storage
 
@@ -242,7 +242,6 @@ class TestWithholdingTaxMatching:
 
     def test_interest_grouping_by_currency(self, generator, tmp_path):
         """Test that interest transactions are grouped by currency, not symbol."""
-        from ibkr_porez.models import UserConfig
 
         with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
             mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)

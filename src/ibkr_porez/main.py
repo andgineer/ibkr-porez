@@ -13,11 +13,17 @@ from rich.logging import RichHandler
 
 from ibkr_porez import __version__
 from ibkr_porez.config import UserConfig, config_manager
+from ibkr_porez.declaration_manager import DeclarationManager
 from ibkr_porez.error_handling import get_user_friendly_error_message
 from ibkr_porez.logging_config import ERROR_LOG_FILE, setup_logger
-from ibkr_porez.models import IncomeDeclarationEntry, TaxReportEntry
+from ibkr_porez.models import (
+    DeclarationStatus,
+    IncomeDeclarationEntry,
+    TaxReportEntry,
+)
 from ibkr_porez.operation_get import GetOperation
 from ibkr_porez.operation_import import ImportOperation, ImportType
+from ibkr_porez.operation_list import ListDeclarations
 from ibkr_porez.operation_report import display_income_declaration, execute_report_command
 from ibkr_porez.operation_report_tables import render_declaration_table
 from ibkr_porez.operation_show import ShowStatistics
@@ -451,8 +457,6 @@ def report(  # noqa: PLR0913
     output_dir: str | None,
 ):
     """Generate tax reports (PPDG-3R for capital gains or PP OPO for capital income)."""
-    from pathlib import Path
-
     output_path = Path(output_dir) if output_dir else None
     execute_report_command(
         type,
@@ -557,9 +561,6 @@ def export_flex(date: str, output_path: str | None):
 @verbose_option
 def list_declarations(all: bool, status: str | None, ids_only: bool):
     """List declarations (default: active/draft only)."""
-    from ibkr_porez.models import DeclarationStatus
-    from ibkr_porez.operation_list import ListDeclarations
-
     controller = ListDeclarations()
     status_enum = DeclarationStatus(status.lower()) if status else None
     result = controller.generate(show_all=all, status=status_enum, ids_only=ids_only)
@@ -585,8 +586,6 @@ def submit(declaration_id: str):
     Example: ibkr-porez submit 1
     Example: ibkr-porez list --status draft -1 | xargs -I {} ibkr-porez submit {}
     """
-    from ibkr_porez.declaration_manager import DeclarationManager
-
     manager = DeclarationManager()
 
     try:
@@ -608,8 +607,6 @@ def pay(declaration_id: str):
     Example: ibkr-porez pay 1
     Example: ibkr-porez list --status draft -1 | xargs -I {} ibkr-porez pay {}
     """
-    from ibkr_porez.declaration_manager import DeclarationManager
-
     manager = DeclarationManager()
 
     try:
@@ -633,10 +630,6 @@ def pay(declaration_id: str):
 @verbose_option
 def export(declaration_id: str, output: str | None):
     """Export declaration XML and all attached files."""
-    from pathlib import Path
-
-    from ibkr_porez.declaration_manager import DeclarationManager
-
     manager = DeclarationManager()
     try:
         output_dir = Path(output) if output else None
@@ -669,9 +662,6 @@ def revert(declaration_id: str, to: str):
     Example: ibkr-porez revert 1
     Example: ibkr-porez list --status paid -1 | xargs -I {} ibkr-porez revert {} --to draft
     """
-    from ibkr_porez.declaration_manager import DeclarationManager
-    from ibkr_porez.models import DeclarationStatus
-
     manager = DeclarationManager()
 
     try:
@@ -698,10 +688,6 @@ def attach(declaration_id: str, file_path: str | None, delete: bool, file_id: st
     To attach: ibkr-porez attach <declaration_id> <file_path>
     To remove: ibkr-porez attach <declaration_id> <file_id> --delete
     """
-    from pathlib import Path
-
-    from ibkr_porez.declaration_manager import DeclarationManager
-
     manager = DeclarationManager()
 
     try:

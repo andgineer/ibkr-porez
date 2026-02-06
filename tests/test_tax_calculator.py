@@ -1,10 +1,10 @@
 import allure
+import pandas as pd
 from datetime import date
 from decimal import Decimal
-from unittest.mock import patch, MagicMock
-import pandas as pd
+from unittest.mock import MagicMock, patch
 
-from ibkr_porez.models import Transaction, TransactionType, Currency
+from ibkr_porez.models import Currency, Transaction, TransactionType
 from ibkr_porez.nbs import NBSClient
 from ibkr_porez.tax import TaxCalculator
 
@@ -197,8 +197,6 @@ class TestTaxCalculator:
 @allure.epic("IBKR")
 @allure.feature("Rates Fallback")
 def test_nbs_fallback(mock_get):
-    from ibkr_porez.nbs import NBSClient, Currency
-
     storage = MagicMock()
     storage.get_exchange_rate.return_value = None
 

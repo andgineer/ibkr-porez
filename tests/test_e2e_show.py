@@ -4,25 +4,25 @@ from unittest.mock import patch
 from click.testing import CliRunner
 from ibkr_porez.main import ibkr_porez
 from ibkr_porez.storage import Storage
+from datetime import date, datetime
+from decimal import Decimal
+
 from ibkr_porez.models import (
-    Transaction,
-    TransactionType,
     Currency,
     Declaration,
-    DeclarationType,
     DeclarationStatus,
-    TaxReportEntry,
+    DeclarationType,
     IncomeDeclarationEntry,
     INCOME_CODE_DIVIDEND,
+    TaxReportEntry,
+    Transaction,
+    TransactionType,
+    UserConfig,
 )
-from decimal import Decimal
-from datetime import date, datetime
 
 
 @pytest.fixture
 def mock_user_data_dir(tmp_path):
-    from ibkr_porez.models import UserConfig
-
     with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
         mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
