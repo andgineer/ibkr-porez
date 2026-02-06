@@ -393,7 +393,7 @@ class IncomeReportGenerator(ReportGeneratorBase):
         df_transactions = self.storage.get_transactions()
 
         if df_transactions.empty:
-            raise ValueError("No transactions found. Run `ibkr-porez get` first.")
+            raise ValueError("No transactions found. Run `ibkr-porez fetch` first.")
 
         # Process income transactions and withholding taxes
         entries, withholding_df = self._process_income_transactions(

@@ -344,7 +344,11 @@ class ShowStatistics:
         df_transactions = self.storage.get_transactions()
 
         if df_transactions.empty:
-            return None, None, "No transactions found. Run `ibkr-porez get`."
+            return (
+                None,
+                None,
+                "No transactions found. Run `ibkr-porez fetch` or `ibkr-porez sync` .",
+            )
 
         # Process Taxable Sales (FIFO)
         sales_entries = self.tax_calc.process_trades(df_transactions)

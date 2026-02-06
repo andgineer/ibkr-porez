@@ -166,10 +166,10 @@ def config():
 
 
 @ibkr_porez.command(
-    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#fetch-data-get",
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#fetch-data-fetch",
 )
 @verbose_option
-def get():
+def fetch():
     """Sync data from IBKR and NBS."""
     cfg = config_manager.load_config()
     if not cfg.ibkr_token or not cfg.ibkr_query_id:
@@ -188,15 +188,15 @@ def get():
 
         except Exception as e:  # noqa: BLE001
             # Log full traceback to error log
-            logger.exception("Error in get command")
+            logger.exception("Error in fetch command")
             # Show user-friendly error message
             user_message = get_user_friendly_error_message(e)
             console.print(f"[bold red]Error:[/bold red] {user_message}")
             console.print(f"[dim]Full error details logged to: {ERROR_LOG_FILE}[/dim]")
             return
 
-    # Rate sync is already done in process_flex_query
-    console.print("[bold green]Sync Complete![/bold green]")
+        # Rate sync is already done in process_flex_query
+        console.print("[bold green]Sync Complete![/bold green]")
 
 
 def _determine_input_source(file_path: str | None) -> tuple[bool, Path]:
@@ -379,6 +379,13 @@ def sync():
                     for entry in decl.report_data:
                         if isinstance(entry, IncomeDeclarationEntry):
                             display_income_declaration(entry, console)
+
+        console.print(
+            "\n[dim]💡 You can now view declarations with `ibkr-porez list`, "
+            "check details with `ibkr-porez show <id>`, "
+            "and update status after submission/payment with `ibkr-porez submit <id>` "
+            "/ `ibkr-porez pay <id>`[/dim]",
+        )
 
     except Exception as e:  # noqa: BLE001
         # Log full traceback to error log

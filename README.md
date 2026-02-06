@@ -12,9 +12,9 @@ It automatically fetches your data and generates a ready-to-upload XML files wit
     ibkr-porez config
     ```
 
-2.  [Fetch Data](https://andgineer.github.io/ibkr-porez/usage/#fetch-data-get): Download transaction history from Interactive Brokers and exchange rates from the National Bank of Serbia.
+2.  [Fetch Data](https://andgineer.github.io/ibkr-porez/usage/#fetch-data-fetch): Download transaction history from Interactive Brokers and exchange rates from the National Bank of Serbia.
     ```bash
-    ibkr-porez get
+    ibkr-porez fetch
     ```
 
 3.  [Generate Report](https://andgineer.github.io/ibkr-porez/usage/#generate-capital-gains-tax-report-report): Generate the PPDG-3R XML file.

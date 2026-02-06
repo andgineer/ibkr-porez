@@ -77,4 +77,4 @@
 1.  В IBKR перейдите в **Performance & Reports** > **Statements** > **Activity Statement**.
 2.  **Period**: Выберите **Custom Date Range** и укажите весь период с момента открытия счета.
 3.  Нажмите **Download CSV**.
-4.  Этот файл можно использовать с командой [import](usage.md#import).
+4.  Этот файл можно использовать с командой [import ↗](usage.md#import).

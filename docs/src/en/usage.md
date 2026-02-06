@@ -19,19 +19,19 @@ You will be prompted for:
 *   **Phone**: Phone
 *   **Email**: Email
 
-## Fetch Data (`get`)
+## Fetch Data (`fetch`)
 
 Downloads latest data from IBKR and syncs exchange rates from NBS (National Bank of Serbia).
 
 Saves them to local storage.
 
 ```bash
-ibkr-porez get
+ibkr-porez fetch
 ```
 
 ## Import Historical Data (`import`)
 
-Loading transaction history older than 365 days, which cannot be retrieved via Flex Query (`get`).
+Loading transaction history older than 365 days, which cannot be retrieved via Flex Query (`fetch`).
 
 1.  Download CSV: [Export Full History](ibkr.md/#export-full-history-for-import-command)
 2.  Import file:
@@ -40,13 +40,13 @@ Loading transaction history older than 365 days, which cannot be retrieved via F
 ibkr-porez import /path/to/activity_statement.csv
 ```
 
-> ⚠️ Do not forget to run `get` after `import` so the application adds maximum details at least for the last year
+> ⚠️ Do not forget to run `fetch` after `import` so the application adds maximum details at least for the last year
 > into the less detailed data loaded from CSV.
 
-### Synchronization Logic (`import` + `get`)
-When loading data from CSV (`import`) and Flex Query (`get`), the system prioritizes more complete Flex Query data:
+### Synchronization Logic (`import` + `fetch`)
+When loading data from CSV (`import`) and Flex Query (`fetch`), the system prioritizes more complete Flex Query data:
 
-*   Flex Query (`get`) data is the source of truth. It overwrites CSV data for any matching dates.
+*   Flex Query (`fetch`) data is the source of truth. It overwrites CSV data for any matching dates.
 *   If a Flex Query record matches a CSV record semantically (Date, Ticker, Price, Quantity), it counts as an update (replacing with official ID).
 *   If data structure differs (e.g. split orders in Flex Query vs "bundled" record in CSV), the old CSV record is removed, and new Flex Query records are added.
 *   Completely identical records are skipped.

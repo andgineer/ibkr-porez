@@ -392,7 +392,7 @@ class TestE2EReport:
         with open(resources_path / "fifo_scenarios.xml", "rb") as f:
             mock_fetch.return_value = f.read()
 
-        res_get = runner.invoke(ibkr_porez, ["get"])
+        res_get = runner.invoke(ibkr_porez, ["fetch"])
         assert res_get.exit_code == 0
         assert "Fetched 6 transactions" in res_get.output
 
@@ -529,5 +529,5 @@ class TestE2EReport:
 
         result = runner.invoke(ibkr_porez, ["report", "--half", "2023-1"])
 
-        assert "No transactions found. Run `ibkr-porez get` first." in result.output
+        assert "No transactions found. Run `ibkr-porez fetch` first." in result.output
         assert result.exit_code == 0

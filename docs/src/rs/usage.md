@@ -19,19 +19,19 @@ Biće vam zatraženo:
 *   **Phone**: Telefon
 *   **Email**: Email
 
-## Preuzimanje podataka (`get`)
+## Preuzimanje podataka (`fetch`)
 
 Preuzima najnovije podatke sa IBKR i sinhronizuje kurseve sa NBS (Narodna banka Srbije).
 
 Čuva ih u lokalno skladište.
 
 ```bash
-ibkr-porez get
+ibkr-porez fetch
 ```
 
 ## Uvoz istorijskih podataka (`import`)
 
-Učitavanje istorije transakcija starije od 365 dana, koja se ne može preuzeti putem Flex Query-a (`get`).
+Učitavanje istorije transakcija starije od 365 dana, koja se ne može preuzeti putem Flex Query-a (`fetch`).
 
 1.  Preuzmite CSV: [Izvoz pune istorije](ibkr.md/#izvoz-pune-istorije-za-import-komandu)
 2.  Uvezite fajl:
@@ -40,13 +40,13 @@ Učitavanje istorije transakcija starije od 365 dana, koja se ne može preuzeti 
 ibkr-porez import /path/to/activity_statement.csv
 ```
 
-> ⚠️ Ne zaboravite da pokrenete `get` nakon `import` kako bi aplikacija dodala maksimum detalja bar za poslednju godinu
+> ⚠️ Ne zaboravite da pokrenete `fetch` nakon `import` kako bi aplikacija dodala maksimum detalja bar za poslednju godinu
 > u manje detaljne podatke učitane iz CSV-a.
 
-### Logika sinhronizacije (`import` + `get`)
-Pri učitavanju podataka iz CSV-a (`import`) i Flex Query-a (`get`), sistem daje prioritet potpunijim Flex Query podacima:
+### Logika sinhronizacije (`import` + `fetch`)
+Pri učitavanju podataka iz CSV-a (`import`) i Flex Query-a (`fetch`), sistem daje prioritet potpunijim Flex Query podacima:
 
-*   Podaci Flex Query-a (`get`) su izvor istine. Oni prepisuju CSV podatke za bilo koje podudarne datume.
+*   Podaci Flex Query-a (`fetch`) su izvor istine. Oni prepisuju CSV podatke za bilo koje podudarne datume.
 *   Ako se zapis Flex Query-a semantički poklapa sa CSV zapisom (Datum, Tiker, Cena, Količina), to se računa kao ažuriranje (zamena zvaničnim ID-em).
 *   Ako se struktura podataka razlikuje (npr. split nalozi u Flex Query-u protiv "spojenog" zapisa u CSV-u), stari CSV zapis se uklanja, a novi Flex Query zapisi se dodaju.
 *   Potpuno identični zapisi se preskaču.

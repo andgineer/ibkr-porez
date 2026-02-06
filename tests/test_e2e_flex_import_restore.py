@@ -44,7 +44,7 @@ class TestE2EFlexImportRestore:
     ):
         """
         Scenario: Import flex query XML file.
-        Expect: All transactions parsed and stored correctly, same as get command.
+        Expect: All transactions parsed and stored correctly, same as fetch command.
         """
         mock_cfg_mgr.load_config.return_value = MagicMock()
         mock_nbs_import = mock_nbs_cls_import.return_value
@@ -146,9 +146,9 @@ class TestE2EFlexImportRestore:
         with open(resources_path / "complex_flex.xml", "rb") as f:
             mock_fetch.return_value = f.read()
 
-        runner.invoke(ibkr_porez, ["get"])
+        runner.invoke(ibkr_porez, ["fetch"])
 
-        # Use today's date (which is what get command uses)
+        # Use today's date (which is what fetch command uses)
         today = date.today()
         date_str = today.strftime("%Y-%m-%d")
 
@@ -323,7 +323,7 @@ class TestE2EFlexImportRestore:
         with open(resources_path / "complex_flex.xml", "rb") as f:
             mock_fetch.return_value = f.read()
 
-        runner.invoke(ibkr_porez, ["get"])
+        runner.invoke(ibkr_porez, ["fetch"])
 
         # Use today's date
         today = date.today()

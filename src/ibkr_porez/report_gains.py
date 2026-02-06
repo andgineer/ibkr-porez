@@ -56,7 +56,7 @@ class GainsReportGenerator(ReportGeneratorBase):
         df_transactions = self.storage.get_transactions()
 
         if df_transactions.empty:
-            raise ValueError("No transactions found. Run `ibkr-porez get` first.")
+            raise ValueError("No transactions found. Run `ibkr-porez fetch` first.")
 
         # Process FIFO for all
         all_entries = self.tax_calc.process_trades(df_transactions)

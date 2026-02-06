@@ -29,7 +29,7 @@ class TestE2EFetching:
     @patch("ibkr_porez.operation_get.NBSClient")
     @patch("ibkr_porez.ibkr_flex_query.IBKRClient.fetch_latest_report")
     @patch("ibkr_porez.main.config_manager")
-    def test_get_command_complex_fetch(
+    def test_fetch_command_complex_fetch(
         self,
         mock_cfg_mgr,
         mock_fetch,
@@ -55,7 +55,7 @@ class TestE2EFetching:
         with open(resources_path / "complex_flex.xml", "rb") as f:
             mock_fetch.return_value = f.read()
 
-        result = runner.invoke(ibkr_porez, ["get"])
+        result = runner.invoke(ibkr_porez, ["fetch"])
 
         assert result.exit_code == 0
 
@@ -164,7 +164,7 @@ class TestE2EFetching:
         assert "csv-XML_AAPL_BUY_1" in s.get_transactions()["transaction_id"].values
 
         # 2. Fetch XML
-        result = runner.invoke(ibkr_porez, ["get"])
+        result = runner.invoke(ibkr_porez, ["fetch"])
         assert result.exit_code == 0
 
         # Logic Check:
@@ -227,7 +227,7 @@ class TestE2EFetching:
             mock_fetch.return_value = f.read()
 
         # 1. Fetch XML
-        runner.invoke(ibkr_porez, ["get"])
+        runner.invoke(ibkr_porez, ["fetch"])
 
         # 2. Import CSV
         result = runner.invoke(ibkr_porez, ["import", str(resources_path / "complex_activity.csv")])
