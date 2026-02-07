@@ -279,15 +279,24 @@ def stat(year: int | None, ticker: str | None, month: str | None):
 @ibkr_porez.command(
     epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#sync-data-and-create-declarations-sync",
 )
+@click.option(
+    "-o",
+    "--output",
+    "output_dir",
+    type=str,
+    required=False,
+    help="Output directory (default: from config or Downloads)",
+)
 @verbose_option
-def sync():
+def sync(output_dir: str | None):
     """Sync data from IBKR and create all necessary declarations."""
     cfg = config_manager.load_config()
     if not cfg.ibkr_token or not cfg.ibkr_query_id:
         console.print("[red]Missing Configuration! Run `ibkr-porez config` first.[/red]")
         return
 
-    operation = SyncOperation(cfg)
+    output_path = Path(output_dir) if output_dir else None
+    operation = SyncOperation(cfg, output_dir=output_path)
     try:
         with console.status("[bold green]Syncing data and creating declarations...[/bold green]"):
             declarations = operation.execute()

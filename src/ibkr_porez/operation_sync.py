@@ -48,10 +48,11 @@ class SyncOperation:
     JUNE_MONTH = 6
     DEFAULT_FIRST_SYNC_LOOKBACK_DAYS = 45
 
-    def __init__(self, config: UserConfig):
+    def __init__(self, config: UserConfig, output_dir: Path | None = None):
         self.config = config
         self.storage = Storage()
         self.get_operation = GetOperation(config)
+        self.output_dir = output_dir
 
     def _get_next_declaration_number(self) -> int:
         """Get next sequential declaration number for all types."""
@@ -192,7 +193,7 @@ class SyncOperation:
             f.write(xml_content)
 
         # Copy to output folder
-        output_folder = _get_output_folder()
+        output_folder = self.output_dir if self.output_dir else _get_output_folder()
         output_folder.mkdir(parents=True, exist_ok=True)
         output_path = output_folder / proper_filename
         with open(output_path, "w", encoding="utf-8") as f:
