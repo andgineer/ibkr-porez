@@ -1,14 +1,15 @@
 import allure
 import pytest
 from datetime import date
+from decimal import Decimal
+
+from ibkr_porez.models import Currency, Transaction, TransactionType, UserConfig
 from ibkr_porez.storage import Storage
 
 
 @pytest.fixture
 def storage(tmp_path):
     # Mock user_data_dir and config_manager to return tmp_path
-    from ibkr_porez.models import UserConfig
-
     with pytest.MonkeyPatch.context() as m:
         m.setattr("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path))
         mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
@@ -27,10 +28,6 @@ class TestStorageIncremental:
         assert storage.get_last_transaction_date() is None
 
         # Add some data
-        from datetime import date
-        from ibkr_porez.models import Transaction, TransactionType, Currency
-        from decimal import Decimal
-
         # Create transactions and save them
         tx1 = Transaction(
             transaction_id="1",
@@ -93,9 +90,6 @@ class TestStorageIncremental:
 
     def test_get_transactions_open_date_conversion(self, storage):
         # Test that open_date is converted to date object
-        from ibkr_porez.models import Transaction, TransactionType, Currency
-        from decimal import Decimal
-
         tx = Transaction(
             transaction_id="100",
             date=date(2023, 1, 1),

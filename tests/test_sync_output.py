@@ -13,15 +13,16 @@ from ibkr_porez.config import UserConfig
 from ibkr_porez.main import ibkr_porez
 from ibkr_porez.models import (
     DeclarationType,
+    IncomeDeclarationEntry,
+    TaxReportEntry,
 )
+from ibkr_porez.operation_sync import SyncOperation
 from ibkr_porez.storage import Storage
 
 
 @pytest.fixture
 def mock_user_data_dir(tmp_path):
     """Mock user data directory."""
-    from ibkr_porez.models import UserConfig
-
     with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
         mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
@@ -69,10 +70,8 @@ class TestSyncOutput:
         mock_get_op.execute.return_value = ([], 0, 0)
 
         # Mock GainsReportGenerator
-        from ibkr_porez.models import TaxReportEntry as RealTaxReportEntry
-
         mock_gains_gen = MagicMock()
-        mock_entry = RealTaxReportEntry(
+        mock_entry = TaxReportEntry(
             ticker="AAPL",
             sale_date=date(2023, 3, 15),
             quantity=Decimal("10"),
@@ -185,10 +184,8 @@ class TestSyncOutput:
         mock_get_op.execute.return_value = ([], 0, 0)
 
         # Mock GainsReportGenerator
-        from ibkr_porez.models import TaxReportEntry as RealTaxReportEntry
-
         mock_gains_gen = MagicMock()
-        mock_gains_entry = RealTaxReportEntry(
+        mock_gains_entry = TaxReportEntry(
             ticker="AAPL",
             sale_date=date(2023, 3, 15),
             quantity=Decimal("10"),
@@ -207,10 +204,8 @@ class TestSyncOutput:
         mock_gains_gen_cls.return_value = mock_gains_gen
 
         # Mock IncomeReportGenerator
-        from ibkr_porez.models import IncomeDeclarationEntry as RealIncomeDeclarationEntry
-
         mock_income_gen = MagicMock()
-        mock_income_entry = RealIncomeDeclarationEntry(
+        mock_income_entry = IncomeDeclarationEntry(
             date=date(2023, 7, 15),
             sifra_vrste_prihoda="111402000",
             bruto_prihod=Decimal("1000.00"),
@@ -227,8 +222,6 @@ class TestSyncOutput:
             )
         ]
         mock_income_gen_cls.return_value = mock_income_gen
-
-        from ibkr_porez.operation_sync import SyncOperation
 
         sync_op = SyncOperation(mock_config)
 
@@ -292,10 +285,8 @@ class TestSyncOutput:
         mock_get_op.execute.return_value = ([], 0, 0)
 
         # Mock GainsReportGenerator
-        from ibkr_porez.models import TaxReportEntry as RealTaxReportEntry
-
         mock_gains_gen = MagicMock()
-        mock_gains_entry = RealTaxReportEntry(
+        mock_gains_entry = TaxReportEntry(
             ticker="MSFT",
             sale_date=date(2023, 9, 10),
             quantity=Decimal("5"),
@@ -314,10 +305,8 @@ class TestSyncOutput:
         mock_gains_gen_cls.return_value = mock_gains_gen
 
         # Mock IncomeReportGenerator
-        from ibkr_porez.models import IncomeDeclarationEntry as RealIncomeDeclarationEntry
-
         mock_income_gen = MagicMock()
-        mock_income_entry = RealIncomeDeclarationEntry(
+        mock_income_entry = IncomeDeclarationEntry(
             date=date(2023, 12, 24),
             sifra_vrste_prihoda="111402000",
             bruto_prihod=Decimal("5000.00"),
@@ -334,8 +323,6 @@ class TestSyncOutput:
             )
         ]
         mock_income_gen_cls.return_value = mock_income_gen
-
-        from ibkr_porez.operation_sync import SyncOperation
 
         sync_op = SyncOperation(mock_config)
 

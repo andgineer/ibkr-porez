@@ -12,6 +12,8 @@ from ibkr_porez.models import (
     Declaration,
     DeclarationStatus,
     DeclarationType,
+    IncomeDeclarationEntry,
+    TaxReportEntry,
 )
 from ibkr_porez.operation_sync import SyncOperation
 from ibkr_porez.storage import Storage
@@ -20,8 +22,6 @@ from ibkr_porez.storage import Storage
 @pytest.fixture
 def mock_user_data_dir(tmp_path):
     """Mock user data directory."""
-    from ibkr_porez.models import UserConfig
-
     with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
         mock_config = UserConfig(full_name="Test", address="Test", data_dir=None)
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
@@ -61,10 +61,8 @@ class TestSyncOperation:
 
         # Mock GainsReportGenerator - no need for temp file anymore
 
-        from ibkr_porez.models import TaxReportEntry as RealTaxReportEntry
-
         mock_gains_gen = MagicMock()
-        mock_entry = RealTaxReportEntry(
+        mock_entry = TaxReportEntry(
             ticker="AAPL",
             sale_date=date(2023, 3, 15),
             quantity=Decimal("10"),
@@ -187,10 +185,8 @@ class TestSyncOperation:
 
         # Mock IncomeReportGenerator - no need for temp file anymore
 
-        from ibkr_porez.models import IncomeDeclarationEntry as RealIncomeDeclarationEntry
-
         mock_income_gen = MagicMock()
-        mock_entry = RealIncomeDeclarationEntry(
+        mock_entry = IncomeDeclarationEntry(
             date=date(2023, 7, 15),
             sifra_vrste_prihoda="111402000",
             bruto_prihod=Decimal("1000.00"),
@@ -261,10 +257,8 @@ class TestSyncOperation:
 
         # Mock GainsReportGenerator - no need for temp file anymore
 
-        from ibkr_porez.models import TaxReportEntry as RealTaxReportEntry
-
         mock_gains_gen = MagicMock()
-        mock_entry = RealTaxReportEntry(
+        mock_entry = TaxReportEntry(
             ticker="AAPL",
             sale_date=date(2023, 3, 15),
             quantity=Decimal("10"),
@@ -325,10 +319,8 @@ class TestSyncOperation:
 
         # Mock IncomeReportGenerator - no need for temp file anymore
 
-        from ibkr_porez.models import IncomeDeclarationEntry as RealIncomeDeclarationEntry
-
         mock_income_gen = MagicMock()
-        mock_entry = RealIncomeDeclarationEntry(
+        mock_entry = IncomeDeclarationEntry(
             date=date(2023, 7, 15),
             sifra_vrste_prihoda="111402000",
             bruto_prihod=Decimal("1000.00"),
@@ -480,10 +472,8 @@ class TestSyncOperation:
 
         # Mock IncomeReportGenerator (multiple declarations) - no need for temp files anymore
 
-        from ibkr_porez.models import IncomeDeclarationEntry as RealIncomeDeclarationEntry
-
         mock_income_gen = MagicMock()
-        mock_entry1 = RealIncomeDeclarationEntry(
+        mock_entry1 = IncomeDeclarationEntry(
             date=date(2023, 7, 15),
             sifra_vrste_prihoda="111402000",
             bruto_prihod=Decimal("1000.00"),
@@ -492,7 +482,7 @@ class TestSyncOperation:
             porez_placen_drugoj_drzavi=Decimal("30.00"),
             porez_za_uplatu=Decimal("120.00"),
         )
-        mock_entry2 = RealIncomeDeclarationEntry(
+        mock_entry2 = IncomeDeclarationEntry(
             date=date(2023, 7, 16),
             sifra_vrste_prihoda="111402000",
             bruto_prihod=Decimal("2000.00"),
@@ -557,10 +547,8 @@ class TestSyncOperation:
 
         # Mock GainsReportGenerator - no need for temp file anymore
 
-        from ibkr_porez.models import TaxReportEntry as RealTaxReportEntry
-
         mock_gains_gen = MagicMock()
-        mock_entry = RealTaxReportEntry(
+        mock_entry = TaxReportEntry(
             ticker="AAPL",
             sale_date=date(2023, 3, 15),
             quantity=Decimal("10"),

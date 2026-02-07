@@ -1,5 +1,7 @@
 """Tests for raw reports delta storage and restoration."""
 
+import re
+import xml.etree.ElementTree as ET
 import zipfile
 from datetime import date
 
@@ -183,8 +185,6 @@ def test_restore_file_from_delta(tmp_path, monkeypatch):
     )
 
     # Also verify it's valid XML
-    import xml.etree.ElementTree as ET
-
     ET.fromstring(restored)  # Should not raise
 
 
@@ -381,8 +381,6 @@ def test_restore_exact_match_no_duplicates(tmp_path, monkeypatch):
 
     # Verify no duplicate FlexStatement tags (count opening tags only, not FlexStatements)
     # Use regex to match <FlexStatement but not <FlexStatements
-    import re
-
     flex_stmt_open_matches = re.findall(r"<FlexStatement\s", restored)
     flex_stmt_close_count = restored.count("</FlexStatement>")
     assert len(flex_stmt_open_matches) == 1, (
@@ -393,8 +391,6 @@ def test_restore_exact_match_no_duplicates(tmp_path, monkeypatch):
     )
 
     # Verify valid XML
-    import xml.etree.ElementTree as ET
-
     try:
         root = ET.fromstring(restored)
         # Verify structure

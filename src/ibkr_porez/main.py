@@ -7,12 +7,11 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import rich_click as click
-from platformdirs import user_data_dir
 from rich.console import Console
 from rich.logging import RichHandler
 
 from ibkr_porez import __version__
-from ibkr_porez.config import UserConfig, config_manager
+from ibkr_porez.config import config_manager
 from ibkr_porez.declaration_manager import DeclarationManager
 from ibkr_porez.error_handling import get_user_friendly_error_message
 from ibkr_porez.logging_config import ERROR_LOG_FILE, setup_logger
@@ -21,6 +20,7 @@ from ibkr_porez.models import (
     IncomeDeclarationEntry,
     TaxReportEntry,
 )
+from ibkr_porez.operation_config import execute_config_command
 from ibkr_porez.operation_get import GetOperation
 from ibkr_porez.operation_import import ImportOperation, ImportType
 from ibkr_porez.operation_list import ListDeclarations
@@ -94,75 +94,7 @@ def ibkr_porez() -> None:
 @verbose_option
 def config():
     """Configure IBKR and personal details."""
-    current_config = config_manager.load_config()
-
-    console.print("[bold blue]Configuration Setup[/bold blue]")
-    console.print(f"Config file location: {config_manager.config_path}\n")
-
-    console.print(
-        "[dim]Need help getting your IBKR Flex Token and Query ID? "
-        "See [link=https://andgineer.github.io/ibkr-porez/ibkr/#flex-web-service]"
-        "documentation[/link].[/dim]\n",
-    )
-
-    ibkr_token = click.prompt("IBKR Flex Token", default=current_config.ibkr_token)
-    ibkr_query_id = click.prompt("IBKR Query ID", default=current_config.ibkr_query_id)
-
-    personal_id = click.prompt("Personal Search ID (JMBG)", default=current_config.personal_id)
-    full_name = click.prompt("Full Name", default=current_config.full_name)
-    address = click.prompt("Address", default=current_config.address)
-    city_code = click.prompt(
-        "City/Municipality Code (Sifra opstine, e.g. 223 Novi Sad, 013 Novi Beograd. See portal)",
-        default=current_config.city_code or "223",
-    )
-    phone = click.prompt("Phone Number", default=current_config.phone)
-    email = click.prompt("Email", default=current_config.email)
-
-    default_data_dir = current_config.data_dir or str(
-        Path(user_data_dir("ibkr-porez")) / Storage.DATA_SUBDIR,
-    )
-    data_dir_input = click.prompt(
-        "Data Directory (absolute path to folder with transactions.json, "
-        "default: ibkr-porez-data in app folder)",
-        default=default_data_dir,
-        show_default=True,
-    )
-    # If user entered the default ibkr-porez-data folder, set to None to use default
-    default_ibkr_porez_data = str(Path(user_data_dir("ibkr-porez")) / Storage.DATA_SUBDIR)
-    data_dir = (
-        None
-        if data_dir_input.strip() == default_ibkr_porez_data
-        else (data_dir_input.strip() if data_dir_input.strip() else None)
-    )
-
-    default_output_folder = current_config.output_folder or str(Path.home() / "Downloads")
-    output_folder_input = click.prompt(
-        "Output Folder (absolute path to folder for saving files from sync, export, "
-        "export-flex, report commands, default: Downloads)",
-        default=default_output_folder,
-        show_default=True,
-    )
-    output_folder = (
-        None
-        if output_folder_input.strip() == str(Path.home() / "Downloads")
-        else (output_folder_input.strip() if output_folder_input.strip() else None)
-    )
-
-    new_config = UserConfig(
-        ibkr_token=ibkr_token,
-        ibkr_query_id=ibkr_query_id,
-        personal_id=personal_id,
-        full_name=full_name,
-        address=address,
-        city_code=city_code,
-        phone=phone,
-        email=email,
-        data_dir=data_dir,
-        output_folder=output_folder,
-    )
-
-    config_manager.save_config(new_config)
-    console.print("\n[bold green]Configuration saved successfully![/bold green]")
+    execute_config_command(console)
 
 
 @ibkr_porez.command(
