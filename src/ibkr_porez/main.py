@@ -89,7 +89,7 @@ def ibkr_porez() -> None:
 
 
 @ibkr_porez.command(
-    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#configuration",
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#configuration-config",
 )
 @verbose_option
 def config():
@@ -232,7 +232,7 @@ def import_file(file_path: str | None, import_type: str):
 
 
 @ibkr_porez.command(
-    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#show-declaration-show",
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#view-declaration-details-show",
 )
 @click.argument("declaration_id", type=str)
 @verbose_option
@@ -242,7 +242,7 @@ def show(declaration_id: str):
 
 
 @ibkr_porez.command(
-    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#show-statistics-stat",
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#view-statistics-stat",
 )
 @click.option("-y", "--year", type=int, help="Filter by year (e.g. 2026)")
 @click.option("-t", "--ticker", type=str, help="Show detailed breakdown for specific ticker")
@@ -408,7 +408,10 @@ def report(  # noqa: PLR0913
     )
 
 
-@ibkr_porez.command("export-flex")
+@ibkr_porez.command(
+    "export-flex",
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#export-flex-query-export-flex",
+)
 @click.argument("date", type=str)
 @click.option(
     "-o",
@@ -585,7 +588,7 @@ def export(declaration_id: str, output: str | None):
 
 
 @ibkr_porez.command(
-    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#revert-declaration-revert",
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#revert-declaration-status-revert",
 )
 @click.argument("declaration_id", type=str)
 @click.option(
@@ -613,7 +616,7 @@ def revert(declaration_id: str, to: str):
 
 
 @ibkr_porez.command(
-    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#attach-file-attach",
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#attach-file-to-declaration-attach",
 )
 @click.argument("declaration_id")
 @click.argument("file_path", type=str, required=False)
