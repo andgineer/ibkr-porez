@@ -1,0 +1,260 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"Start date can equal end date.","1","test_date_range_start_equals_end","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Test that sync raises error when income tax not found.","4","test_sync_handles_income_tax_not_found_error","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOperation","test_sync","",""
+"","0","test_parse_csv_withholding_tax","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestCSVParser","test_csv_parser","",""
+"","3","test_nbs_fallback","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","","test_tax_calculator","",""
+"","78","test_dedup_split_orders_counter","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"Test that first report is saved as base file.","1","test_save_first_report_as_base","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","","test_raw_reports","",""
+"Test that sync skips declarations that already exist.","3","test_sync_skips_existing_declarations","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOperation","test_sync","",""
+"
+        Scenario: User runs `config` command and provides all inputs.
+        Expect: Config file created with correct values.
+        ","23","test_config_setup","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestE2EConfig","test_e2e_config","",""
+"Test that XML structure is correct.","2","test_xml_generator_structure","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestIncomeXMLGenerator","test_report_income","",""
+"Start date must be before or equal to end date.","0","test_date_range_start_after_end","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"
+        Scenario: Fetch complex Flex Query with multiple trades, splits, and cash interactions.
+        Expect: All transactions parsed and stored correctly.
+        ","61","test_get_command_complex_fetch","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"_parse_dates should parse date strings correctly.","0","test_parse_dates","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"get_period for GAINS with half-year H2 returns Jul-Dec.","0","test_get_period_gains_with_half_h2","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Test that sync creates gains declaration for last complete half-year.","5","test_sync_creates_gains_declaration","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOperation","test_sync","",""
+"
+        Scenario:
+        1. Fetch Flex Query.
+        2. Import CSV.
+
+        Expect:
+        - Common items (AAPL, Divs) skipped.
+        - New items in CSV (MSFT) added.
+        ","53","test_workflow_skip_duplicates","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"","5","test_tax_calculator_fifo_profit","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"
+        Scenario: Run `show 1` where declaration_id=1 is a PPDG-3R (gains) declaration.
+        Expect: Declaration details with table showing entries.
+        ","12","test_show_declaration_gains","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EShow","test_e2e_show","",""
+"format_validation_error should format date format errors correctly.","1","test_format_validation_error_with_date_format_error","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"get_period for GAINS defaults to last complete half-year.","0","test_get_period_gains_default_last_complete_half_year","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"get_period for GAINS with compact half-year format works.","0","test_get_period_gains_with_half_compact_format","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"
+        Test SGOV calculation matches 12.xml:
+        - BrutoPrihod: 8706.70
+        - ObracunatiPorez: 1306.01
+        - PorezPlacenDrugojDrzavi: 2612.51
+        - PorezZaUplatu: 0.00
+        ","2","test_sgov_calculation_accuracy","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestIncomeCalculationAccuracy","test_report_income_calculation","",""
+"
+        Scenario: Run `show --month 2023-02`.
+        Expect: Summary filtered by month (or detailed? logic says if ticker OR simple filter... wait.
+        Let's check logic: if ticker IS passed -> Detailed. If ONLY month -> Summary filtered?
+        Code: `if show_detailed_list: ...` where `show_detailed_list = True if ticker else False`.
+        So `show -m 2023-02` shows SUMMARY filtered (NOT Detailed).
+        Wait, I should verify what I implemented.
+        ","21","test_show_detailed_month","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EShow","test_e2e_show","",""
+"
+        Scenario: Run `show 3` where declaration has been submitted.
+        Expect: Declaration details including submitted timestamp.
+        ","13","test_show_declaration_with_submitted_status","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EShow","test_e2e_show","",""
+"_parse_dates should return None when dates are not provided.","0","test_parse_dates_none","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Scenario: No sales in period.","21","test_report_no_sales","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"format_validation_error should extract single error message.","1","test_format_validation_error_single_error","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"Half-year must be 1 or 2.","0","test_invalid_half_number","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Test parsing entity_name and ISIN from description.","0","test_parse_entity_from_description","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestWithholdingTaxMatching","test_withholding_tax_matching","",""
+"handle_validation_error should handle multiple validation errors.","0","test_handle_validation_error_with_multiple_errors","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"Verify load_config returns default config if file corrupted.","1","test_load_corrupted_file","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestConfigManager","test_config_manager","",""
+"handle_validation_error should remove Pydantic links before printing.","1","test_handle_validation_error_removes_pydantic_link","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"","3","test_xml_generator_structure","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestPPDG3R","test_report","",""
+"","10","test_get_transactions_open_date_conversion","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestStorageIncremental","test_storage_incremental","",""
+"Test XML generation for coupon (interest) type.","1","test_xml_generator_coupon_type","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestIncomeXMLGenerator","test_report_income","",""
+"Test selling 5 shares from a lot of 10.","3","test_tax_calculator_fifo_split_lot","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"Should give up after 10 days.","2","test_give_up_after_limit","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestNBSClient","test_nbs","",""
+"Verify XML file creation and content.","45","test_report_generation_file_check","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"Test that sync updates last_declaration_date after successful sync.","5","test_sync_updates_last_declaration_date","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOperation","test_sync","",""
+"Report gains with --half and --start/--end, half takes precedence.","4","test_report_gains_half_takes_precedence_over_dates","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"If rate is in storage, use it.","0","test_cache_hit","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestNBSClient","test_nbs","",""
+"Test that dividends are matched by entity_name/ISIN from description.","1","test_match_dividend_by_entity_name_isin","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestWithholdingTaxMatching","test_withholding_tax_matching","",""
+"Test that error is raised when withholding tax is not found.","68","test_report_income_missing_tax_error","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EIncome","test_e2e_income","",""
+"Test restoring report with multiple sequential deltas.","2","test_restore_multiple_deltas","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","","test_raw_reports","",""
+"Scenario: Storage effectively empty (or filtered to empty).","5","test_report_no_transactions_found","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"
+        Scenario: Run `show 2` where declaration_id=2 is a PP OPO (income) declaration.
+        Expect: Declaration details with income fields.
+        ","10","test_show_declaration_income","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EShow","test_e2e_show","",""
+"Report gains with --start equal to --end should be valid.","4","test_report_gains_from_equals_to_valid","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"","0","test_version_option","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","","test_e2e_version","",""
+"Test that multiple taxes in range are summed.","2","test_multiple_taxes_summed","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestWithholdingTaxMatching","test_withholding_tax_matching","",""
+"Scenario: No transactions.","2","test_show_empty","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EShow","test_e2e_show","",""
+"Report gains with --half in compact format (YYYYH) should work.","5","test_report_gains_half_with_compact_format","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"Verify save_config and load_config work together.","0","test_save_load_roundtrip","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestConfigManager","test_config_manager","",""
+"
+        Scenario: Run `show 4` where declaration has been paid.
+        Expect: Declaration details including paid timestamp.
+        ","11","test_show_declaration_with_paid_status","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EShow","test_e2e_show","",""
+"format_validation_error should handle custom error messages.","0","test_format_validation_error_handles_custom_error_message","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"Test that income is separated by date.","32","test_report_income_separate_by_date","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EIncome","test_e2e_income","",""
+"Test that large delta (>50% of base) creates new base file.","1","test_large_delta_creates_new_base","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","","test_raw_reports","",""
+"Should skip weekend days directly without API call.","2","test_offline_skip_weekend","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestNBSClient","test_nbs","",""
+"get_period for GAINS with date range returns those dates.","1","test_get_period_gains_with_dates","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Test that we can actually restore the original file from base + delta.","3","test_restore_file_from_delta","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","","test_raw_reports","",""
+"Integration test: handle_validation_error with real console.","0","test_handle_validation_error_integration","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"Can set type to INCOME.","0","test_type_income","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Test that interest transactions are grouped by currency, not symbol.","23","test_interest_grouping_by_currency","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestWithholdingTaxMatching","test_withholding_tax_matching","",""
+"","21","test_get_last_transaction_date","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestStorageIncremental","test_storage_incremental","",""
+"
+        Scenario: Working day fetch fails (e.g. API error or missing data).
+        Should continue looking back.
+        ","2","test_fallback_search","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestNBSClient","test_nbs","",""
+"Field alias 'start' should map to start_date.","0","test_alias_start_to_start_date","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Test that dividends fallback to symbol match if entity_name/ISIN not found.","1","test_match_dividend_fallback_to_symbol","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestWithholdingTaxMatching","test_withholding_tax_matching","",""
+"
+        Test that sync saves ALL declarations (PPDG-3R and PP OPO) to database.
+
+        This test would fail before the fix where PPDG-3R declaration wasn't saved.
+        ","7","test_sync_saves_all_declarations_to_database","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOutput","test_sync_output","",""
+"","3","test_parse_csv_trades","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestCSVParser","test_csv_parser","",""
+"Report gains with only --end uses start of current month to --end.","4","test_report_gains_to_only_uses_start_of_month_to_to","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"get_period for INCOME with half-year H2 returns Jul-Dec.","0","test_get_period_income_with_half_h2","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Report gains with invalid date format should show error.","3","test_report_gains_invalid_date_format","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"","2","test_fetch_latest_report","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"
+        Test that sync shows output when declarations are created.
+
+        This test would fail before the fix where return was outside if block.
+        ","14","test_sync_shows_output_when_declarations_created","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOutput","test_sync_output","",""
+"Invalid date format should raise ValidationError.","0","test_invalid_date_format","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Test restoring report when only base exists.","1","test_restore_report_from_base","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","","test_raw_reports","",""
+"Report gains without parameters defaults to last complete half-year.","5","test_report_gains_no_params_defaults_to_last_complete_half","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"","30","test_dedup_csv_skips_xml","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"Test that sync creates multiple income declarations for different days.","11","test_sync_creates_multiple_income_declarations","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOperation","test_sync","",""
+"Test _fetch_rate logic regarding API response.","2","test_fetch_rate_api_success","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestNBSClient","test_nbs","",""
+"Test that tax can be found in subsequent days (up to 7 days).","1","test_find_tax_in_subsequent_days","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestWithholdingTaxMatching","test_withholding_tax_matching","",""
+"Field alias 'end' should map to end_date.","0","test_alias_end_to_end_date","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Verify load_config returns empty/default config if file missing.","0","test_load_missing_file","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestConfigManager","test_config_manager","",""
+"Test that second report is saved (as delta or new base if delta too large).","2","test_save_second_report_as_delta","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","","test_raw_reports","",""
+"
+        Scenario: Run `show --ticker AAPL`.
+        Expect: Detailed execution list for AAPL.
+        ","21","test_show_detailed_ticker","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EShow","test_e2e_show","",""
+"get_period for GAINS with half-year H1 returns Jan-Jun.","0","test_get_period_gains_with_half_h1","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Report gains with only --start sets --end equal to --start.","5","test_report_gains_from_only_defaults_to_to_equals_from","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"Should skip holidays using holidays lib.","1","test_offline_skip_holiday","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestNBSClient","test_nbs","",""
+"Test that tax calculation is correct.","2","test_xml_generator_tax_calculation","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestIncomeXMLGenerator","test_report_income","",""
+"format_validation_error should combine multiple error messages.","0","test_format_validation_error_multiple_errors","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"get_period for INCOME with half-year H1 returns Jan-Jun.","0","test_get_period_income_with_half_h1","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"","34","test_dedup_strict_id_match","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"
+        Scenario (Partial Upgrade):
+        1. Import CSV (contains AAPL, MSFT).
+        2. Fetch Flex Query (contains AAPL, TSLA, GOOG). MSFT is missing in XML (different date/filter).
+
+        Expect:
+        - AAPL (CSV) -> Replaced by AAPL (XML).
+        - MSFT (CSV) -> RETAINED (because XML dates [Jan, Feb] don't cover MSFT date [Apr]).
+        - TSLA/GOOG (XML) -> Added.
+        ","89","test_workflow_partial_upgrade","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"Verify config_path property returns expected path.","0","test_config_path","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestConfigManager","test_config_manager","",""
+"
+        Scenario: Run `show` without arguments.
+        Expect: Monthly summary table.
+        ","23","test_show_default_summary","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EShow","test_e2e_show","",""
+"Test end-to-end calculation with real transaction data.","27","test_e2e_calculation_with_real_data","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestIncomeCalculationAccuracy","test_report_income_calculation","",""
+"Invalid compact date format should raise ValidationError.","0","test_invalid_date_format_compact","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"","32","test_dedup_xml_upgrades_csv","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"
+        Test that sync shows ""No new declarations created"" when nothing is created.
+
+        This test would fail before the fix where return was outside if block.
+        ","5","test_sync_shows_no_output_when_nothing_created","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOutput","test_sync_output","",""
+"
+        Test that PPDG-3R declaration is saved when both types are created.
+
+        This test specifically checks that PPDG-3R is not lost when processing multiple types.
+        ","6","test_sync_saves_ppdg3r_when_both_types_created","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOutput","test_sync_output","",""
+"","30","test_dedup_bundle_vs_split_coverage","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"Test that sync creates income declarations for period.","5","test_sync_creates_income_declaration","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOperation","test_sync","",""
+"Test that generator handles empty entries gracefully.","1","test_xml_generator_empty_entries","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestIncomeXMLGenerator","test_report_income","",""
+"Report gains with --half in dash format (YYYY-H) should work.","6","test_report_gains_half_with_dash_format","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"Report gains with --half H2 should cover July-December.","4","test_report_gains_half_h2_covers_jul_dec","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"","3","test_parse_csv_missing_ids","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestCSVParser","test_csv_parser","",""
+"","27","test_dedup_id_type_mismatch","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"format_validation_error should fallback to string representation if no messages.","0","test_format_validation_error_fallback_to_string_representation","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"format_validation_error should work with real Pydantic ValidationError.","1","test_format_validation_error_with_real_validation_error","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"Test selling 15 shares covering 2 lots (10 @ 100, 10 @ 200).","4","test_tax_calculator_fifo_multi_lot","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestTaxCalculator","test_tax_calculator","",""
+"
+        Scenario: Generate PPDG-3R report for H1 2023.
+        Data:
+        - Buy AAPL 10 @ 100 USD on 2022-12-01 (Outside period context)
+        - Sell AAPL 5 @ 120 USD on 2023-01-15 (Inside period)
+        Expect:
+        - XML generated.
+        - Contains sale of 5 AAPL.
+        - Capital gain calculated correctly.
+        ","471","test_report_generation_h1","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"
+        Scenario: Complex FIFO (Mutli-Buy/Single-Sell, Single-Buy/Multi-Sell).
+        Data: tests/resources/fifo_scenarios.xml
+        Expect:
+        - AAPL: 1 Sell of 15. Gain ~29,250 RSD (assuming rate 117).
+        - MSFT: 2 Sells (5, 10). Gains 5,850 and 23,400 RSD.
+        ","89","test_report_fifo_complex","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"Test that tax is not found if beyond 7 days range.","1","test_find_tax_not_found_beyond_range","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestWithholdingTaxMatching","test_withholding_tax_matching","",""
+"_parse_dates should handle partial dates.","1","test_parse_dates_partial","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Test basic retry logic (simulated).","2","test_fetch_rate_api_retry","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestNBSClient","test_nbs","",""
+"If --start is provided and --end is empty, --end defaults to --start.","0","test_start_without_end_defaults_to_start","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Test that sync skips income declarations when no income found (not an error).","4","test_sync_skips_income_when_no_income_found","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOperation","test_sync","",""
+"Valid half-year format with dash (YYYY-H) should be accepted.","0","test_valid_half_format_dash","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Scenario: User omits --half, defaults to previous complete half.","5","test_report_default_period","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"Test that interest is matched by currency, not symbol.","1","test_match_interest_by_currency","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestWithholdingTaxMatching","test_withholding_tax_matching","",""
+"RSD should always be 1.","0","test_rsd_rate","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestNBSClient","test_nbs","",""
+"
+        Scenario: User updates existing config (pressing Enter to keep defaults).
+        ","4","test_config_update","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestE2EConfig","test_e2e_config","",""
+"","0","test_parse_csv_dividends","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestCSVParser","test_csv_parser","",""
+"Report gains with --start after --end should show error.","4","test_report_gains_from_after_to_error","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"_parse_half should return None when half is not provided.","0","test_parse_half_none","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Test that sync generates filenames in proper format.","4","test_sync_generates_proper_filename_format","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOperation","test_sync","",""
+"For GAINS, half-year takes precedence over date range.","1","test_get_period_gains_half_takes_precedence_over_dates","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"","2","test_parse_report_error","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"
+        Scenario: Run `show 999` where declaration_id=999 does not exist.
+        Expect: Error message indicating declaration not found.
+        ","1","test_show_declaration_not_found","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EShow","test_e2e_show","",""
+"get_period for INCOME defaults to current month (from 1st to today).","0","test_get_period_income_default_current_month","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"_parse_half should parse dash format correctly.","1","test_parse_half_dash_format","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"","1","test_parse_report","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestIBKRClient","test_ibkr_client","",""
+"
+        Scenario: Import complex CSV.
+        Expect: All transactions parsed.
+        ","25","test_import_command_complex","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"Test that first sync sets last_declaration_date to 30 days ago.","3","test_sync_first_run_sets_last_declaration_date_to_30_days_ago","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestSyncOperation","test_sync","",""
+"handle_validation_error should call console.print with formatted message.","1","test_handle_validation_error_calls_console_print","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"","36","test_dedup_identical_skip","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"Test restoring report by applying deltas.","2","test_restore_report_with_deltas","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","","test_raw_reports","",""
+"","4","test_import_invalid_file","tests","Wed Feb 04 05:01:58 GMT 2026","passed","Wed Feb 04 05:01:58 GMT 2026","TestE2EFetching","test_e2e_fetching","",""
+"Test restoring report that doesn't exist.","1","test_restore_nonexistent_report","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","","test_raw_reports","",""
+"Report without --type defaults to gains.","5","test_report_gains_default_type_is_gains","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"Test income report with no income data.","5","test_report_income_no_data","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EIncome","test_e2e_income","",""
+"","0","test_version","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","","test_e2e_version","",""
+"Invalid half-year format should raise ValidationError.","1","test_invalid_half_format","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Test that --force flag allows creation with zero tax.","30","test_report_income_with_force","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EIncome","test_e2e_income","",""
+"","43","test_xml_supremacy_reverse_order","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestStorageDeduplication","test_storage_dedup","",""
+"get_period for INCOME with date range returns those dates.","0","test_get_period_income_with_dates","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Scenario: User provides invalid date format.","5","test_report_invalid_format","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EReport","test_e2e_gains","",""
+"_parse_half should parse compact format correctly.","0","test_parse_half_compact_format","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Report gains with compact date format (YYYYMMDD) should be invalid.","3","test_report_gains_compact_date_format_invalid","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"Can set type to GAINS.","0","test_type_gains","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Valid half-year format compact (YYYYH) should be accepted.","0","test_valid_half_format_compact","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"format_validation_error should handle empty error messages.","0","test_format_validation_error_empty_message","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"
+        Test VOO calculation matches 13.xml:
+        - BrutoPrihod: 2113.28
+        - ObracunatiPorez: 316.99
+        - PorezPlacenDrugojDrzavi: 634.48
+        - PorezZaUplatu: 0.00
+        ","2","test_voo_calculation_accuracy","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestIncomeCalculationAccuracy","test_report_income_calculation","",""
+"Report gains with --start and --end uses specified date range.","4","test_report_gains_from_and_to_uses_specified_dates","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestReportDateParams","test_report_date_params","",""
+"Default report type should be GAINS.","0","test_default_type_is_gains","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"Valid date format YYYY-MM-DD should be accepted.","1","test_valid_date_format","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestReportParams","test_report_params","",""
+"format_validation_error should handle validation errors with multiple fields.","0","test_format_validation_error_handles_multiple_fields","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
+"Test basic income report generation.","35","test_report_income_basic","tests","Wed Feb 04 05:01:59 GMT 2026","passed","Wed Feb 04 05:01:59 GMT 2026","TestE2EIncome","test_e2e_income","",""
+"format_validation_error should extract message from 'Value error,' prefix.","0","test_format_validation_error_extracts_value_error","tests","Wed Feb 04 05:02:00 GMT 2026","passed","Wed Feb 04 05:02:00 GMT 2026","TestValidationErrorHandling","test_validation","",""
