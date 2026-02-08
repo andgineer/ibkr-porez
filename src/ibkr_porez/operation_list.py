@@ -35,8 +35,13 @@ class ListDeclarations:
         elif status:
             declarations = self.storage.get_declarations(status=status)
         else:
-            # Default: show only DRAFT
-            declarations = self.storage.get_declarations(status=DeclarationStatus.DRAFT)
+            # Default: show active declarations (DRAFT + SUBMITTED)
+            declarations = self.storage.get_declarations()
+            declarations = [
+                d
+                for d in declarations
+                if d.status in (DeclarationStatus.DRAFT, DeclarationStatus.SUBMITTED)
+            ]
 
         # Sort by created_at descending
         declarations.sort(key=lambda d: d.created_at, reverse=True)

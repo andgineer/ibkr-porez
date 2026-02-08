@@ -100,8 +100,8 @@ def setup_declarations(mock_user_data_dir):
 
 
 class TestE2EList:
-    def test_list_default_shows_only_draft(self, runner, setup_declarations, mock_user_data_dir):
-        """Test that list command shows only DRAFT declarations by default."""
+    def test_list_default_shows_active(self, runner, setup_declarations, mock_user_data_dir):
+        """Test that list command shows active (DRAFT + SUBMITTED) by default."""
         mock_config = UserConfig(
             full_name="Test", address="Test", data_dir=None, output_folder=None
         )
@@ -112,7 +112,7 @@ class TestE2EList:
                     assert result.exit_code == 0
                     assert "│ 1  │" in result.output
                     assert "│ 2  │" in result.output
-                    assert "│ 3  │" not in result.output  # Submitted, not draft
+                    assert "│ 3  │" in result.output  # Submitted is active by default
 
     def test_list_all_shows_all(self, runner, setup_declarations, mock_user_data_dir):
         """Test that list --all shows all declarations."""
@@ -149,7 +149,7 @@ class TestE2EList:
         assert "Declarations" in result.output
 
     def test_list_ids_only(self, runner, setup_declarations, mock_user_data_dir):
-        """Test that list --ids-only outputs only IDs."""
+        """Test that list --ids-only outputs active IDs by default."""
         mock_config = UserConfig(
             full_name="Test", address="Test", data_dir=None, output_folder=None
         )
@@ -160,13 +160,14 @@ class TestE2EList:
                     assert result.exit_code == 0
                     assert "1" in result.output
                     assert "2" in result.output
-                    assert "3" not in result.output  # Submitted, not draft
+                    assert "3" in result.output  # Submitted is active by default
                     # Should be one ID per line
                     lines = [
                         line.strip() for line in result.output.strip().split("\n") if line.strip()
                     ]
                     assert "1" in lines
                     assert "2" in lines
+                    assert "3" in lines
 
     def test_list_ids_only_short_flag(self, runner, setup_declarations, mock_user_data_dir):
         """Test that list -1 outputs only IDs (short flag)."""
@@ -180,13 +181,14 @@ class TestE2EList:
                     assert result.exit_code == 0
                     assert "1" in result.output
                     assert "2" in result.output
-                    assert "3" not in result.output
+                    assert "3" in result.output
                     # Should be one ID per line
                     lines = [
                         line.strip() for line in result.output.strip().split("\n") if line.strip()
                     ]
                     assert "1" in lines
                     assert "2" in lines
+                    assert "3" in lines
 
 
 class TestE2ESubmit:
@@ -314,9 +316,9 @@ class TestE2ERevert:
         assert "Cannot revert" in result.output
 
     def test_list_pipe_to_submit(self, runner, setup_declarations):
-        """Test Unix-style pipe: list -1 | xargs -I {} submit {}."""
-        # Get IDs from list using short flag
-        list_result = runner.invoke(ibkr_porez, ["list", "-1"])
+        """Test Unix-style pipe: list --status draft -1 | xargs -I {} submit {}."""
+        # Get IDs from list filtered to draft status
+        list_result = runner.invoke(ibkr_porez, ["list", "--status", "draft", "-1"])
         assert list_result.exit_code == 0
         ids = [line.strip() for line in list_result.output.strip().split("\n") if line.strip()]
         assert len(ids) >= 2

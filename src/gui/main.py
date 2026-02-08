@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -9,7 +8,7 @@ from PySide6.QtCore import QItemSelectionModel, QObject, Qt, QThread, Signal, Sl
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
-    QButtonGroup,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -29,11 +28,22 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ibkr_porez.config import config_manager
+from ibkr_porez.declaration_manager import DeclarationManager
+from ibkr_porez.error_handling import get_user_friendly_error_message
+from ibkr_porez.models import Declaration, DeclarationStatus
+from ibkr_porez.operation_sync import SyncOperation
+from ibkr_porez.storage import Storage
+
 CONFIG_PATH = Path.home() / ".ibkr-porez-mvp-config.json"
-STATUSES = ("Active", "Submitted", "Draft")
+FILTER_ORDER = ("Active", "All", "Draft", "Submitted")
+ROW_STATUS_ACTIONS = (
+    ("To Submitted", "Submitted"),
+    ("To paid", "Paid"),
+    ("To draft", "Draft"),
+)
 PROGRESS_MAX = 100
-PROGRESS_STEP = 12
-PROGRESS_FAIL_AT = 60
+INVALID_IDS_PREVIEW_COUNT = 3
 
 
 @dataclass
@@ -85,37 +95,23 @@ class ConfigDialog(QDialog):
 
 
 class SyncWorker(QObject):
-    progress = Signal(int, str)
-    finished = Signal(list)
+    finished = Signal(int)
     failed = Signal(str)
-
-    def __init__(self, declarations: list[dict], api_token: str) -> None:
-        super().__init__()
-        self.declarations = declarations
-        self.api_token = api_token
 
     @Slot()
     def run(self) -> None:
-        should_fail = "fail" in self.api_token.lower()
-
-        progress = 0
-        while progress < PROGRESS_MAX:
-            time.sleep(0.35)
-            progress = min(progress + PROGRESS_STEP, PROGRESS_MAX)
-            self.progress.emit(progress, f"Syncing... {progress}%")
-
-            if should_fail and progress >= PROGRESS_FAIL_AT:
-                self.failed.emit("Connection to broker API timed out. Fix config and retry.")
+        try:
+            cfg = config_manager.load_config()
+            if not cfg.ibkr_token or not cfg.ibkr_query_id:
+                self.failed.emit(
+                    "Missing IBKR configuration. Run `ibkr-porez config` first.",
+                )
                 return
-
-        updated = []
-        for item in self.declarations:
-            new_item = dict(item)
-            if new_item["status"] == "Draft":
-                new_item["status"] = "Submitted"
-            updated.append(new_item)
-
-        self.finished.emit(updated)
+            operation = SyncOperation(cfg)
+            created = operation.execute()
+            self.finished.emit(len(created))
+        except Exception as e:  # noqa: BLE001
+            self.failed.emit(get_user_friendly_error_message(e))
 
 
 class MainWindow(QMainWindow):
@@ -125,31 +121,12 @@ class MainWindow(QMainWindow):
         self.resize(1080, 700)
 
         self.config = self.load_config()
-        self.declarations: list[dict] = [
-            {
-                "id": "DEC-2026-001",
-                "period": "Q1 2026",
-                "status": "Active",
-                "due_date": "2026-04-15",
-                "amount_rsd": 18500,
-            },
-            {
-                "id": "DEC-2026-002",
-                "period": "Q2 2026",
-                "status": "Draft",
-                "due_date": "2026-07-15",
-                "amount_rsd": 9300,
-            },
-            {
-                "id": "DEC-2026-003",
-                "period": "Q3 2026",
-                "status": "Submitted",
-                "due_date": "2026-10-15",
-                "amount_rsd": 22120,
-            },
-        ]
+        self.storage = Storage()
+        self.declaration_manager = DeclarationManager()
+        self.declarations: list[Declaration] = []
+        self.reload_declarations()
 
-        self.status_filter = "All"
+        self.status_filter = "Active"
         self.visible_indices: list[int] = []
 
         self.sync_thread: QThread | None = None
@@ -176,7 +153,7 @@ class MainWindow(QMainWindow):
         top_bar.addWidget(self.config_button)
         root.addLayout(top_bar)
 
-        self.progress_label = QLabel("Idle")
+        self.progress_label = QLabel("")
         self.progress_label.setObjectName("progressLabel")
         self.progress_bar = QProgressBar()
         self.progress_bar.setObjectName("progressBar")
@@ -185,68 +162,60 @@ class MainWindow(QMainWindow):
         root.addWidget(self.progress_label)
         root.addWidget(self.progress_bar)
 
-        title = QLabel("Declarations")
-        title.setObjectName("tableTitle")
-        subtitle = QLabel(
-            "Filter by status, change one declaration or apply bulk action to selected rows",
-        )
-        subtitle.setObjectName("tableSubtitle")
-        root.addWidget(title)
-        root.addWidget(subtitle)
+        action_bar = QHBoxLayout()
+        action_bar.setSpacing(8)
+        self.filter_combo = QComboBox()
+        self.filter_combo.setObjectName("filterCombo")
+        self.filter_combo.addItems(FILTER_ORDER)
+        self.filter_combo.setCurrentText(self.status_filter)
+        self.filter_combo.currentTextChanged.connect(self.set_status_filter)
+        action_bar.addWidget(self.filter_combo)
 
-        filter_row = QHBoxLayout()
-        filter_row.addWidget(QLabel("Filter status:"))
-        self.filter_group = QButtonGroup(self)
-        self.filter_group.setExclusive(True)
-        for filter_name in ("All",) + STATUSES:
-            button = QPushButton(filter_name)
-            button.setObjectName("filterButton")
-            button.setCheckable(True)
-            if filter_name == "All":
-                button.setChecked(True)
-            button.clicked.connect(
-                lambda _checked=False, value=filter_name: self.set_status_filter(value),
-            )
-            self.filter_group.addButton(button)
-            filter_row.addWidget(button)
-        filter_row.addStretch(1)
-        root.addLayout(filter_row)
-
-        controls_row = QHBoxLayout()
+        action_bar.addStretch(1)
         self.select_all_button = QPushButton("Select all")
-        self.select_submitted_button = QPushButton("Select submitted")
-        self.clear_selection_button = QPushButton("Clear selection")
-        self.bulk_active_button = QPushButton("Set Active")
-        self.bulk_submitted_button = QPushButton("Set Submitted")
-        self.bulk_draft_button = QPushButton("Set Draft")
+        self.clear_selection_button = QPushButton("Unselect all")
+        self.selection_info_label = QLabel("0 selected")
+        self.selection_info_label.setObjectName("selectionInfoLabel")
+        self.select_all_button.setObjectName("controlButton")
+        self.clear_selection_button.setObjectName("controlButton")
+        self.select_all_button.setMinimumWidth(90)
+        self.clear_selection_button.setMinimumWidth(90)
 
         self.select_all_button.clicked.connect(self.select_all_rows)
-        self.select_submitted_button.clicked.connect(self.select_submitted_rows)
         self.clear_selection_button.clicked.connect(self.clear_selection)
-        self.bulk_active_button.clicked.connect(lambda: self.apply_status_to_selected("Active"))
-        self.bulk_submitted_button.clicked.connect(
-            lambda: self.apply_status_to_selected("Submitted"),
-        )
-        self.bulk_draft_button.clicked.connect(lambda: self.apply_status_to_selected("Draft"))
-
-        controls_row.addWidget(self.select_all_button)
-        controls_row.addWidget(self.select_submitted_button)
-        controls_row.addWidget(self.clear_selection_button)
-        controls_row.addStretch(1)
-        controls_row.addWidget(self.bulk_active_button)
-        controls_row.addWidget(self.bulk_submitted_button)
-        controls_row.addWidget(self.bulk_draft_button)
-        root.addLayout(controls_row)
+        action_bar.addWidget(self.select_all_button)
+        action_bar.addWidget(self.clear_selection_button)
+        action_bar.addWidget(self.selection_info_label)
+        self.bulk_status_combo = QComboBox()
+        self.bulk_status_combo.addItems(["Draft", "Submitted", "Paid"])
+        self.bulk_status_combo.setObjectName("controlCombo")
+        self.apply_status_button = QPushButton("Apply to selected")
+        self.apply_status_button.setObjectName("primaryControlButton")
+        self.apply_status_button.setMinimumWidth(180)
+        self.bulk_status_combo.setVisible(False)
+        self.apply_status_button.setVisible(False)
+        self.apply_status_button.clicked.connect(self.apply_selected_status_from_combo)
+        action_bar.addWidget(self.bulk_status_combo)
+        action_bar.addWidget(self.apply_status_button)
+        root.addLayout(action_bar)
 
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(
-            ["ID", "Period", "Status", "Due date", "Amount (RSD)", "Actions"],
+            [
+                "Declaration ID",
+                "Type",
+                "Period",
+                "Status",
+                "Created",
+                "Actions",
+            ],
         )
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
+        self.table.itemSelectionChanged.connect(self.update_selection_info)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
@@ -268,16 +237,6 @@ class MainWindow(QMainWindow):
             QWidget#appRoot {
                 background: #F4F7FB;
             }
-            QLabel#tableTitle {
-                font-size: 30px;
-                font-weight: 800;
-                color: #0F172A;
-                margin-top: 4px;
-            }
-            QLabel#tableSubtitle {
-                color: #64748B;
-                margin-bottom: 4px;
-            }
             QPushButton#syncButton {
                 background-color: #0F766E;
                 color: #FFFFFF;
@@ -298,16 +257,83 @@ class MainWindow(QMainWindow):
                 padding: 8px 16px;
                 font-weight: 600;
             }
-            QPushButton#filterButton {
+            QComboBox#filterCombo {
+                background: #FFFFFF;
+                color: #0F172A;
+                border: 1px solid #CBD5E1;
+                border-radius: 8px;
+                padding: 4px 26px 4px 8px;
+                min-width: 130px;
+            }
+            QComboBox#filterCombo::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 1px solid #CBD5E1;
+                background: #FFFFFF;
+                border-top-right-radius: 8px;
+                border-bottom-right-radius: 8px;
+            }
+            QComboBox#filterCombo QAbstractItemView {
+                background: #FFFFFF;
+                color: #0F172A;
+                border: 1px solid #CBD5E1;
+                selection-background-color: #E3F2FD;
+                selection-color: #0F172A;
+                outline: 0;
+            }
+            QPushButton#controlButton {
                 background: #FFFFFF;
                 color: #0F172A;
                 border: 1px solid #CBD5E1;
                 border-radius: 8px;
                 padding: 6px 12px;
+                font-weight: 600;
             }
-            QPushButton#filterButton:checked {
-                background: #DDEAFE;
-                border: 1px solid #7BA8F4;
+            QPushButton#controlButton:hover {
+                background: #F8FAFC;
+            }
+            QPushButton#primaryControlButton {
+                background-color: #0F766E;
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                padding: 8px 14px;
+                font-weight: 700;
+            }
+            QPushButton#primaryControlButton:disabled {
+                background-color: #94A3B8;
+                color: #E2E8F0;
+            }
+            QComboBox#controlCombo {
+                background: #FFFFFF;
+                color: #0F172A;
+                border: 1px solid #CBD5E1;
+                border-radius: 8px;
+                padding: 4px 26px 4px 8px;
+                min-width: 140px;
+            }
+            QComboBox#controlCombo::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 1px solid #CBD5E1;
+                background: #FFFFFF;
+                border-top-right-radius: 8px;
+                border-bottom-right-radius: 8px;
+            }
+            QComboBox#controlCombo QAbstractItemView {
+                background: #FFFFFF;
+                color: #0F172A;
+                border: 1px solid #CBD5E1;
+                selection-background-color: #E3F2FD;
+                selection-color: #0F172A;
+                outline: 0;
+            }
+            QLabel#selectionInfoLabel {
+                color: #475569;
+                font-weight: 600;
+                padding-left: 6px;
             }
             QLabel#progressLabel {
                 color: #334155;
@@ -355,6 +381,40 @@ class MainWindow(QMainWindow):
             """,
         )
 
+    def reload_declarations(self) -> None:
+        declarations = self.storage.get_declarations()
+        declarations.sort(key=lambda d: d.created_at, reverse=True)
+        self.declarations = declarations
+
+    def _status_label(self, status: DeclarationStatus) -> str:
+        return status.value.capitalize()
+
+    def _status_from_label(self, label: str) -> DeclarationStatus:
+        return DeclarationStatus(label.lower())
+
+    def _file_name(self, declaration: Declaration) -> str:
+        if declaration.file_path:
+            return Path(declaration.file_path).name
+        return f"{declaration.declaration_id}.xml"
+
+    def _period_text(self, declaration: Declaration) -> str:
+        return f"{declaration.period_start} to {declaration.period_end}"
+
+    def _is_transition_allowed(
+        self,
+        current_status: DeclarationStatus,
+        target_status: DeclarationStatus,
+    ) -> bool:
+        if current_status == target_status:
+            return False
+        if target_status == DeclarationStatus.SUBMITTED:
+            return current_status == DeclarationStatus.DRAFT
+        if target_status == DeclarationStatus.PAID:
+            return current_status in {DeclarationStatus.DRAFT, DeclarationStatus.SUBMITTED}
+        if target_status == DeclarationStatus.DRAFT:
+            return current_status in {DeclarationStatus.SUBMITTED, DeclarationStatus.PAID}
+        return False
+
     def set_status_filter(self, filter_name: str) -> None:
         self.status_filter = filter_name
         self.populate_table()
@@ -362,29 +422,45 @@ class MainWindow(QMainWindow):
     def _visible_declaration_indices(self) -> list[int]:
         if self.status_filter == "All":
             return list(range(len(self.declarations)))
+        if self.status_filter == "Active":
+            return [
+                index
+                for index, declaration in enumerate(self.declarations)
+                if declaration.status in {DeclarationStatus.DRAFT, DeclarationStatus.SUBMITTED}
+            ]
+        status_enum = self._status_from_label(self.status_filter)
         return [
             index
             for index, declaration in enumerate(self.declarations)
-            if declaration["status"] == self.status_filter
+            if declaration.status == status_enum
         ]
 
-    def populate_table(self, reselect_source_rows: list[int] | None = None) -> None:
+    def populate_table(self, reselect_declaration_ids: list[str] | None = None) -> None:
         self.visible_indices = self._visible_declaration_indices()
         self.table.setRowCount(len(self.visible_indices))
 
         for view_row, source_row in enumerate(self.visible_indices):
             declaration = self.declarations[source_row]
-            self.table.setItem(view_row, 0, QTableWidgetItem(str(declaration["id"])))
-            self.table.setItem(view_row, 1, QTableWidgetItem(str(declaration["period"])))
-            self.table.setItem(view_row, 2, QTableWidgetItem(str(declaration["status"])))
-            self.table.setItem(view_row, 3, QTableWidgetItem(str(declaration["due_date"])))
-            self.table.setItem(view_row, 4, QTableWidgetItem(f"{declaration['amount_rsd']:,}"))
+            self.table.setItem(view_row, 0, QTableWidgetItem(declaration.declaration_id))
+            self.table.setItem(view_row, 1, QTableWidgetItem(declaration.type.value))
+            self.table.setItem(view_row, 2, QTableWidgetItem(self._period_text(declaration)))
+            self.table.setItem(
+                view_row,
+                3,
+                QTableWidgetItem(self._status_label(declaration.status)),
+            )
+            self.table.setItem(
+                view_row,
+                4,
+                QTableWidgetItem(declaration.created_at.strftime("%Y-%m-%d")),
+            )
             self.table.setCellWidget(view_row, 5, self.build_row_actions(source_row))
 
-        if reselect_source_rows:
+        if reselect_declaration_ids:
             self.table.clearSelection()
-            for source_row in reselect_source_rows:
-                self.select_source_row(source_row)
+            for declaration_id in reselect_declaration_ids:
+                self.select_declaration_row(declaration_id)
+        self.update_selection_info()
 
     def build_row_actions(self, source_row: int) -> QWidget:
         wrapper = QWidget()
@@ -392,9 +468,13 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(6)
 
-        for status in STATUSES:
+        current_status = self.declarations[source_row].status
+        for label, status in ROW_STATUS_ACTIONS:
+            target_status = self._status_from_label(status)
+            if not self._is_transition_allowed(current_status, target_status):
+                continue
             action_button = QToolButton()
-            action_button.setText(status)
+            action_button.setText(label)
             action_button.clicked.connect(
                 lambda _checked=False, row=source_row, target_status=status: self.set_row_status(
                     row,
@@ -409,8 +489,13 @@ class MainWindow(QMainWindow):
     def set_row_status(self, source_row: int, status: str) -> None:
         if source_row < 0 or source_row >= len(self.declarations):
             return
-        self.declarations[source_row]["status"] = status
-        self.populate_table(reselect_source_rows=[source_row])
+        declaration_id = self.declarations[source_row].declaration_id
+        try:
+            self.apply_status_to_ids([declaration_id], status)
+            self.reload_declarations()
+            self.populate_table(reselect_declaration_ids=[declaration_id])
+        except ValueError as e:
+            QMessageBox.warning(self, "Status change failed", str(e))
 
     def selected_source_rows(self) -> list[int]:
         model = self.table.selectionModel()
@@ -423,6 +508,9 @@ class MainWindow(QMainWindow):
             for view_row in selected_view_rows
             if view_row < len(self.visible_indices)
         ]
+
+    def selected_declaration_ids(self) -> list[str]:
+        return [self.declarations[row].declaration_id for row in self.selected_source_rows()]
 
     def select_source_row(self, source_row: int) -> None:
         if source_row not in self.visible_indices:
@@ -439,31 +527,79 @@ class MainWindow(QMainWindow):
             QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows,
         )
 
+    def select_declaration_row(self, declaration_id: str) -> None:
+        for source_row in self.visible_indices:
+            if self.declarations[source_row].declaration_id == declaration_id:
+                self.select_source_row(source_row)
+                break
+
     @Slot()
     def select_all_rows(self) -> None:
         self.table.selectAll()
 
     @Slot()
-    def select_submitted_rows(self) -> None:
-        self.table.clearSelection()
-        for source_row in self.visible_indices:
-            if self.declarations[source_row]["status"] == "Submitted":
-                self.select_source_row(source_row)
-
-    @Slot()
     def clear_selection(self) -> None:
         self.table.clearSelection()
 
+    @Slot()
+    def update_selection_info(self) -> None:
+        selected_count = len(self.selected_source_rows())
+        self.selection_info_label.setText(f"{selected_count} selected")
+        has_selection = selected_count > 0
+        self.bulk_status_combo.setVisible(has_selection)
+        self.apply_status_button.setVisible(has_selection)
+        self.apply_status_button.setEnabled(has_selection)
+
+    @Slot()
+    def apply_selected_status_from_combo(self) -> None:
+        self.apply_status_to_selected(self.bulk_status_combo.currentText())
+
+    def apply_status_to_ids(self, declaration_ids: list[str], status: str) -> None:
+        target_status = self._status_from_label(status)
+        selected_map = {d.declaration_id: d for d in self.declarations}
+        invalid_ids = []
+        for declaration_id in declaration_ids:
+            declaration = selected_map.get(declaration_id)
+            if declaration is None or not self._is_transition_allowed(
+                declaration.status,
+                target_status,
+            ):
+                invalid_ids.append(declaration_id)
+
+        if invalid_ids:
+            invalid_sample = ", ".join(invalid_ids[:INVALID_IDS_PREVIEW_COUNT])
+            suffix = "..." if len(invalid_ids) > INVALID_IDS_PREVIEW_COUNT else ""
+            raise ValueError(
+                f"Status change to {status} is not allowed for: {invalid_sample}{suffix}",
+            )
+
+        if target_status == DeclarationStatus.SUBMITTED:
+            self.declaration_manager.submit(declaration_ids)
+            return
+        if target_status == DeclarationStatus.PAID:
+            self.declaration_manager.pay(declaration_ids)
+            return
+        if target_status == DeclarationStatus.DRAFT:
+            self.declaration_manager.revert(declaration_ids, DeclarationStatus.DRAFT)
+            return
+        raise ValueError(f"Unsupported status: {status}")
+
     def apply_status_to_selected(self, status: str) -> None:
-        source_rows = self.selected_source_rows()
-        if not source_rows:
+        declaration_ids = self.selected_declaration_ids()
+        if not declaration_ids:
             QMessageBox.information(self, "No selection", "Select one or more declarations first.")
             return
 
-        for source_row in source_rows:
-            self.declarations[source_row]["status"] = status
-
-        self.populate_table(reselect_source_rows=source_rows)
+        try:
+            self.apply_status_to_ids(declaration_ids, status)
+            self.reload_declarations()
+            self.populate_table(reselect_declaration_ids=declaration_ids)
+            self.statusBar().showMessage(
+                f"Updated {len(declaration_ids)} declarations to {status}",
+                4000,
+            )
+        except ValueError as e:
+            QMessageBox.warning(self, "Bulk update failed", str(e))
 
     @Slot()
     def start_sync(self) -> None:
@@ -471,15 +607,14 @@ class MainWindow(QMainWindow):
             return
 
         self.progress_label.setText("Sync started")
-        self.progress_bar.setValue(0)
+        self.progress_bar.setRange(0, 0)
         self.sync_button.setEnabled(False)
 
-        self.sync_worker = SyncWorker(self.declarations, self.config.api_token)
+        self.sync_worker = SyncWorker()
         self.sync_thread = QThread(self)
         self.sync_worker.moveToThread(self.sync_thread)
 
         self.sync_thread.started.connect(self.sync_worker.run)
-        self.sync_worker.progress.connect(self.on_sync_progress)
         self.sync_worker.finished.connect(self.on_sync_finished)
         self.sync_worker.failed.connect(self.on_sync_failed)
 
@@ -493,21 +628,19 @@ class MainWindow(QMainWindow):
 
         self.sync_thread.start()
 
-    @Slot(int, str)
-    def on_sync_progress(self, value: int, text: str) -> None:
-        self.progress_bar.setValue(value)
-        self.progress_label.setText(text)
-
-    @Slot(list)
-    def on_sync_finished(self, updated: list[dict]) -> None:
-        self.declarations = updated
+    @Slot(int)
+    def on_sync_finished(self, created_count: int) -> None:
+        self.reload_declarations()
         self.populate_table()
-        self.progress_label.setText("Sync complete")
+        self.progress_label.setText(f"Sync complete, created {created_count} declaration(s)")
+        self.progress_bar.setRange(0, PROGRESS_MAX)
         self.progress_bar.setValue(PROGRESS_MAX)
 
     @Slot(str)
     def on_sync_failed(self, message: str) -> None:
         self.progress_label.setText("Sync failed")
+        self.progress_bar.setRange(0, PROGRESS_MAX)
+        self.progress_bar.setValue(0)
         QMessageBox.critical(self, "Sync error", message)
 
     @Slot()
@@ -547,6 +680,7 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication([])
+    app.setStyle("Fusion")
     window = MainWindow()
     window.show()
     app.exec()

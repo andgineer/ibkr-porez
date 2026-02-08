@@ -127,7 +127,7 @@ def _launch_gui_process() -> None:
 @click.version_option(version=__version__, prog_name="ibkr-porez")
 @click.pass_context
 def ibkr_porez(ctx: click.Context) -> None:
-    """Automated PPDG-3R tax reports for Interactive Brokers.
+    """Automated PPDG-3R and PP OPO tax reports for Interactive Brokers.
 
     Starts GUI when invoked without a subcommand.
     """
@@ -561,7 +561,7 @@ def export_flex(date: str, output_path: str | None):
 )
 @verbose_option
 def list_declarations(all: bool, status: str | None, ids_only: bool):
-    """List declarations (default: active/draft only)."""
+    """List declarations (default: active = draft + submitted)."""
     controller = ListDeclarations()
     status_enum = DeclarationStatus(status.lower()) if status else None
     result = controller.generate(show_all=all, status=status_enum, ids_only=ids_only)
