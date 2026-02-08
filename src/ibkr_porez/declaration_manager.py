@@ -15,6 +15,22 @@ class DeclarationManager:
     def __init__(self):
         self.storage = Storage()
 
+    @staticmethod
+    def is_transition_allowed(
+        current_status: DeclarationStatus,
+        target_status: DeclarationStatus,
+    ) -> bool:
+        """Return whether status transition is allowed."""
+        if current_status == target_status:
+            return False
+        if target_status == DeclarationStatus.SUBMITTED:
+            return current_status == DeclarationStatus.DRAFT
+        if target_status == DeclarationStatus.PAID:
+            return current_status in (DeclarationStatus.DRAFT, DeclarationStatus.SUBMITTED)
+        if target_status == DeclarationStatus.DRAFT:
+            return current_status in (DeclarationStatus.SUBMITTED, DeclarationStatus.PAID)
+        return False
+
     def submit(
         self,
         declaration_ids: list[str],
