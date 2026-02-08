@@ -14,6 +14,7 @@ from ibkr_porez import __version__
 from ibkr_porez.config import config_manager
 from ibkr_porez.declaration_manager import DeclarationManager
 from ibkr_porez.error_handling import get_user_friendly_error_message
+from ibkr_porez.gui_launcher import launch_gui_process
 from ibkr_porez.logging_config import ERROR_LOG_FILE, setup_logger
 from ibkr_porez.models import (
     DeclarationStatus,
@@ -80,12 +81,34 @@ def verbose_option(f):
     )(f)
 
 
+def _launch_gui_process() -> None:
+    """Launch GUI in a detached process and return immediately."""
+    try:
+        with console.status("[bold green]Starting GUI...[/bold green]"):
+            launch_gui_process()
+    except RuntimeError as e:
+        raise click.ClickException(str(e)) from e
+
+
 @click.group(
-    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/",
+    invoke_without_command=True,
+    epilog=(
+        "\nRun without a command to start the GUI.\n"
+        "Documentation: https://andgineer.github.io/ibkr-porez/"
+    ),
 )
 @click.version_option(version=__version__, prog_name="ibkr-porez")
-def ibkr_porez() -> None:
-    """Automated PPDG-3R tax reports for Interactive Brokers."""
+@click.pass_context
+def ibkr_porez(ctx: click.Context) -> None:
+    """Automated PPDG-3R tax reports for Interactive Brokers.
+
+    Starts GUI when invoked without a subcommand.
+    """
+    if ctx.invoked_subcommand is None and len(sys.argv) == 1:
+        try:
+            _launch_gui_process()
+        except Exception as e:  # noqa: BLE001
+            raise click.ClickException(f"Failed to start GUI: {e}") from e
 
 
 @ibkr_porez.command(

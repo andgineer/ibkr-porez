@@ -68,7 +68,7 @@ class TestE2EConfig:
             "",  # Output Folder (default)
         ]
 
-        input_str = "\n".join(inputs)
+        input_str = "\n".join(inputs) + "\n"
 
         result = runner.invoke(ibkr_porez, ["config"], input=input_str)
 
@@ -113,7 +113,7 @@ class TestE2EConfig:
             "new_token",  # New token value
         ]
 
-        result = runner.invoke(ibkr_porez, ["config"], input="\n".join(inputs))
+        result = runner.invoke(ibkr_porez, ["config"], input="\n".join(inputs) + "\n")
 
         assert result.exit_code == 0
         assert "Current Configuration" in result.output
@@ -149,7 +149,7 @@ class TestE2EConfig:
             "New Name",  # New name
         ]
 
-        result = runner.invoke(ibkr_porez, ["config"], input="\n".join(inputs))
+        result = runner.invoke(ibkr_porez, ["config"], input="\n".join(inputs) + "\n")
 
         assert result.exit_code == 0
 
@@ -191,7 +191,7 @@ class TestE2EConfig:
             "",  # Output folder (default)
         ]
 
-        result = runner.invoke(ibkr_porez, ["config"], input="\n".join(inputs))
+        result = runner.invoke(ibkr_porez, ["config"], input="\n".join(inputs) + "\n")
 
         assert result.exit_code == 0
 
@@ -272,7 +272,7 @@ class TestE2EConfig:
             "",  # Output folder (default)
         ]
 
-        result = runner.invoke(ibkr_porez, ["config"], input="\n".join(inputs))
+        result = runner.invoke(ibkr_porez, ["config"], input="\n".join(inputs) + "\n")
 
         assert result.exit_code == 0
 

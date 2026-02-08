@@ -2,7 +2,7 @@
 
 import xml.etree.ElementTree as ET
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from ibkr_porez.ibkr_csv import CSVParser
@@ -12,7 +12,7 @@ from ibkr_porez.operation_get import GetOperation
 from ibkr_porez.storage import Storage
 
 
-class ImportType(str, Enum):
+class ImportType(StrEnum):
     """Import file type."""
 
     CSV = "csv"

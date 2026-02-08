@@ -1,11 +1,11 @@
 from datetime import date, datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class TransactionType(str, Enum):
+class TransactionType(StrEnum):
     TRADE = "TRADE"
     DIVIDEND = "DIVIDEND"
     TAX = "TAX"
@@ -13,7 +13,7 @@ class TransactionType(str, Enum):
     INTEREST = "INTEREST"
 
 
-class AssetClass(str, Enum):
+class AssetClass(StrEnum):
     STOCK = "STK"
     OPTION = "OPT"
     CFD = "CFD"
@@ -21,7 +21,7 @@ class AssetClass(str, Enum):
     CASH = "CASH"
 
 
-class Currency(str, Enum):
+class Currency(StrEnum):
     USD = "USD"
     EUR = "EUR"
     GBP = "GBP"
@@ -113,14 +113,14 @@ class IncomeDeclarationEntry(BaseModel):
     porez_za_uplatu: Decimal  # PorezZaUplatu (tax to pay)
 
 
-class DeclarationType(str, Enum):
+class DeclarationType(StrEnum):
     """Type of tax declaration."""
 
     PPDG3R = "PPDG-3R"  # Capital Gains
     PPO = "PP OPO"  # Capital Income (Dividends/Coupons)
 
 
-class DeclarationStatus(str, Enum):
+class DeclarationStatus(StrEnum):
     """Status of tax declaration."""
 
     DRAFT = "draft"  # Created but not submitted

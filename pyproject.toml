@@ -20,6 +20,7 @@ dependencies = [
     "platformdirs>=4.3.6",
     "tenacity>=9.0.0",
     "pandas>=2.0.0",
+    "PySide6>=6.8.0",
     "holidays>=0.89",
 ]
 [[project.authors]]
@@ -47,6 +48,12 @@ line-length = 99
 
 [tool.hatch.version]
 path = "src/ibkr_porez/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/ibkr_porez",
+    "src/gui",
+]
 
 [tool.uv]
 dev-dependencies = [

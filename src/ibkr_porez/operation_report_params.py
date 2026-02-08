@@ -2,12 +2,12 @@
 
 import re
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-class ReportType(str, Enum):
+class ReportType(StrEnum):
     """Report type enumeration."""
 
     GAINS = "gains"
