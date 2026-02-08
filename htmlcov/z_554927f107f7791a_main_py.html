@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_554927f107f7791a_models_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-08 10:58 +0000
+            created at 2026-02-08 11:51 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -209,7 +209,7 @@
     <p class="run"><span class="n"><a id="t127" href="#t127">127</a></span><span class="t"><span class="op">@</span><span class="nam">click</span><span class="op">.</span><span class="nam">version_option</span><span class="op">(</span><span class="nam">version</span><span class="op">=</span><span class="nam">__version__</span><span class="op">,</span> <span class="nam">prog_name</span><span class="op">=</span><span class="str">"ibkr-porez"</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t128" href="#t128">128</a></span><span class="t"><span class="op">@</span><span class="nam">click</span><span class="op">.</span><span class="nam">pass_context</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t129" href="#t129">129</a></span><span class="t"><span class="key">def</span> <span class="nam">ibkr_porez</span><span class="op">(</span><span class="nam">ctx</span><span class="op">:</span> <span class="nam">click</span><span class="op">.</span><span class="nam">Context</span><span class="op">)</span> <span class="op">-></span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t130" href="#t130">130</a></span><span class="t">    <span class="str">"""Automated PPDG-3R tax reports for Interactive Brokers.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t130" href="#t130">130</a></span><span class="t">    <span class="str">"""Automated PPDG-3R and PP OPO tax reports for Interactive Brokers.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t131" href="#t131">131</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t132" href="#t132">132</a></span><span class="t"><span class="str">    Starts GUI when invoked without a subcommand.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t133" href="#t133">133</a></span><span class="t"><span class="str">    """</span>&nbsp;</span><span class="r"></span></p>
@@ -643,7 +643,7 @@
     <p class="run run2"><span class="n"><a id="t561" href="#t561">561</a></span><span class="t"><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t562" href="#t562">562</a></span><span class="t"><span class="op">@</span><span class="nam">verbose_option</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t563" href="#t563">563</a></span><span class="t"><span class="key">def</span> <span class="nam">list_declarations</span><span class="op">(</span><span class="nam">all</span><span class="op">:</span> <span class="nam">bool</span><span class="op">,</span> <span class="nam">status</span><span class="op">:</span> <span class="nam">str</span> <span class="op">|</span> <span class="key">None</span><span class="op">,</span> <span class="nam">ids_only</span><span class="op">:</span> <span class="nam">bool</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t564" href="#t564">564</a></span><span class="t">    <span class="str">"""List declarations (default: active/draft only)."""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t564" href="#t564">564</a></span><span class="t">    <span class="str">"""List declarations (default: active = draft + submitted)."""</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t565" href="#t565">565</a></span><span class="t">    <span class="nam">controller</span> <span class="op">=</span> <span class="nam">ListDeclarations</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t566" href="#t566">566</a></span><span class="t">    <span class="nam">status_enum</span> <span class="op">=</span> <span class="nam">DeclarationStatus</span><span class="op">(</span><span class="nam">status</span><span class="op">.</span><span class="nam">lower</span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="key">if</span> <span class="nam">status</span> <span class="key">else</span> <span class="key">None</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t567" href="#t567">567</a></span><span class="t">    <span class="nam">result</span> <span class="op">=</span> <span class="nam">controller</span><span class="op">.</span><span class="nam">generate</span><span class="op">(</span><span class="nam">show_all</span><span class="op">=</span><span class="nam">all</span><span class="op">,</span> <span class="nam">status</span><span class="op">=</span><span class="nam">status_enum</span><span class="op">,</span> <span class="nam">ids_only</span><span class="op">=</span><span class="nam">ids_only</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -815,7 +815,7 @@
             <a class="nav" href="z_554927f107f7791a_models_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-08 10:58 +0000
+            created at 2026-02-08 11:51 +0000
         </p>
     </div>
 </footer>

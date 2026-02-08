@@ -19,7 +19,7 @@
 | src/ibkr\_porez/operation\_config.py            |      115 |        3 |     97% |18, 20, 96 |
 | src/ibkr\_porez/operation\_get.py               |       36 |        0 |    100% |           |
 | src/ibkr\_porez/operation\_import.py            |       76 |       13 |     83% |41-54, 72-73, 112, 131 |
-| src/ibkr\_porez/operation\_list.py              |       30 |        0 |    100% |           |
+| src/ibkr\_porez/operation\_list.py              |       31 |        0 |    100% |           |
 | src/ibkr\_porez/operation\_report.py            |      105 |        8 |     92% |46, 98-99, 189-190, 232-234 |
 | src/ibkr\_porez/operation\_report\_params.py    |      110 |        6 |     95% |81, 146, 165-166, 169, 188 |
 | src/ibkr\_porez/operation\_report\_tables.py    |       21 |        0 |    100% |           |
@@ -33,7 +33,7 @@
 | src/ibkr\_porez/storage\_flex\_queries.py       |      155 |       33 |     79% |125, 149, 159-161, 169-186, 226, 250, 256-257, 261-264, 284, 300, 303-304, 309-312 |
 | src/ibkr\_porez/tax.py                          |       71 |       14 |     80% |27, 33, 57-59, 87-103, 151-152, 155-156 |
 | src/ibkr\_porez/validation.py                   |       13 |        1 |     92% |        29 |
-| **TOTAL**                                       | **2618** |  **327** | **88%** |           |
+| **TOTAL**                                       | **2619** |  **327** | **88%** |           |
 
 
 ## Setup coverage badge
