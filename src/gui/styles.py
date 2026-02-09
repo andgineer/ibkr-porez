@@ -145,4 +145,33 @@ QToolButton {
 QToolButton:hover {
     background: #F1F5F9;
 }
+QToolButton#statusActionButton:disabled {
+    background: #E2E8F0;
+    color: #94A3B8;
+    border: 1px dashed #94A3B8;
+}
+QToolButton#statusActionButton:disabled:hover {
+    background: #E2E8F0;
+    color: #94A3B8;
+    border: 1px dashed #94A3B8;
+}
+QToolButton#exportActionButton {
+    background: #FFFFFF;
+    color: #0F172A;
+    border: 1px solid #94A3B8;
+}
+QToolButton#exportActionButton:hover {
+    background: #EEF2FF;
+}
+QToolButton#exportActionButton:checked {
+    background: #0F766E;
+    color: #FFFFFF;
+    border: 1px solid #0F766E;
+    font-weight: 700;
+}
+QToolButton#exportActionButton:disabled {
+    background: #E2E8F0;
+    color: #64748B;
+    border: 1px solid #CBD5E1;
+}
 """

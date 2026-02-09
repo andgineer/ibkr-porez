@@ -27,6 +27,7 @@ from gui.constants import (
     ROW_STATUS_ACTIONS,
 )
 from gui.dialogs import ConfigDialog
+from gui.export_worker import ExportWorker
 from gui.styles import APP_STYLESHEET
 from gui.sync_worker import SyncWorker
 from ibkr_porez.config import config_manager
@@ -52,6 +53,10 @@ class MainWindow(QMainWindow):
 
         self.sync_thread: QThread | None = None
         self.sync_worker: SyncWorker | None = None
+        self.export_thread: QThread | None = None
+        self.export_worker: ExportWorker | None = None
+        self.export_active_button: QToolButton | None = None
+        self.export_prev_progress: tuple[int, int, int] | None = None
 
         root_widget = QWidget()
         root_widget.setObjectName("appRoot")
@@ -80,6 +85,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.setObjectName("progressBar")
         self.progress_bar.setRange(0, PROGRESS_MAX)
         self.progress_bar.setValue(0)
+        self.progress_bar.setVisible(False)
         root.addWidget(self.progress_label)
         root.addWidget(self.progress_bar)
 
@@ -237,10 +243,13 @@ class MainWindow(QMainWindow):
         current_status = self.declarations[source_row].status
         for label, status in ROW_STATUS_ACTIONS:
             target_status = self._status_from_label(status)
-            if not self._is_transition_allowed(current_status, target_status):
-                continue
             action_button = QToolButton()
+            action_button.setObjectName("statusActionButton")
             action_button.setText(label)
+            allowed = self._is_transition_allowed(current_status, target_status)
+            action_button.setEnabled(allowed)
+            if not allowed:
+                action_button.setToolTip("Status transition not allowed")
             action_button.clicked.connect(
                 lambda _checked=False, row=source_row, target_status=status: self.set_row_status(
                     row,
@@ -248,6 +257,19 @@ class MainWindow(QMainWindow):
                 ),
             )
             layout.addWidget(action_button)
+
+        export_button = QToolButton()
+        export_button.setObjectName("exportActionButton")
+        export_button.setText("Re-export")
+        export_button.setCheckable(True)
+        export_button.setToolTip("Save declaration files")
+        export_button.clicked.connect(
+            lambda _checked=False, row=source_row, btn=export_button: self.re_export_declaration(
+                row,
+                btn,
+            ),
+        )
+        layout.addWidget(export_button)
 
         layout.addStretch(1)
         return wrapper
@@ -262,6 +284,74 @@ class MainWindow(QMainWindow):
             self.populate_table(reselect_declaration_ids=[declaration_id])
         except ValueError as e:
             QMessageBox.warning(self, "Status change failed", str(e))
+
+    def re_export_declaration(self, source_row: int, button: QToolButton | None = None) -> None:
+        if self.export_thread is not None and self.export_thread.isRunning():
+            return
+        if source_row < 0 or source_row >= len(self.declarations):
+            return
+
+        self.progress_label.setText("")
+        prev_min = self.progress_bar.minimum()
+        prev_max = self.progress_bar.maximum()
+        prev_value = self.progress_bar.value()
+        self.export_prev_progress = (prev_min, prev_max, prev_value)
+        self.progress_bar.setRange(0, 0)
+
+        if button is not None:
+            self.export_active_button = button
+        self._set_export_buttons_busy_state(self.export_active_button)
+        declaration_id = self.declarations[source_row].declaration_id
+        self.export_worker = ExportWorker(declaration_id)
+        self.export_thread = QThread(self)
+        self.export_worker.moveToThread(self.export_thread)
+
+        self.export_thread.started.connect(self.export_worker.run)
+        self.export_worker.finished.connect(self.on_export_finished)
+        self.export_worker.failed.connect(self.on_export_failed)
+        self.export_worker.finished.connect(self.export_thread.quit)
+        self.export_worker.finished.connect(self.export_worker.deleteLater)
+        self.export_worker.failed.connect(self.export_thread.quit)
+        self.export_worker.failed.connect(self.export_worker.deleteLater)
+        self.export_thread.finished.connect(self.on_export_thread_finished)
+        self.export_thread.finished.connect(self.export_thread.deleteLater)
+        self.export_thread.start()
+
+    def _set_export_buttons_busy_state(self, active_button: QToolButton | None) -> None:
+        for view_row in range(self.table.rowCount()):
+            row_widget = self.table.cellWidget(view_row, 5)
+            if row_widget is None:
+                continue
+            for tool_button in row_widget.findChildren(QToolButton):
+                if tool_button.objectName() == "exportActionButton":
+                    is_active = active_button is not None and tool_button is active_button
+                    tool_button.setChecked(is_active)
+                    tool_button.setEnabled(active_button is None or is_active)
+
+    def _finish_export_ui_state(self) -> None:
+        if self.export_prev_progress is not None:
+            prev_min, prev_max, prev_value = self.export_prev_progress
+            self.progress_bar.setRange(prev_min, prev_max)
+            self.progress_bar.setValue(prev_value)
+            self.export_prev_progress = None
+
+        self._set_export_buttons_busy_state(None)
+        self.export_active_button = None
+
+    @Slot(str)
+    def on_export_finished(self, export_dir: str) -> None:
+        self.progress_label.setText(f"Declaration files saved in {export_dir}")
+        self._finish_export_ui_state()
+
+    @Slot(str)
+    def on_export_failed(self, message: str) -> None:
+        self._finish_export_ui_state()
+        QMessageBox.critical(self, "Export error", message)
+
+    @Slot()
+    def on_export_thread_finished(self) -> None:
+        self.export_worker = None
+        self.export_thread = None
 
     def selected_source_rows(self) -> list[int]:
         model = self.table.selectionModel()
@@ -373,6 +463,7 @@ class MainWindow(QMainWindow):
             return
 
         self.progress_label.setText("Sync started")
+        self.progress_bar.setVisible(True)
         self.progress_bar.setRange(0, 0)
         self.sync_button.setEnabled(False)
 
