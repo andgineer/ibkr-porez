@@ -291,6 +291,7 @@ class IncomeReportGenerator(ReportGeneratorBase):
         self,
         group_entries: list[IncomeEntry],
         withholding_tax_rsd: Decimal,
+        symbol_or_currency: str,
     ) -> IncomeDeclarationEntry:
         """
         Calculate tax fields for a group of income entries.
@@ -330,6 +331,7 @@ class IncomeReportGenerator(ReportGeneratorBase):
 
         return IncomeDeclarationEntry(
             date=first_entry.date,
+            symbol_or_currency=symbol_or_currency,
             sifra_vrste_prihoda=sifra_vrste_prihoda,
             bruto_prihod=Decimal(str(total_bruto)),
             osnovica_za_porez=osnovica,
@@ -409,7 +411,7 @@ class IncomeReportGenerator(ReportGeneratorBase):
         grouped = self._group_entries_by_date_symbol_and_type(entries)
 
         # Generate XML for each group
-        for (declaration_date, _symbol_or_currency, income_type), group_entries in sorted(
+        for (declaration_date, symbol_or_currency, income_type), group_entries in sorted(
             grouped.items(),
         ):
             # Get currency and symbol from first entry
@@ -444,7 +446,11 @@ class IncomeReportGenerator(ReportGeneratorBase):
                     )
 
             # Calculate tax fields for declaration entry
-            declaration_entry = self._calculate_tax_fields(group_entries, withholding_tax_rsd)
+            declaration_entry = self._calculate_tax_fields(
+                group_entries,
+                withholding_tax_rsd,
+                symbol_or_currency,
+            )
 
             # Generate XML
             xml_content = self.xml_gen.generate_xml(

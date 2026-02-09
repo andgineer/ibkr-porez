@@ -105,6 +105,7 @@ class IncomeDeclarationEntry(BaseModel):
     """Single row in PP OPO declaration with calculated tax fields."""
 
     date: date
+    symbol_or_currency: str | None = None
     sifra_vrste_prihoda: str  # INCOME_CODE_DIVIDEND or INCOME_CODE_COUPON
     bruto_prihod: Decimal  # BrutoPrihod (gross income in RSD)
     osnovica_za_porez: Decimal  # OsnovicaZaPorez (tax base)
@@ -149,6 +150,23 @@ class Declaration(BaseModel):
         default_factory=dict,
         description="Attached files: {file_identifier: relative_path}",
     )
+
+    def display_type(self) -> str:
+        """Return user-facing declaration type label."""
+        base = self.type.value
+        if self.type != DeclarationType.PPO:
+            return base
+
+        symbol = str(self.metadata.get("symbol", "")).strip().upper()
+        if not symbol or symbol == "UNKNOWN":
+            return base
+        return f"{base} ({symbol})"
+
+    def display_period(self) -> str:
+        """Return user-facing period label."""
+        if self.period_start == self.period_end:
+            return self.period_start.isoformat()
+        return f"{self.period_start} to {self.period_end}"
 
 
 class UserConfig(BaseModel):

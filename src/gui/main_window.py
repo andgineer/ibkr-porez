@@ -173,10 +173,6 @@ class MainWindow(QMainWindow):
         return DeclarationStatus(label.lower())
 
     @staticmethod
-    def _period_text(declaration: Declaration) -> str:
-        return f"{declaration.period_start} to {declaration.period_end}"
-
-    @staticmethod
     def _is_transition_allowed(
         current_status: DeclarationStatus,
         target_status: DeclarationStatus,
@@ -210,11 +206,15 @@ class MainWindow(QMainWindow):
         for view_row, source_row in enumerate(self.visible_indices):
             declaration = self.declarations[source_row]
             self.table.setItem(view_row, 0, QTableWidgetItem(declaration.declaration_id))
-            self.table.setItem(view_row, 1, QTableWidgetItem(declaration.type.value))
+            self.table.setItem(
+                view_row,
+                1,
+                QTableWidgetItem(declaration.display_type()),
+            )
             self.table.setItem(
                 view_row,
                 2,
-                QTableWidgetItem(self._period_text(declaration)),
+                QTableWidgetItem(declaration.display_period()),
             )
             self.table.setItem(
                 view_row,

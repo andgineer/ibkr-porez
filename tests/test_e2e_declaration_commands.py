@@ -69,6 +69,7 @@ def setup_declarations(mock_user_data_dir):
                     file_path=str(s.declarations_dir / "2-ppopo-2024-01-15_dividend.xml"),
                     xml_content="<xml>test2</xml>",
                     report_data=[],
+                    metadata={"symbol": "SGOV"},
                 )
 
                 decl3 = Declaration(
@@ -189,6 +190,20 @@ class TestE2EList:
                     assert "1" in lines
                     assert "2" in lines
                     assert "3" in lines
+
+    def test_list_shows_ppopo_symbol(self, runner, setup_declarations, mock_user_data_dir):
+        """Test that list includes PP OPO symbol from declaration metadata."""
+        mock_config = UserConfig(
+            full_name="Test", address="Test", data_dir=None, output_folder=None
+        )
+        with patch("ibkr_porez.storage.user_data_dir", lambda app: str(mock_user_data_dir)):
+            with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
+                with patch("ibkr_porez.operation_list.Storage", return_value=setup_declarations):
+                    result = runner.invoke(ibkr_porez, ["list"])
+                    assert result.exit_code == 0
+                    assert "PP OPO (SGOV)" in result.output
+                    assert "2024-01-15 to 2024-01-15" not in result.output
+                    assert "2024-01-15" in result.output
 
 
 class TestE2ESubmit:

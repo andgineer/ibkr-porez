@@ -46,7 +46,7 @@ class SyncOperation:
     # Constants for half-year calculation
     JULY_MONTH = 7
     JUNE_MONTH = 6
-    DEFAULT_FIRST_SYNC_LOOKBACK_DAYS = 45
+    DEFAULT_FIRST_SYNC_LOOKBACK_DAYS = 60
 
     def __init__(self, config: UserConfig, output_dir: Path | None = None):
         self.config = config
@@ -119,7 +119,11 @@ class SyncOperation:
             ),
         ]
 
-    def _extract_gains_metadata(self, entries: list, period_start: date) -> dict:  # noqa: ARG002
+    def _extract_gains_metadata(
+        self,
+        entries: list,
+        _period_start: date,
+    ) -> dict:
         gains_entries = [e for e in entries if isinstance(e, TaxReportEntry)]
         return {
             "entry_count": len(gains_entries),
@@ -129,18 +133,19 @@ class SyncOperation:
     def _extract_income_metadata(
         self,
         entries: list,
-        period_start: date,  # noqa: ARG002
+        _period_start: date,
     ) -> dict:
         if not entries:
             return {
                 "entry_count": 0,
                 "income_type": "unknown",
-                "symbol_or_currency": "unknown",
+                "symbol": "unknown",
             }
 
         # Extract from first entry
         first_entry = entries[0]
-        symbol_or_currency = getattr(first_entry, "symbol", "unknown") or "unknown"
+        symbol = str(getattr(first_entry, "symbol_or_currency", "")).strip().upper()
+        declaration_date = getattr(first_entry, "date", None)
 
         # Determine income type from sifra_vrste_prihoda
         if hasattr(first_entry, "sifra_vrste_prihoda"):
@@ -150,11 +155,15 @@ class SyncOperation:
         else:
             income_type = "dividend"  # Default
 
-        return {
+        metadata = {
             "entry_count": len(entries),
             "income_type": income_type,
-            "symbol_or_currency": symbol_or_currency,
+            "symbol": symbol or "unknown",
         }
+        if isinstance(declaration_date, date):
+            metadata["period_start"] = declaration_date.isoformat()
+            metadata["period_end"] = declaration_date.isoformat()
+        return metadata
 
     def _create_declaration(  # noqa: PLR0913
         self,
@@ -263,8 +272,12 @@ class SyncOperation:
                     declaration = self._create_declaration(
                         declaration_type=config.declaration_type,
                         declaration_id=declaration_id,
-                        period_start=period_start,
-                        period_end=period_end,
+                        period_start=date.fromisoformat(
+                            str(metadata.get("period_start") or period_start),
+                        ),
+                        period_end=date.fromisoformat(
+                            str(metadata.get("period_end") or period_end),
+                        ),
                         generator_filename=filename,
                         xml_content=xml_content,
                         entries=entries,

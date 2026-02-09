@@ -188,6 +188,7 @@ class TestSyncOperation:
         mock_income_gen = MagicMock()
         mock_entry = IncomeDeclarationEntry(
             date=date(2023, 7, 15),
+            symbol_or_currency="VOO",
             sifra_vrste_prihoda="111402000",
             bruto_prihod=Decimal("1000.00"),
             osnovica_za_porez=Decimal("1000.00"),
@@ -219,10 +220,17 @@ class TestSyncOperation:
         assert declarations[0].type == DeclarationType.PPO
         assert declarations[0].status == DeclarationStatus.DRAFT
         assert declarations[0].declaration_id == "1"  # Sequential number
+        assert declarations[0].period_start == date(2023, 7, 15)
+        assert declarations[0].period_end == date(2023, 7, 15)
 
         # Verify file was created
         assert declarations[0].file_path is not None
         assert Path(declarations[0].file_path).exists()
+        assert declarations[0].metadata.get("symbol") == "VOO"
+
+        saved_decl = storage.get_declaration("1")
+        assert saved_decl is not None
+        assert saved_decl.metadata.get("symbol") == "VOO"
 
     @patch("ibkr_porez.operation_sync.GetOperation")
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")
@@ -518,6 +526,11 @@ class TestSyncOperation:
         # Verify both declarations created
         assert len(declarations) == 2
         assert all(d.type == DeclarationType.PPO for d in declarations)
+        periods = {(d.period_start, d.period_end) for d in declarations}
+        assert periods == {
+            (date(2023, 7, 15), date(2023, 7, 15)),
+            (date(2023, 7, 16), date(2023, 7, 16)),
+        }
         # Verify both declarations have sequential IDs
         declaration_ids = [d.declaration_id for d in declarations]
         assert len(declaration_ids) == 2

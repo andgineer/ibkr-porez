@@ -56,18 +56,18 @@ class ListDeclarations:
         table.add_column("Period", style="green")
         table.add_column("Status", style="yellow")
         table.add_column("Created", style="blue")
-        table.add_column("Files", style="dim")
+        table.add_column("Attachments", style="dim")
 
         for decl in declarations:
-            period_str = f"{decl.period_start} to {decl.period_end}"
+            period_str = decl.display_period()
             status_str = decl.status.value
             created_str = decl.created_at.strftime("%Y-%m-%d %H:%M")
             files_count = len(decl.attached_files) if decl.attached_files else 0
-            files_str = f"{files_count} attached" if files_count > 0 else ""
+            files_str = f"{files_count} attachments" if files_count > 0 else ""
 
             table.add_row(
                 decl.declaration_id,
-                decl.type.value,
+                decl.display_type(),
                 period_str,
                 status_str,
                 created_str,
