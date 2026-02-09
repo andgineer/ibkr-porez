@@ -6,8 +6,9 @@
 |------------------------------------------------ | -------: | -------: | ------: | --------: |
 | src/gui/constants.py                            |        6 |        6 |      0% |      1-11 |
 | src/gui/dialogs.py                              |       33 |       33 |      0% |      1-54 |
+| src/gui/export\_worker.py                       |       17 |       17 |      0% |      1-26 |
 | src/gui/main.py                                 |       11 |       11 |      0% |      1-17 |
-| src/gui/main\_window.py                         |      292 |      292 |      0% |     1-427 |
+| src/gui/main\_window.py                         |      367 |      367 |      0% |     1-518 |
 | src/gui/styles.py                               |        2 |        2 |      0% |       1-3 |
 | src/gui/sync\_worker.py                         |       20 |       20 |      0% |      1-27 |
 | src/ibkr\_porez/\_\_about\_\_.py                |        1 |        0 |    100% |           |
@@ -39,7 +40,7 @@
 | src/ibkr\_porez/storage\_flex\_queries.py       |      155 |       33 |     79% |125, 149, 159-161, 169-186, 226, 250, 256-257, 261-264, 284, 300, 303-304, 309-312 |
 | src/ibkr\_porez/tax.py                          |       71 |       14 |     80% |27, 33, 57-59, 87-103, 151-152, 155-156 |
 | src/ibkr\_porez/validation.py                   |       13 |        1 |     92% |        29 |
-| **TOTAL**                                       | **2994** |  **700** | **77%** |           |
+| **TOTAL**                                       | **3086** |  **792** | **74%** |           |
 
 
 ## Setup coverage badge
