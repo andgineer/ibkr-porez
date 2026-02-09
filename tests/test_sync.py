@@ -102,6 +102,13 @@ class TestSyncOperation:
         assert declarations[0].status == DeclarationStatus.DRAFT
         assert declarations[0].period_start == date(2023, 1, 1)
         assert declarations[0].period_end == date(2023, 6, 30)
+        assert declarations[0].metadata.get("period_start") == "2023-01-01"
+        assert declarations[0].metadata.get("period_end") == "2023-06-30"
+        assert declarations[0].metadata.get("gross_income_rsd") == Decimal("1000.00")
+        assert declarations[0].metadata.get("tax_base_rsd") == Decimal("1000.00")
+        assert declarations[0].metadata.get("calculated_tax_rsd") == Decimal("150.00")
+        assert declarations[0].metadata.get("foreign_tax_paid_rsd") == Decimal("0.00")
+        assert declarations[0].metadata.get("tax_due_rsd") == Decimal("150.00")
 
         # Verify file was created
         assert declarations[0].file_path is not None
@@ -454,6 +461,98 @@ class TestSyncOperation:
         # Even if no declarations created, it should update to yesterday
         storage = Storage()
         assert storage.get_last_declaration_date() == yesterday
+
+    @patch("ibkr_porez.operation_sync.GetOperation")
+    @patch("ibkr_porez.operation_sync.GainsReportGenerator")
+    @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
+    @patch("ibkr_porez.report_base.NBSClient")
+    def test_sync_first_run_uses_custom_lookback_days(
+        self,
+        mock_nbs_cls,
+        mock_income_gen_cls,
+        mock_gains_gen_cls,
+        mock_get_op_cls,
+        mock_config,
+        mock_user_data_dir,
+    ):
+        """Test that custom first-run lookback overrides default income period start."""
+        # Mock GetOperation
+        mock_get_op = mock_get_op_cls.return_value
+        mock_get_op.execute.return_value = ([], 0, 0)
+
+        # Mock GainsReportGenerator (no gains)
+        mock_gains_gen = MagicMock()
+        mock_gains_gen.generate.side_effect = ValueError("No taxable sales found in this period.")
+        mock_gains_gen_cls.return_value = mock_gains_gen
+
+        # Mock IncomeReportGenerator (no income)
+        mock_income_gen = MagicMock()
+        mock_income_gen.generate.return_value = []
+        mock_income_gen_cls.return_value = mock_income_gen
+
+        # First run with custom lookback
+        sync_op = SyncOperation(mock_config, forced_lookback_days=10)
+
+        with patch("ibkr_porez.operation_sync.datetime") as mock_dt:
+            mock_dt.now.return_value.date.return_value = date(2023, 7, 16)
+            mock_dt.now.return_value = datetime(2023, 7, 16, 12, 0, 0)
+
+            sync_op.execute()
+
+        # last_declaration_date = 2023-07-06 => income start should be 2023-07-07
+        mock_income_gen.generate.assert_called_once_with(
+            start_date=date(2023, 7, 7),
+            end_date=date(2023, 7, 15),
+            force=False,
+        )
+
+    @patch("ibkr_porez.operation_sync.GetOperation")
+    @patch("ibkr_porez.operation_sync.GainsReportGenerator")
+    @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
+    @patch("ibkr_porez.report_base.NBSClient")
+    def test_sync_lookback_override_ignores_saved_last_sync_date(
+        self,
+        mock_nbs_cls,
+        mock_income_gen_cls,
+        mock_gains_gen_cls,
+        mock_get_op_cls,
+        mock_config,
+        mock_user_data_dir,
+    ):
+        """Test that lookback override is used even when last sync date exists."""
+        # Mock GetOperation
+        mock_get_op = mock_get_op_cls.return_value
+        mock_get_op.execute.return_value = ([], 0, 0)
+
+        # Mock GainsReportGenerator (no gains)
+        mock_gains_gen = MagicMock()
+        mock_gains_gen.generate.side_effect = ValueError("No taxable sales found in this period.")
+        mock_gains_gen_cls.return_value = mock_gains_gen
+
+        # Mock IncomeReportGenerator (no income)
+        mock_income_gen = MagicMock()
+        mock_income_gen.generate.return_value = []
+        mock_income_gen_cls.return_value = mock_income_gen
+
+        # Persist a recent last_declaration_date that should be ignored
+        storage = Storage()
+        storage.set_last_declaration_date(date(2023, 7, 14))
+
+        # Override lookback to 10 days from today
+        sync_op = SyncOperation(mock_config, forced_lookback_days=10)
+
+        with patch("ibkr_porez.operation_sync.datetime") as mock_dt:
+            mock_dt.now.return_value.date.return_value = date(2023, 7, 16)
+            mock_dt.now.return_value = datetime(2023, 7, 16, 12, 0, 0)
+
+            sync_op.execute()
+
+        # Override yields last_declaration_date=2023-07-06 => start_date=2023-07-07
+        mock_income_gen.generate.assert_called_once_with(
+            start_date=date(2023, 7, 7),
+            end_date=date(2023, 7, 15),
+            force=False,
+        )
 
     @patch("ibkr_porez.operation_sync.GetOperation")
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")

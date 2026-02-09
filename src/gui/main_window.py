@@ -502,6 +502,7 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def on_sync_thread_finished(self) -> None:
+        self.progress_bar.setVisible(False)
         self.sync_button.setEnabled(True)
         self.sync_worker = None
         self.sync_thread = None

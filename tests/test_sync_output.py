@@ -161,6 +161,28 @@ class TestSyncOutput:
         assert result.exit_code == 0
         assert "No new declarations created" in result.output
 
+    @patch("ibkr_porez.main.SyncOperation")
+    @patch("ibkr_porez.main.config_manager")
+    def test_sync_passes_lookback_option(
+        self,
+        mock_config_manager,
+        mock_sync_operation_cls,
+        mock_config,
+    ):
+        """Test that CLI sync lookback option is passed to SyncOperation."""
+        mock_config_manager.load_config.return_value = mock_config
+        mock_operation = MagicMock()
+        mock_operation.execute.return_value = []
+        mock_sync_operation_cls.return_value = mock_operation
+
+        runner = CliRunner()
+        result = runner.invoke(ibkr_porez, ["sync", "-l", "12"])
+
+        assert result.exit_code == 0
+        assert "No new declarations created" in result.output
+        assert mock_sync_operation_cls.call_count == 1
+        assert mock_sync_operation_cls.call_args.kwargs["forced_lookback_days"] == 12
+
     @patch("ibkr_porez.operation_sync.GetOperation")
     @patch("ibkr_porez.operation_sync.GainsReportGenerator")
     @patch("ibkr_porez.operation_sync.IncomeReportGenerator")

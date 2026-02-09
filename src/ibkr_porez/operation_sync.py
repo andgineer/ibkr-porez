@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +37,7 @@ class DeclarationConfig:
     generator_factory: Callable[[], Any]
     period_getter: Callable[[], list[tuple[date, date, dict[str, Any]]]]
     declaration_id_generator: Callable[..., str] | None
-    metadata_extractor: Callable[[list, date], dict[str, Any]]
+    metadata_extractor: Callable[[list, date, date], dict[str, Any]]
     force: bool = False
 
 
@@ -46,13 +47,19 @@ class SyncOperation:
     # Constants for half-year calculation
     JULY_MONTH = 7
     JUNE_MONTH = 6
-    DEFAULT_FIRST_SYNC_LOOKBACK_DAYS = 60
+    DEFAULT_FIRST_SYNC_LOOKBACK_DAYS = 45
 
-    def __init__(self, config: UserConfig, output_dir: Path | None = None):
+    def __init__(
+        self,
+        config: UserConfig,
+        output_dir: Path | None = None,
+        forced_lookback_days: int | None = None,
+    ):
         self.config = config
         self.storage = Storage()
         self.get_operation = GetOperation(config)
         self.output_dir = output_dir
+        self.forced_lookback_days = forced_lookback_days
 
     def _get_next_declaration_number(self) -> int:
         """Get next sequential declaration number for all types."""
@@ -97,12 +104,12 @@ class SyncOperation:
 
     def _get_income_periods(
         self,
-        last_declaration_date: date,
-        new_last_declaration_date: date,
+        start_period: date,
+        end_period: date,
     ) -> list[tuple[date, date, dict]]:
         """Get periods to check for income declarations."""
-        income_start = last_declaration_date + timedelta(days=1)
-        income_end = new_last_declaration_date
+        income_start = start_period + timedelta(days=1)
+        income_end = end_period
 
         if income_start > income_end:
             return []
@@ -122,30 +129,86 @@ class SyncOperation:
     def _extract_gains_metadata(
         self,
         entries: list,
-        _period_start: date,
+        period_start: date,
+        period_end: date,
     ) -> dict:
         gains_entries = [e for e in entries if isinstance(e, TaxReportEntry)]
+        total_positive_gain_rsd = sum(
+            (e.capital_gain_rsd for e in gains_entries if e.capital_gain_rsd > 0),
+            Decimal("0.00"),
+        )
+        total_losses_rsd = sum(
+            (abs(e.capital_gain_rsd) for e in gains_entries if e.capital_gain_rsd < 0),
+            Decimal("0.00"),
+        )
+        tax_base_rsd = max(Decimal("0.00"), total_positive_gain_rsd - total_losses_rsd)
+        calculated_tax_rsd = (tax_base_rsd * Decimal("0.15")).quantize(
+            Decimal("0.01"),
+            rounding=ROUND_HALF_UP,
+        )
         return {
             "entry_count": len(gains_entries),
-            "total_gain": sum(e.capital_gain_rsd for e in gains_entries),
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "total_gain_rsd": sum(e.capital_gain_rsd for e in gains_entries),
+            "gross_income_rsd": total_positive_gain_rsd,
+            "tax_base_rsd": tax_base_rsd,
+            "calculated_tax_rsd": calculated_tax_rsd,
+            "foreign_tax_paid_rsd": Decimal("0.00"),
+            "tax_due_rsd": calculated_tax_rsd,
         }
 
     def _extract_income_metadata(
         self,
         entries: list,
-        _period_start: date,
+        period_start: date,
+        period_end: date,
     ) -> dict:
         if not entries:
             return {
                 "entry_count": 0,
                 "income_type": "unknown",
                 "symbol": "unknown",
+                "period_start": period_start.isoformat(),
+                "period_end": period_end.isoformat(),
+                "gross_income_rsd": Decimal("0.00"),
+                "tax_base_rsd": Decimal("0.00"),
+                "calculated_tax_rsd": Decimal("0.00"),
+                "foreign_tax_paid_rsd": Decimal("0.00"),
+                "tax_due_rsd": Decimal("0.00"),
             }
 
         # Extract from first entry
         first_entry = entries[0]
         symbol = str(getattr(first_entry, "symbol_or_currency", "")).strip().upper()
-        declaration_date = getattr(first_entry, "date", None)
+        period_start_date = min(
+            (getattr(e, "date", period_start) for e in entries),
+            default=period_start,
+        )
+        period_end_date = max(
+            (getattr(e, "date", period_end) for e in entries),
+            default=period_end,
+        )
+        gross_income_rsd = sum(
+            (getattr(e, "bruto_prihod", Decimal("0.00")) for e in entries),
+            Decimal("0.00"),
+        )
+        tax_base_rsd = sum(
+            (getattr(e, "osnovica_za_porez", Decimal("0.00")) for e in entries),
+            Decimal("0.00"),
+        )
+        calculated_tax_rsd = sum(
+            (getattr(e, "obracunati_porez", Decimal("0.00")) for e in entries),
+            Decimal("0.00"),
+        )
+        foreign_tax_paid_rsd = sum(
+            (getattr(e, "porez_placen_drugoj_drzavi", Decimal("0.00")) for e in entries),
+            Decimal("0.00"),
+        )
+        tax_due_rsd = sum(
+            (getattr(e, "porez_za_uplatu", Decimal("0.00")) for e in entries),
+            Decimal("0.00"),
+        )
 
         # Determine income type from sifra_vrste_prihoda
         if hasattr(first_entry, "sifra_vrste_prihoda"):
@@ -155,15 +218,18 @@ class SyncOperation:
         else:
             income_type = "dividend"  # Default
 
-        metadata = {
+        return {
             "entry_count": len(entries),
             "income_type": income_type,
             "symbol": symbol or "unknown",
+            "period_start": period_start_date.isoformat(),
+            "period_end": period_end_date.isoformat(),
+            "gross_income_rsd": gross_income_rsd,
+            "tax_base_rsd": tax_base_rsd,
+            "calculated_tax_rsd": calculated_tax_rsd,
+            "foreign_tax_paid_rsd": foreign_tax_paid_rsd,
+            "tax_due_rsd": tax_due_rsd,
         }
-        if isinstance(declaration_date, date):
-            metadata["period_start"] = declaration_date.isoformat()
-            metadata["period_end"] = declaration_date.isoformat()
-        return metadata
 
     def _create_declaration(  # noqa: PLR0913
         self,
@@ -252,7 +318,7 @@ class SyncOperation:
                 )
 
                 for filename, xml_content, entries in results:
-                    metadata = config.metadata_extractor(entries, period_start)
+                    metadata = config.metadata_extractor(entries, period_start, period_end)
 
                     # Check if declaration already exists by checking if any declaration
                     # has the same generator filename (without number prefix)
@@ -306,19 +372,24 @@ class SyncOperation:
 
     def _get_declaration_configs(
         self,
-        last_declaration_date: date | None,
-        new_last_declaration_date: date,
+        end_period: date,
     ) -> list[DeclarationConfig]:
         """
         Get declaration configurations for all declaration types.
 
         Args:
-            last_declaration_date: Last declaration date (or None for first run)
-            new_last_declaration_date: New last declaration date
+            end_period: End period for this sync run
 
         Returns:
             List of declaration configurations
         """
+        if self.forced_lookback_days is not None:
+            start_period = end_period - timedelta(days=self.forced_lookback_days - 1)
+        else:
+            start_period = self.storage.get_last_declaration_date() or end_period - timedelta(
+                days=self.DEFAULT_FIRST_SYNC_LOOKBACK_DAYS - 1,
+            )
+
         return [
             DeclarationConfig(
                 declaration_type=DeclarationType.PPDG3R,
@@ -339,9 +410,8 @@ class SyncOperation:
                 declaration_type=DeclarationType.PPO,
                 generator_factory=IncomeReportGenerator,
                 period_getter=lambda: self._get_income_periods(
-                    last_declaration_date
-                    or date.today() - timedelta(days=self.DEFAULT_FIRST_SYNC_LOOKBACK_DAYS),
-                    new_last_declaration_date,
+                    start_period,
+                    end_period,
                 ),
                 declaration_id_generator=None,  # Not needed, filename is used as ID
                 metadata_extractor=self._extract_income_metadata,
@@ -360,16 +430,11 @@ class SyncOperation:
 
         # IBKR Flex Query data appears with 1-2 day delay
         today = datetime.now().date()
-        new_last_declaration_date = today - timedelta(days=1)
-
-        last_declaration_date = self.storage.get_last_declaration_date()
-        if last_declaration_date is None:
-            # First sync: set to DEFAULT_FIRST_SYNC_LOOKBACK_DAYS days ago
-            last_declaration_date = today - timedelta(days=self.DEFAULT_FIRST_SYNC_LOOKBACK_DAYS)
+        end_period = today - timedelta(days=1)
+        saved_start_period = self.storage.get_last_declaration_date()
 
         declaration_configs = self._get_declaration_configs(
-            last_declaration_date,
-            new_last_declaration_date,
+            end_period,
         )
 
         created_declarations = []
@@ -379,11 +444,7 @@ class SyncOperation:
 
         # Update last_declaration_date only if all declarations created successfully
         # Update if declarations were created OR if last_declaration_date is None or in the past
-        if (
-            created_declarations
-            or last_declaration_date is None
-            or last_declaration_date < new_last_declaration_date
-        ):
-            self.storage.set_last_declaration_date(new_last_declaration_date)
+        if created_declarations or saved_start_period is None or saved_start_period < end_period:
+            self.storage.set_last_declaration_date(end_period)
 
         return created_declarations

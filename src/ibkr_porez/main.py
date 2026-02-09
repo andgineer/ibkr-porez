@@ -30,8 +30,8 @@ from ibkr_porez.operation_import import ImportOperation, ImportType
 from ibkr_porez.operation_list import ListDeclarations
 from ibkr_porez.operation_report import display_income_declaration, execute_report_command
 from ibkr_porez.operation_report_tables import render_declaration_table
-from ibkr_porez.operation_show import ShowStatistics
 from ibkr_porez.operation_show_declaration import show_declaration
+from ibkr_porez.operation_stat import ShowStatistics
 from ibkr_porez.operation_sync import SyncOperation
 from ibkr_porez.storage import Storage
 from ibkr_porez.storage_flex_queries import restore_report
@@ -88,6 +88,14 @@ def verbose_option(f):
         callback=_setup_logging_callback,
         help="Enable verbose logging.",
     )(f)
+
+
+def _validate_lookback_option(ctx, param, value):  # noqa: ARG001
+    if value is None or ctx.resilient_parsing:
+        return value
+    if value <= 0:
+        raise click.BadParameter("must be a positive integer")
+    return value
 
 
 def _launch_gui_process() -> None:
@@ -337,8 +345,21 @@ def stat(year: int | None, ticker: str | None, month: str | None):
     required=False,
     help="Output directory (default: from config or Downloads)",
 )
+@click.option(
+    "--lookback",
+    "-l",
+    "forced_lookback_days",
+    type=int,
+    callback=_validate_lookback_option,
+    required=False,
+    help=(
+        "Look back N days to find missing declarations, ignoring saved last sync date. "
+        "If omitted, sync continues from saved last sync date "
+        f"(or {SyncOperation.DEFAULT_FIRST_SYNC_LOOKBACK_DAYS} days on first sync)."
+    ),
+)
 @verbose_option
-def sync(output_dir: str | None):
+def sync(output_dir: str | None, forced_lookback_days: int | None):
     """Sync data from IBKR and create all necessary declarations."""
     cfg = config_manager.load_config()
     if not cfg.ibkr_token or not cfg.ibkr_query_id:
@@ -346,7 +367,11 @@ def sync(output_dir: str | None):
         return
 
     output_path = Path(output_dir) if output_dir else None
-    operation = SyncOperation(cfg, output_dir=output_path)
+    operation = SyncOperation(
+        cfg,
+        output_dir=output_path,
+        forced_lookback_days=forced_lookback_days,
+    )
     try:
         with console.status("[bold green]Syncing data and creating declarations...[/bold green]"):
             declarations = operation.execute()

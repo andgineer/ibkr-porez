@@ -106,7 +106,7 @@ class TestE2EShow:
         s.save_transactions(txs)
         return s
 
-    @patch("ibkr_porez.operation_show.NBSClient")
+    @patch("ibkr_porez.operation_stat.NBSClient")
     def test_stat_default_summary(self, mock_nbs_cls, runner, mock_user_data_dir, setup_data):
         """
         Scenario: Run `stat` without arguments.
@@ -136,7 +136,7 @@ class TestE2EShow:
         assert "KO" in result.output
         assert "5,000.00" in result.output
 
-    @patch("ibkr_porez.operation_show.NBSClient")
+    @patch("ibkr_porez.operation_stat.NBSClient")
     def test_stat_detailed_ticker(self, mock_nbs_cls, runner, mock_user_data_dir, setup_data):
         """
         Scenario: Run `stat --ticker AAPL`.
@@ -163,7 +163,7 @@ class TestE2EShow:
         # Should NOT show MSFT
         assert "MSFT" not in result.output
 
-    @patch("ibkr_porez.operation_show.NBSClient")
+    @patch("ibkr_porez.operation_stat.NBSClient")
     def test_stat_detailed_month(self, mock_nbs_cls, runner, mock_user_data_dir, setup_data):
         """
         Scenario: Run `stat --month 2026-02`.
@@ -185,7 +185,7 @@ class TestE2EShow:
         assert "2026-01" not in result.output
         assert "AAPL" not in result.output
 
-    @patch("ibkr_porez.operation_show.NBSClient")
+    @patch("ibkr_porez.operation_stat.NBSClient")
     def test_stat_empty(self, mock_nbs_cls, runner, mock_user_data_dir):
         """Scenario: No transactions."""
         mock_nbs = mock_nbs_cls.return_value

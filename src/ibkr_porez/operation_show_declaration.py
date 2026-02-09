@@ -61,8 +61,26 @@ def show_declaration(declaration_id: str, console: Console) -> None:  # noqa: C9
         metadata_table = Table(box=None, show_header=False)
         metadata_table.add_column("Key", justify="left", style="cyan")
         metadata_table.add_column("Value", justify="left")
+        preferred_order = [
+            "period_start",
+            "period_end",
+            "entry_count",
+            "symbol",
+            "income_type",
+            "total_gain_rsd",
+            "gross_income_rsd",
+            "tax_base_rsd",
+            "calculated_tax_rsd",
+            "foreign_tax_paid_rsd",
+            "tax_due_rsd",
+        ]
+        ordered_keys = [key for key in preferred_order if key in declaration.metadata]
+        ordered_keys.extend(
+            sorted(key for key in declaration.metadata if key not in set(ordered_keys)),
+        )
 
-        for key, value in sorted(declaration.metadata.items()):
+        for key in ordered_keys:
+            value = declaration.metadata[key]
             # Format value based on type (no thousands separators for easy copy-paste)
             if isinstance(value, int | float):
                 formatted_value = f"{value:.2f}" if isinstance(value, float) else str(value)
