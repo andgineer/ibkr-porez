@@ -14,7 +14,7 @@ from ibkr_porez import __version__
 from ibkr_porez.config import config_manager
 from ibkr_porez.declaration_manager import DeclarationManager
 from ibkr_porez.error_handling import get_user_friendly_error_message
-from ibkr_porez.gui_launcher import launch_gui_process
+from ibkr_porez.gui.launcher import launch_gui_process
 from ibkr_porez.logging_config import ERROR_LOG_FILE, setup_logger
 from ibkr_porez.models import (
     DeclarationStatus,

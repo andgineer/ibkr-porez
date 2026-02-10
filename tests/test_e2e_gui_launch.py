@@ -4,7 +4,7 @@ import allure
 import pytest
 from click.testing import CliRunner
 
-import ibkr_porez.gui_launcher as gui_launcher
+import ibkr_porez.gui.launcher as gui_launcher
 import ibkr_porez.main as main_module
 from ibkr_porez.main import ibkr_porez
 

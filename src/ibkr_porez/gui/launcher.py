@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ctypes
 import plistlib
 import subprocess
 import sys
@@ -15,6 +16,8 @@ from platformdirs import user_data_dir
 from rich.console import Console
 
 _MIN_STATUS_VISIBLE_SECONDS = 0.8
+_WINDOWS_APP_ID = "engineer.sorokin.ibkr-porez"
+_PROCESS_NAME = b"ibkr-porez"
 
 
 class _GuiPopenKwargs(TypedDict, total=False):
@@ -24,6 +27,14 @@ class _GuiPopenKwargs(TypedDict, total=False):
     close_fds: bool
     creationflags: int
     start_new_session: bool
+
+
+def prepare_gui_process_identity() -> None:
+    """Apply platform-specific process identity settings for GUI process."""
+    if sys.platform == "darwin":
+        _set_macos_process_name()
+    elif sys.platform == "win32":
+        _set_windows_app_id()
 
 
 def launch_gui_process(console: Console, app_version: str) -> None:
@@ -38,6 +49,12 @@ def launch_gui_process(console: Console, app_version: str) -> None:
         if sys.platform == "darwin":
             bundle_path = _ensure_macos_gui_bundle(app_version)
             command = ["open", "-na", str(bundle_path)]
+        elif sys.platform == "win32":
+            pythonw_executable = Path(sys.executable).with_name("pythonw.exe")
+            gui_interpreter = (
+                str(pythonw_executable) if pythonw_executable.exists() else sys.executable
+            )
+            command = [gui_interpreter, "-m", "ibkr_porez.gui.main"]
         else:
             command = [sys.executable, "-m", "ibkr_porez.gui.main"]
         popen_kwargs: _GuiPopenKwargs = {
@@ -64,6 +81,26 @@ def launch_gui_process(console: Console, app_version: str) -> None:
         elapsed = time.monotonic() - started_at
         if elapsed < _MIN_STATUS_VISIBLE_SECONDS:
             time.sleep(_MIN_STATUS_VISIBLE_SECONDS - elapsed)
+
+
+def _set_macos_process_name() -> None:
+    try:
+        libc = ctypes.CDLL(None)
+        setprogname = libc.setprogname
+        setprogname.argtypes = [ctypes.c_char_p]
+        setprogname.restype = None
+        setprogname(_PROCESS_NAME)
+    except Exception:  # noqa: BLE001
+        return
+
+
+def _set_windows_app_id() -> None:
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(  # type: ignore[attr-defined]
+            _WINDOWS_APP_ID,
+        )
+    except Exception:  # noqa: BLE001
+        return
 
 
 def _ensure_macos_gui_bundle(app_version: str) -> Path:
