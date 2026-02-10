@@ -16,11 +16,11 @@
 | src/ibkr\_porez/gui/export\_worker.py           |       18 |       18 |      0% |      1-27 |
 | src/ibkr\_porez/gui/import\_dialog.py           |      148 |      148 |      0% |     1-211 |
 | src/ibkr\_porez/gui/import\_worker.py           |       20 |       20 |      0% |      1-30 |
-| src/ibkr\_porez/gui/main.py                     |       30 |       30 |      0% |      1-39 |
+| src/ibkr\_porez/gui/launcher.py                 |       95 |       45 |     53% |34-37, 50-51, 53-57, 67, 87-94, 98-103, 108-121, 128-153 |
+| src/ibkr\_porez/gui/main.py                     |       19 |       19 |      0% |      1-26 |
 | src/ibkr\_porez/gui/main\_window.py             |      419 |      419 |      0% |     1-594 |
 | src/ibkr\_porez/gui/styles.py                   |        2 |        2 |      0% |       1-3 |
 | src/ibkr\_porez/gui/sync\_worker.py             |       21 |       21 |      0% |      1-28 |
-| src/ibkr\_porez/gui\_launcher.py                |       69 |       26 |     62% |39-40, 50, 71-84, 91-116 |
 | src/ibkr\_porez/ibkr\_csv.py                    |       98 |       19 |     81% |39, 46, 63, 73, 81-82, 89-90, 95-96, 125, 128, 132-133, 137-138, 142-143, 152 |
 | src/ibkr\_porez/ibkr\_flex\_query.py            |      126 |       27 |     79% |44-48, 52, 60-61, 70, 78-79, 127, 137, 140-141, 158, 161-162, 168-173, 201, 210, 217, 220-221, 225-226 |
 | src/ibkr\_porez/logging\_config.py              |       15 |        0 |    100% |           |
@@ -44,7 +44,7 @@
 | src/ibkr\_porez/storage\_flex\_queries.py       |      155 |       33 |     79% |125, 149, 159-161, 169-186, 226, 250, 256-257, 261-264, 284, 300, 303-304, 309-312 |
 | src/ibkr\_porez/tax.py                          |       71 |       14 |     80% |27, 33, 57-59, 87-103, 151-152, 155-156 |
 | src/ibkr\_porez/validation.py                   |       13 |        1 |     92% |        29 |
-| **TOTAL**                                       | **3606** | **1214** | **66%** |           |
+| **TOTAL**                                       | **3621** | **1222** | **66%** |           |
 
 
 ## Setup coverage badge
