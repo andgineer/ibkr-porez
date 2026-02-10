@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
 
-from platformdirs import user_config_dir
+from platformdirs import user_config_dir, user_data_dir
 
 from ibkr_porez.models import UserConfig
+
+DATA_SUBDIR = "ibkr-porez-data"
 
 
 class ConfigManager:
@@ -39,3 +41,27 @@ class ConfigManager:
 
 
 config_manager = ConfigManager()
+
+
+def get_default_data_dir_path() -> Path:
+    """Return default data directory path."""
+    return Path(user_data_dir(ConfigManager.APP_NAME)) / DATA_SUBDIR
+
+
+def get_effective_data_dir_path(config: UserConfig) -> Path:
+    """Resolve data dir with fallback to default directory."""
+    if config.data_dir:
+        return Path(config.data_dir).expanduser().resolve()
+    return get_default_data_dir_path().expanduser().resolve()
+
+
+def get_data_dir_change_warning(old_config: UserConfig, new_config: UserConfig) -> str | None:
+    """Return warning message if effective data directory changed."""
+    old_path = get_effective_data_dir_path(old_config)
+    new_path = get_effective_data_dir_path(new_config)
+    if old_path == new_path:
+        return None
+    return (
+        "Data directory changed. Move existing database files manually "
+        f"from {old_path} to {new_path}."
+    )

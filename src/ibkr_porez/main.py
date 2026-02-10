@@ -41,6 +41,9 @@ OUTPUT_FILE_DEFAULT = "output"
 
 class _GuiPopenKwargs(TypedDict, total=False):
     stdin: int
+    stdout: int
+    stderr: int
+    close_fds: bool
     creationflags: int
     start_new_session: bool
 
@@ -108,7 +111,12 @@ def _launch_gui_process() -> None:
 
         with console.status("[bold green]Starting GUI...[/bold green]"):
             command = [sys.executable, "-m", "gui.main"]
-            popen_kwargs: _GuiPopenKwargs = {"stdin": subprocess.DEVNULL}
+            popen_kwargs: _GuiPopenKwargs = {
+                "stdin": subprocess.DEVNULL,
+                "stdout": subprocess.DEVNULL,
+                "stderr": subprocess.DEVNULL,
+                "close_fds": True,
+            }
             if sys.platform == "win32":
                 popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
             else:
@@ -119,7 +127,7 @@ def _launch_gui_process() -> None:
             deadline = time.monotonic() + 1.4
             while time.monotonic() < deadline:
                 if process.poll() is not None:
-                    raise RuntimeError("GUI process exited immediately. Check error output above.")
+                    raise RuntimeError("GUI process exited immediately.")
                 time.sleep(0.14)
     except RuntimeError as e:
         raise click.ClickException(str(e)) from e

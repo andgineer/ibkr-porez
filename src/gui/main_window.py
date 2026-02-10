@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from gui.config_dialog import ConfigDialog
 from gui.constants import (
     BULK_STATUS_OPTIONS,
     FILTER_ORDER,
@@ -26,14 +27,19 @@ from gui.constants import (
     PROGRESS_MAX,
     ROW_STATUS_ACTIONS,
 )
-from gui.dialogs import ConfigDialog
 from gui.export_worker import ExportWorker
+from gui.import_dialog import ImportDialog
 from gui.styles import APP_STYLESHEET
 from gui.sync_worker import SyncWorker
-from ibkr_porez.config import config_manager
+from ibkr_porez.config import config_manager, get_data_dir_change_warning
 from ibkr_porez.declaration_manager import DeclarationManager
 from ibkr_porez.models import Declaration, DeclarationStatus
 from ibkr_porez.storage import Storage
+
+EMPTY_TRANSACTIONS_WARNING = (
+    "Transaction history is empty. If your trading history is over one year, import it via "
+    "Import. This is important for correct stock sale tax calculation."
+)
 
 
 class MainWindow(QMainWindow):
@@ -74,13 +80,19 @@ class MainWindow(QMainWindow):
         self.config_button.setObjectName("configButton")
         self.config_button.clicked.connect(self.open_config)
 
+        self.import_button = QPushButton("Import")
+        self.import_button.setObjectName("configButton")
+        self.import_button.clicked.connect(self.open_import)
+
         top_bar.addWidget(self.sync_button)
         top_bar.addStretch(1)
+        top_bar.addWidget(self.import_button)
         top_bar.addWidget(self.config_button)
         root.addLayout(top_bar)
 
         self.progress_label = QLabel("")
         self.progress_label.setObjectName("progressLabel")
+        self.progress_label.setWordWrap(True)
         self.progress_bar = QProgressBar()
         self.progress_bar.setObjectName("progressBar")
         self.progress_bar.setRange(0, PROGRESS_MAX)
@@ -158,6 +170,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(root_widget)
         self.setStyleSheet(APP_STYLESHEET)
         self.populate_table()
+        self._update_empty_transactions_warning(force=True)
 
     def reload_declarations(self) -> None:
         declarations = self.storage.get_declarations()
@@ -345,6 +358,36 @@ class MainWindow(QMainWindow):
         self.progress_label.setText(summary)
         QMessageBox.critical(self, title, message)
 
+    def _is_transactions_history_empty(self) -> bool:
+        return self.storage.get_last_transaction_date() is None
+
+    def _update_empty_transactions_warning(self, force: bool = False) -> None:
+        if self._is_transactions_history_empty():
+            if force or not self.progress_label.text():
+                self.progress_label.setText(EMPTY_TRANSACTIONS_WARNING)
+            return
+
+        if self.progress_label.text() == EMPTY_TRANSACTIONS_WARNING:
+            self.progress_label.setText("")
+
+    def _confirm_sync_with_empty_transactions(self) -> bool:
+        confirm = QMessageBox(self)
+        confirm.setIcon(QMessageBox.Icon.Warning)
+        confirm.setWindowTitle("Transaction history is empty")
+        confirm.setText(EMPTY_TRANSACTIONS_WARNING)
+        confirm.setInformativeText("Continue sync without imported history?")
+        confirm.setStandardButtons(
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+        )
+        continue_button = confirm.button(QMessageBox.StandardButton.Ok)
+        if continue_button is not None:
+            continue_button.setText("Continue")
+        cancel_button = confirm.button(QMessageBox.StandardButton.Cancel)
+        if cancel_button is not None:
+            cancel_button.setText("Cancel")
+        confirm.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        return confirm.exec() == int(QMessageBox.StandardButton.Ok)
+
     @Slot(str)
     def on_export_finished(self, export_dir: str) -> None:
         self._show_command_success(f"Declaration files saved in {export_dir}")
@@ -469,6 +512,13 @@ class MainWindow(QMainWindow):
         if self.sync_thread is not None and self.sync_thread.isRunning():
             return
 
+        if (
+            self._is_transactions_history_empty()
+            and not self._confirm_sync_with_empty_transactions()
+        ):
+            self._update_empty_transactions_warning(force=True)
+            return
+
         self.progress_label.setText("Sync started")
         self.progress_bar.setVisible(True)
         self.progress_bar.setRange(0, 0)
@@ -522,9 +572,23 @@ class MainWindow(QMainWindow):
     def open_config(self) -> None:
         dialog = ConfigDialog(self.config, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.config = dialog.get_config()
+            new_config = dialog.get_config()
+            data_dir_warning = get_data_dir_change_warning(self.config, new_config)
             try:
-                config_manager.save_config(self.config)
+                config_manager.save_config(new_config)
+                self.config = new_config
+                self.storage = Storage()
+                self.reload_declarations()
+                self.populate_table()
+                self._update_empty_transactions_warning(force=True)
                 self.progress_label.setText("Config saved")
+                if data_dir_warning:
+                    QMessageBox.warning(self, "Data directory changed", data_dir_warning)
             except OSError:
                 self.progress_label.setText("Config save failed")
+
+    @Slot()
+    def open_import(self) -> None:
+        dialog = ImportDialog(self)
+        dialog.exec()
+        self._update_empty_transactions_warning(force=True)

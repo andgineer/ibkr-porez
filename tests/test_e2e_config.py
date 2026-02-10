@@ -2,6 +2,7 @@ import allure
 import json
 import pytest
 from unittest.mock import patch
+from pathlib import Path
 
 from click.testing import CliRunner
 
@@ -280,3 +281,70 @@ class TestE2EConfig:
             data = json.load(f)
 
         assert data["data_dir"] == str(mock_config_dir / "custom_data")
+
+    def test_config_warns_on_data_dir_change(self, runner, mock_config_dir):
+        """
+        Scenario: Existing config changes data directory.
+        Expect: Warning about manual database files move.
+        """
+        initial_data = {
+            "ibkr_token": "token",
+            "ibkr_query_id": "query",
+            "personal_id": "111",
+            "full_name": "Old Name",
+            "address": "Old Addr",
+            "city_code": "223",
+            "phone": "000",
+            "email": "old@email.com",
+            "data_dir": str(mock_config_dir / "old_data"),
+        }
+        with open(mock_config_dir / "config.json", "w") as f:
+            json.dump(initial_data, f)
+
+        new_data_dir = str(mock_config_dir / "new_data")
+        inputs = [
+            "9",
+            new_data_dir,
+        ]
+
+        result = runner.invoke(ibkr_porez, ["config"], input="\n".join(inputs) + "\n")
+
+        assert result.exit_code == 0
+        assert "Configuration saved successfully" in result.output
+        assert "Warning:" in result.output
+        assert "Data directory changed. Move existing database files manually" in result.output
+
+    def test_config_no_warning_when_default_data_dir_saved_in_empty_config(
+        self,
+        runner,
+        mock_config_dir,
+        monkeypatch,
+    ):
+        """
+        Scenario: Empty config, user enters default data dir explicitly.
+        Expect: No warning.
+        """
+        default_data_dir = mock_config_dir / "ibkr-porez-data"
+        monkeypatch.setattr(
+            "ibkr_porez.operation_config.get_default_data_dir_path",
+            lambda: Path(default_data_dir),
+        )
+
+        inputs = [
+            "token",
+            "query",
+            "123",
+            "Name",
+            "Addr",
+            "223",
+            "123",
+            "email@test.com",
+            str(default_data_dir),
+            "",
+        ]
+
+        result = runner.invoke(ibkr_porez, ["config"], input="\n".join(inputs) + "\n")
+
+        assert result.exit_code == 0
+        assert "Configuration saved successfully" in result.output
+        assert "Warning:" not in result.output

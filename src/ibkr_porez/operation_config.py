@@ -3,11 +3,14 @@
 from pathlib import Path
 
 import click
-from platformdirs import user_data_dir
 from rich.console import Console
 
-from ibkr_porez.config import UserConfig, config_manager
-from ibkr_porez.storage import Storage
+from ibkr_porez.config import (
+    UserConfig,
+    config_manager,
+    get_data_dir_change_warning,
+    get_default_data_dir_path,
+)
 
 
 def _format_config_value(value: str | None, default: str, is_path: bool = False) -> str:
@@ -23,7 +26,7 @@ def _format_config_value(value: str | None, default: str, is_path: bool = False)
 
 def _get_default_data_dir() -> str:
     """Get default data directory path."""
-    return str(Path(user_data_dir("ibkr-porez")) / Storage.DATA_SUBDIR)
+    return str(get_default_data_dir_path())
 
 
 def _get_default_output_folder() -> str:
@@ -270,5 +273,8 @@ def execute_config_command(console: Console) -> None:
     )
 
     new_config = UserConfig(**new_config_dict)
+    data_dir_warning = get_data_dir_change_warning(current_config, new_config)
     config_manager.save_config(new_config)
     console.print("\n[bold green]Configuration saved successfully![/bold green]")
+    if data_dir_warning:
+        console.print(f"[bold yellow]Warning:[/bold yellow] {data_dir_warning}")
