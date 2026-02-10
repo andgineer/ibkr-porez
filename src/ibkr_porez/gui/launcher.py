@@ -16,7 +16,6 @@ from platformdirs import user_data_dir
 from rich.console import Console
 
 _MIN_STATUS_VISIBLE_SECONDS = 0.8
-_WINDOWS_APP_ID = "engineer.sorokin.ibkr-porez"
 _PROCESS_NAME = b"ibkr-porez"
 
 
@@ -33,8 +32,6 @@ def prepare_gui_process_identity() -> None:
     """Apply platform-specific process identity settings for GUI process."""
     if sys.platform == "darwin":
         _set_macos_process_name()
-    elif sys.platform == "win32":
-        _set_windows_app_id()
 
 
 def launch_gui_process(console: Console, app_version: str) -> None:
@@ -49,12 +46,6 @@ def launch_gui_process(console: Console, app_version: str) -> None:
         if sys.platform == "darwin":
             bundle_path = _ensure_macos_gui_bundle(app_version)
             command = ["open", "-na", str(bundle_path)]
-        elif sys.platform == "win32":
-            pythonw_executable = Path(sys.executable).with_name("pythonw.exe")
-            gui_interpreter = (
-                str(pythonw_executable) if pythonw_executable.exists() else sys.executable
-            )
-            command = [gui_interpreter, "-m", "ibkr_porez.gui.main"]
         else:
             command = [sys.executable, "-m", "ibkr_porez.gui.main"]
         popen_kwargs: _GuiPopenKwargs = {
@@ -90,16 +81,6 @@ def _set_macos_process_name() -> None:
         setprogname.argtypes = [ctypes.c_char_p]
         setprogname.restype = None
         setprogname(_PROCESS_NAME)
-    except Exception:  # noqa: BLE001
-        return
-
-
-def _set_windows_app_id() -> None:
-    try:
-        set_app_id = ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID  # type: ignore[attr-defined]
-        set_app_id.argtypes = [ctypes.c_wchar_p]
-        set_app_id.restype = ctypes.c_long
-        set_app_id(_WINDOWS_APP_ID)
     except Exception:  # noqa: BLE001
         return
 
