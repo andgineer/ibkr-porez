@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from gui.import_worker import ImportWorker
+from ibkr_porez.gui.import_worker import ImportWorker
 from ibkr_porez.operation_import import ImportType
 
 IMPORT_DOCS_URL = (

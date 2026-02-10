@@ -1,14 +1,10 @@
 """ibkr-porez."""
 
 import logging
-import subprocess
 import sys
-import time
 from datetime import datetime
-from importlib.util import find_spec
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import TypedDict
 
 import rich_click as click
 from rich.console import Console
@@ -18,6 +14,7 @@ from ibkr_porez import __version__
 from ibkr_porez.config import config_manager
 from ibkr_porez.declaration_manager import DeclarationManager
 from ibkr_porez.error_handling import get_user_friendly_error_message
+from ibkr_porez.gui_launcher import launch_gui_process
 from ibkr_porez.logging_config import ERROR_LOG_FILE, setup_logger
 from ibkr_porez.models import (
     DeclarationStatus,
@@ -37,15 +34,6 @@ from ibkr_porez.storage import Storage
 from ibkr_porez.storage_flex_queries import restore_report
 
 OUTPUT_FILE_DEFAULT = "output"
-
-
-class _GuiPopenKwargs(TypedDict, total=False):
-    stdin: int
-    stdout: int
-    stderr: int
-    close_fds: bool
-    creationflags: int
-    start_new_session: bool
 
 
 def _get_output_folder() -> Path:
@@ -101,38 +89,6 @@ def _validate_lookback_option(ctx, param, value):  # noqa: ARG001
     return value
 
 
-def _launch_gui_process() -> None:
-    """Launch GUI in a detached process and return immediately."""
-    try:
-        if find_spec("gui.main") is None:
-            raise RuntimeError(
-                "GUI module is not available. Reinstall package so `src/gui` is included.",
-            )
-
-        with console.status("[bold green]Starting GUI...[/bold green]"):
-            command = [sys.executable, "-m", "gui.main"]
-            popen_kwargs: _GuiPopenKwargs = {
-                "stdin": subprocess.DEVNULL,
-                "stdout": subprocess.DEVNULL,
-                "stderr": subprocess.DEVNULL,
-                "close_fds": True,
-            }
-            if sys.platform == "win32":
-                popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
-            else:
-                popen_kwargs["start_new_session"] = True
-
-            process = subprocess.Popen(command, **popen_kwargs)  # noqa: S603
-
-            deadline = time.monotonic() + 1.4
-            while time.monotonic() < deadline:
-                if process.poll() is not None:
-                    raise RuntimeError("GUI process exited immediately.")
-                time.sleep(0.14)
-    except RuntimeError as e:
-        raise click.ClickException(str(e)) from e
-
-
 @click.group(
     invoke_without_command=True,
     epilog=(
@@ -149,7 +105,7 @@ def ibkr_porez(ctx: click.Context) -> None:
     """
     if ctx.invoked_subcommand is None and len(sys.argv) == 1:
         try:
-            _launch_gui_process()
+            launch_gui_process(console=console, app_version=__version__)
         except Exception as e:  # noqa: BLE001
             raise click.ClickException(f"Failed to start GUI: {e}") from e
 

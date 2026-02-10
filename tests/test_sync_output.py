@@ -34,7 +34,16 @@ def mock_user_data_dir(tmp_path):
 @pytest.fixture
 def mock_config():
     """Mock user config."""
-    return MagicMock(spec=UserConfig, ibkr_token="test_token", ibkr_query_id="test_query")
+    return UserConfig(
+        ibkr_token="test_token",
+        ibkr_query_id="test_query",
+        personal_id="1234567890123",
+        full_name="Test User",
+        address="Test Address",
+        city_code="223",
+        phone="0601234567",
+        email="test@example.com",
+    )
 
 
 @allure.epic("End-to-end")

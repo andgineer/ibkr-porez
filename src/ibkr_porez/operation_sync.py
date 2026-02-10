@@ -66,6 +66,37 @@ class SyncOperation:
         existing_declarations = self.storage.get_declarations()
         return len(existing_declarations) + 1
 
+    @staticmethod
+    def _config_text(value: Any) -> str:
+        return value.strip() if isinstance(value, str) else ""
+
+    def _validate_personal_config(self) -> None:
+        missing_fields: list[str] = []
+
+        if not self._config_text(self.config.personal_id):
+            missing_fields.append("Personal ID (JMBG / EBS)")
+        if not self._config_text(self.config.full_name):
+            missing_fields.append("Full Name")
+        if not self._config_text(self.config.address):
+            missing_fields.append("Address")
+        if not self._config_text(self.config.city_code):
+            missing_fields.append("City Code")
+
+        phone = self._config_text(self.config.phone)
+        if not phone or phone == "0600000000":
+            missing_fields.append("Phone")
+
+        email = self._config_text(self.config.email)
+        if not email or email.lower() == "email@example.com":
+            missing_fields.append("Email")
+
+        if missing_fields:
+            fields = ", ".join(missing_fields)
+            raise ValueError(
+                "Missing personal data in configuration: "
+                f"{fields}. Open Config and fill personal taxpayer data before sync.",
+            )
+
     def get_output_folder(self) -> Path:
         """Get destination folder for declaration files."""
         return self.output_dir if self.output_dir else _get_output_folder()
@@ -430,6 +461,7 @@ class SyncOperation:
         Returns:
             list[Declaration]: List of newly created declarations
         """
+        self._validate_personal_config()
         self.get_operation.execute()
 
         # IBKR Flex Query data appears with 1-2 day delay

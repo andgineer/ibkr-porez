@@ -68,7 +68,7 @@ def _display_current_config(
         f"  IBKR Query ID: {_format_config_value(config.ibkr_query_id, '(not set)')}",
     )
     personal_id_value = _format_config_value(config.personal_id, "(not set)")
-    console.print(f"  Personal ID (JMBG): {personal_id_value}")
+    console.print(f"  Personal ID (JMBG / EBS): {personal_id_value}")
     console.print(f"  Full Name: {_format_config_value(config.full_name, '(not set)')}")
     console.print(f"  Address: {_format_config_value(config.address, '(not set)')}")
     console.print(f"  City Code: {_format_config_value(config.city_code, '223')}")
@@ -104,7 +104,7 @@ def _get_fields_to_update(
     )
     console.print("  1. IBKR Flex Token")
     console.print("  2. IBKR Query ID")
-    console.print("  3. Personal ID (JMBG)")
+    console.print("  3. Personal ID (JMBG / EBS)")
     console.print("  4. Full Name")
     console.print("  5. Address")
     console.print("  6. City Code")

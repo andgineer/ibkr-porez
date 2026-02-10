@@ -33,7 +33,16 @@ def mock_user_data_dir(tmp_path):
 @pytest.fixture
 def mock_config():
     """Mock user config."""
-    return MagicMock(spec=UserConfig, ibkr_token="test_token", ibkr_query_id="test_query")
+    return UserConfig(
+        ibkr_token="test_token",
+        ibkr_query_id="test_query",
+        personal_id="1234567890123",
+        full_name="Test User",
+        address="Test Address",
+        city_code="223",
+        phone="0601234567",
+        email="test@example.com",
+    )
 
 
 @allure.epic("End-to-end")
@@ -415,6 +424,42 @@ class TestSyncOperation:
                 sync_op.execute()
 
         # Verify last_declaration_date was NOT updated (error occurred)
+        assert storage.get_last_declaration_date() == date(2023, 7, 10)
+
+    @patch("ibkr_porez.operation_sync.GetOperation")
+    @patch("ibkr_porez.operation_sync.GainsReportGenerator")
+    @patch("ibkr_porez.operation_sync.IncomeReportGenerator")
+    @patch("ibkr_porez.report_base.NBSClient")
+    def test_sync_fails_when_personal_data_missing_and_keeps_last_declaration_date(
+        self,
+        mock_nbs_cls,
+        mock_income_gen_cls,
+        mock_gains_gen_cls,
+        mock_get_op_cls,
+        mock_user_data_dir,
+    ):
+        """Sync should fail early if personal config is incomplete."""
+        incomplete_config = UserConfig(
+            ibkr_token="test_token",
+            ibkr_query_id="test_query",
+            personal_id="",
+            full_name="",
+            address="",
+            city_code="223",
+            phone="0600000000",
+            email="email@example.com",
+        )
+
+        storage = Storage()
+        storage.set_last_declaration_date(date(2023, 7, 10))
+
+        sync_op = SyncOperation(incomplete_config)
+
+        with pytest.raises(ValueError, match="Missing personal data in configuration"):
+            sync_op.execute()
+
+        # Sync should fail before any fetching/generation and keep sync cursor unchanged.
+        mock_get_op_cls.return_value.execute.assert_not_called()
         assert storage.get_last_declaration_date() == date(2023, 7, 10)
 
     @patch("ibkr_porez.operation_sync.GetOperation")

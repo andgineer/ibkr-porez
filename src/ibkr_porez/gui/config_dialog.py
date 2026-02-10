@@ -41,12 +41,6 @@ class ConfigDialog(QDialog):
         self.data_dir = QLineEdit(config.data_dir or "")
         self.output_folder = QLineEdit(config.output_folder or "")
 
-        self.ibkr_token.setPlaceholderText("Paste Flex Web Service token")
-        self.ibkr_query_id.setPlaceholderText("Paste Flex Query ID")
-        self.personal_id.setPlaceholderText("JMBG")
-        self.city_code.setPlaceholderText("223")
-        self.phone.setPlaceholderText("0600000000")
-        self.email.setPlaceholderText("email@example.com")
         self.data_dir.setPlaceholderText("Default app data directory if empty")
         self.output_folder.setPlaceholderText("Downloads if empty")
 
@@ -70,7 +64,7 @@ class ConfigDialog(QDialog):
     def _build_taxpayer_group(self) -> QGroupBox:
         group = QGroupBox("Personal Taxpayer Data")
         form = QFormLayout(group)
-        form.addRow("Personal ID (JMBG)", self.personal_id)
+        form.addRow("Personal ID (JMBG / EBS)", self.personal_id)
         form.addRow("Full Name", self.full_name)
         form.addRow("Address", self.address)
         form.addRow("City Code", self.city_code)

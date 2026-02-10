@@ -17,7 +17,7 @@ class SyncWorker(QObject):
             cfg = config_manager.load_config()
             if not cfg.ibkr_token or not cfg.ibkr_query_id:
                 self.failed.emit(
-                    "Missing IBKR configuration. Run `ibkr-porez config` first.",
+                    "Missing IBKR configuration. Open Config and set Flex Token and Flex Query ID.",
                 )
                 return
             operation = SyncOperation(cfg)

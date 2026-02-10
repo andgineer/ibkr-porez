@@ -19,20 +19,20 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from gui.config_dialog import ConfigDialog
-from gui.constants import (
+from ibkr_porez.config import config_manager, get_data_dir_change_warning
+from ibkr_porez.declaration_manager import DeclarationManager
+from ibkr_porez.gui.config_dialog import ConfigDialog
+from ibkr_porez.gui.constants import (
     BULK_STATUS_OPTIONS,
     FILTER_ORDER,
     INVALID_IDS_PREVIEW_COUNT,
     PROGRESS_MAX,
     ROW_STATUS_ACTIONS,
 )
-from gui.export_worker import ExportWorker
-from gui.import_dialog import ImportDialog
-from gui.styles import APP_STYLESHEET
-from gui.sync_worker import SyncWorker
-from ibkr_porez.config import config_manager, get_data_dir_change_warning
-from ibkr_porez.declaration_manager import DeclarationManager
+from ibkr_porez.gui.export_worker import ExportWorker
+from ibkr_porez.gui.import_dialog import ImportDialog
+from ibkr_porez.gui.styles import APP_STYLESHEET
+from ibkr_porez.gui.sync_worker import SyncWorker
 from ibkr_porez.models import Declaration, DeclarationStatus
 from ibkr_porez.storage import Storage
 

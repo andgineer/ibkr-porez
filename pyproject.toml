@@ -52,7 +52,6 @@ path = "src/ibkr_porez/__about__.py"
 [tool.hatch.build.targets.wheel]
 packages = [
     "src/ibkr_porez",
-    "src/gui",
 ]
 
 [tool.uv]
