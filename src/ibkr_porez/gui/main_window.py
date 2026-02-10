@@ -45,7 +45,7 @@ EMPTY_TRANSACTIONS_WARNING = (
 class MainWindow(QMainWindow):
     def __init__(self) -> None:  # noqa: PLR0915
         super().__init__()
-        self.setWindowTitle("Declarations Sync MVP")
+        self.setWindowTitle("ibkr-porez")
         self.resize(1080, 700)
 
         self.config = config_manager.load_config()

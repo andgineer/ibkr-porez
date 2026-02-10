@@ -16,8 +16,10 @@ def run() -> int:
     app.setApplicationDisplayName("ibkr-porez")
     app.setDesktopFileName("ibkr-porez")
     app.setStyle("Fusion")
-    app.setWindowIcon(create_app_icon())
+    app_icon = create_app_icon()
+    app.setWindowIcon(app_icon)
     window = MainWindow()
+    window.setWindowIcon(app_icon)
     window.show()
     return app.exec()
 

@@ -96,9 +96,10 @@ def _set_macos_process_name() -> None:
 
 def _set_windows_app_id() -> None:
     try:
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(  # type: ignore[attr-defined]
-            _WINDOWS_APP_ID,
-        )
+        set_app_id = ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID  # type: ignore[attr-defined]
+        set_app_id.argtypes = [ctypes.c_wchar_p]
+        set_app_id.restype = ctypes.c_long
+        set_app_id(_WINDOWS_APP_ID)
     except Exception:  # noqa: BLE001
         return
 
