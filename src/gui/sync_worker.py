@@ -8,7 +8,7 @@ from ibkr_porez.operation_sync import SyncOperation
 
 
 class SyncWorker(QObject):
-    finished = Signal(int)
+    finished = Signal(int, str)
     failed = Signal(str)
 
     @Slot()
@@ -22,6 +22,7 @@ class SyncWorker(QObject):
                 return
             operation = SyncOperation(cfg)
             created = operation.execute()
-            self.finished.emit(len(created))
+            output_folder = str(operation.get_output_folder()) if created else ""
+            self.finished.emit(len(created), output_folder)
         except Exception as e:  # noqa: BLE001
             self.failed.emit(get_user_friendly_error_message(e))

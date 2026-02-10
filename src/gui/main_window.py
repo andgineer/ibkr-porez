@@ -130,7 +130,7 @@ class MainWindow(QMainWindow):
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(
             [
-                "Declaration ID",
+                "ID",
                 "Type",
                 "Period",
                 "Status",
@@ -338,15 +338,22 @@ class MainWindow(QMainWindow):
         self._set_export_buttons_busy_state(None)
         self.export_active_button = None
 
+    def _show_command_success(self, message: str) -> None:
+        self.progress_label.setText(message)
+
+    def _show_command_error(self, title: str, message: str, summary: str) -> None:
+        self.progress_label.setText(summary)
+        QMessageBox.critical(self, title, message)
+
     @Slot(str)
     def on_export_finished(self, export_dir: str) -> None:
-        self.progress_label.setText(f"Declaration files saved in {export_dir}")
+        self._show_command_success(f"Declaration files saved in {export_dir}")
         self._finish_export_ui_state()
 
     @Slot(str)
     def on_export_failed(self, message: str) -> None:
         self._finish_export_ui_state()
-        QMessageBox.critical(self, "Export error", message)
+        self._show_command_error("Export error", message, "Re-export failed")
 
     @Slot()
     def on_export_thread_finished(self) -> None:
@@ -485,20 +492,24 @@ class MainWindow(QMainWindow):
 
         self.sync_thread.start()
 
-    @Slot(int)
-    def on_sync_finished(self, created_count: int) -> None:
+    @Slot(int, str)
+    def on_sync_finished(self, created_count: int, output_folder: str) -> None:
         self.reload_declarations()
         self.populate_table()
-        self.progress_label.setText(f"Sync complete, created {created_count} declaration(s)")
+        if created_count == 0:
+            self._show_command_success("Sync complete, no new declarations")
+        else:
+            self._show_command_success(
+                f"Sync complete, created {created_count} declaration(s) in {output_folder}",
+            )
         self.progress_bar.setRange(0, PROGRESS_MAX)
         self.progress_bar.setValue(PROGRESS_MAX)
 
     @Slot(str)
     def on_sync_failed(self, message: str) -> None:
-        self.progress_label.setText("Sync failed")
         self.progress_bar.setRange(0, PROGRESS_MAX)
         self.progress_bar.setValue(0)
-        QMessageBox.critical(self, "Sync error", message)
+        self._show_command_error("Sync error", message, "Sync failed")
 
     @Slot()
     def on_sync_thread_finished(self) -> None:

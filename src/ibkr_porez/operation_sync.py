@@ -66,6 +66,10 @@ class SyncOperation:
         existing_declarations = self.storage.get_declarations()
         return len(existing_declarations) + 1
 
+    def get_output_folder(self) -> Path:
+        """Get destination folder for declaration files."""
+        return self.output_dir if self.output_dir else _get_output_folder()
+
     def _generate_declaration_filename(
         self,
         declaration_id: str,
@@ -268,7 +272,7 @@ class SyncOperation:
             f.write(xml_content)
 
         # Copy to output folder
-        output_folder = self.output_dir if self.output_dir else _get_output_folder()
+        output_folder = self.get_output_folder()
         output_folder.mkdir(parents=True, exist_ok=True)
         output_path = output_folder / proper_filename
         with open(output_path, "w", encoding="utf-8") as f:

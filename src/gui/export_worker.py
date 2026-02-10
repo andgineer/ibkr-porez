@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import QObject, Signal, Slot
 
 from ibkr_porez.declaration_manager import DeclarationManager
+from ibkr_porez.error_handling import get_user_friendly_error_message
 
 
 class ExportWorker(QObject):
@@ -23,4 +24,4 @@ class ExportWorker(QObject):
             )
             self.finished.emit(str(xml_path.parent))
         except Exception as e:  # noqa: BLE001
-            self.failed.emit(str(e))
+            self.failed.emit(get_user_friendly_error_message(e))
