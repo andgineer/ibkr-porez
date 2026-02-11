@@ -79,11 +79,11 @@ class ConfigDialog(QDialog):
         form.addRow("Flex Query ID", self.ibkr_query_id)
 
         docs_label = QLabel(
-            f'<a href="{FLEX_DOCS_URL}">Open setup docs for Flex Web Service</a>',
+            f'<a href="{FLEX_DOCS_URL}">How to get Flex Token and Flex Query ID in IBKR</a>',
         )
         docs_label.setOpenExternalLinks(True)
         docs_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
-        form.addRow("Documentation", docs_label)
+        form.addRow(docs_label)
         return group
 
     def _build_app_group(self) -> QGroupBox:

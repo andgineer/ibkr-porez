@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import sys
 from datetime import date, datetime
 from pathlib import Path
 
@@ -17,6 +18,10 @@ from ibkr_porez.models import Declaration, DeclarationStatus, DeclarationType, U
 
 BASELINE_DIR = Path(__file__).parent / "resources" / "regressions"
 HAS_PYTEST_REGRESSIONS = importlib.util.find_spec("pytest_regressions") is not None
+pytestmark = pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="Qt UI tests run in CI only on Linux",
+)
 
 
 class _FakeStorage:

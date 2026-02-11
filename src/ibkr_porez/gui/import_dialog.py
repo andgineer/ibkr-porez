@@ -25,6 +25,10 @@ from ibkr_porez.operation_import import ImportType
 IMPORT_DOCS_URL = (
     "https://andgineer.github.io/ibkr-porez/ibkr/#export-full-history-for-import-command"
 )
+IMPORT_GUIDANCE_TEXT = (
+    "Import is needed for transactions older than one year to calculate stock sale income "
+    "correctly. Data within the last year is fetched by Sync."
+)
 
 
 class ImportDialog(QDialog):
@@ -70,6 +74,7 @@ class ImportDialog(QDialog):
 
         self.result_label = QLabel("")
         self.result_label.setWordWrap(True)
+        self.result_label.setText(IMPORT_GUIDANCE_TEXT)
 
         self.import_button = QPushButton("Import")
         self.close_button = QPushButton("Close")
@@ -88,7 +93,7 @@ class ImportDialog(QDialog):
     def _build_form(self) -> QFormLayout:
         docs_label = QLabel(
             f'<a href="{IMPORT_DOCS_URL}">'
-            "How to create CSV export in Interactive Brokers Portal"
+            "How to export CSV in Interactive Brokers for this import"
             "</a>",
         )
         docs_label.setOpenExternalLinks(True)
@@ -97,7 +102,7 @@ class ImportDialog(QDialog):
         form = QFormLayout()
         form.addRow("File", self._build_file_row())
         form.addRow("Type", self.import_type_combo)
-        form.addRow("Documentation", docs_label)
+        form.addRow(docs_label)
         return form
 
     def _build_buttons_row(self) -> QHBoxLayout:

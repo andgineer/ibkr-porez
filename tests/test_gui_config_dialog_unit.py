@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel
 
 import ibkr_porez.gui.config_dialog as config_dialog_module
-from ibkr_porez.gui.config_dialog import ConfigDialog
+from ibkr_porez.gui.config_dialog import FLEX_DOCS_URL, ConfigDialog
 from ibkr_porez.models import UserConfig
+
+pytestmark = pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="Qt UI tests run in CI only on Linux",
+)
 
 
 @pytest.fixture(scope="module")
@@ -90,5 +96,17 @@ def test_config_dialog_choose_directory_updates_field_when_selected(
         )
         dialog._choose_directory(dialog.output_folder, "Select Output Folder")
         assert dialog.output_folder.text() == "/keep/me"
+    finally:
+        dialog.close()
+
+
+def test_config_dialog_has_human_friendly_flex_help_link(qapp: QApplication) -> None:  # noqa: ARG001
+    dialog = ConfigDialog(UserConfig(full_name="User", address="Address"))
+    try:
+        link_labels = [
+            label for label in dialog.findChildren(QLabel) if FLEX_DOCS_URL in label.text()
+        ]
+        assert len(link_labels) == 1
+        assert "How to get Flex Token and Flex Query ID in IBKR" in link_labels[0].text()
     finally:
         dialog.close()
