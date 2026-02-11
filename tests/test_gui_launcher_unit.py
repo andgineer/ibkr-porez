@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import plistlib
+import sys
 from pathlib import Path
 
 import pytest
@@ -41,7 +42,8 @@ def test_build_macos_gui_bundle_creates_plist_and_launcher(
     assert bundle_path == tmp_path / "ibkr-porez.app"
     assert info_plist_path.exists()
     assert launcher_path.exists()
-    assert launcher_path.stat().st_mode & 0o111
+    if sys.platform != "win32":
+        assert launcher_path.stat().st_mode & 0o111
 
     with open(info_plist_path, "rb") as info_file:
         plist_data = plistlib.load(info_file)

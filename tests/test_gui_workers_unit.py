@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 import ibkr_porez.gui.export_worker as export_worker_module
 import ibkr_porez.gui.import_worker as import_worker_module
 import ibkr_porez.gui.sync_worker as sync_worker_module
@@ -32,6 +31,8 @@ def test_sync_worker_emits_error_when_ibkr_config_missing(monkeypatch) -> None:
 
 
 def test_sync_worker_emits_finished_with_output_folder(monkeypatch) -> None:
+    expected_output_folder = str(Path("/tmp/gui-output"))
+
     class FakeSyncOperation:
         def __init__(self, cfg: UserConfig) -> None:
             self.cfg = cfg
@@ -42,7 +43,7 @@ def test_sync_worker_emits_finished_with_output_folder(monkeypatch) -> None:
 
         @staticmethod
         def get_output_folder() -> Path:
-            return Path("/tmp/gui-output")
+            return Path(expected_output_folder)
 
     worker = sync_worker_module.SyncWorker()
     finished_calls: list[tuple[int, str]] = []
@@ -65,7 +66,7 @@ def test_sync_worker_emits_finished_with_output_folder(monkeypatch) -> None:
     worker.run()
 
     assert failed_messages == []
-    assert finished_calls == [(2, "/tmp/gui-output")]
+    assert finished_calls == [(2, expected_output_folder)]
 
 
 def test_sync_worker_emits_finished_with_empty_folder_when_nothing_created(monkeypatch) -> None:
@@ -192,12 +193,14 @@ def test_import_worker_emits_friendly_error_on_exception(monkeypatch, tmp_path: 
 
 
 def test_export_worker_emits_finished_with_parent_directory(monkeypatch) -> None:
+    expected_parent_dir = str(Path("/tmp/exported"))
+
     class FakeDeclarationManager:
         @staticmethod
         def export(declaration_id: str, output_dir):
             assert declaration_id == "decl-id"
             assert output_dir is None
-            return Path("/tmp/exported/decl-id.xml"), []
+            return Path(expected_parent_dir) / "decl-id.xml", []
 
     finished_paths: list[str] = []
     failed_messages: list[str] = []
@@ -209,7 +212,7 @@ def test_export_worker_emits_finished_with_parent_directory(monkeypatch) -> None
     worker.run()
 
     assert failed_messages == []
-    assert finished_paths == ["/tmp/exported"]
+    assert finished_paths == [expected_parent_dir]
 
 
 def test_export_worker_emits_friendly_error_on_exception(monkeypatch) -> None:
