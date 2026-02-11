@@ -67,6 +67,9 @@ extra:
     - name: Русский
       link: /ibkr-porez/ru/
       lang: ru
+    - name: Українська
+      link: /ibkr-porez/uk/
+      lang: uk
     - name: Srpski (Latinica)
       link: /ibkr-porez/rs/
       lang: rs

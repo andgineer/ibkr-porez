@@ -7,18 +7,13 @@ It automatically fetches your data and generates a ready-to-upload XML files wit
 
 # Quick Start
 
-1.  [Install ibkr-porez](https://andgineer.github.io/ibkr-porez/installation/)
+1. [Install ibkr-porez](https://andgineer.github.io/ibkr-porez/installation/)
 
-2.  [Configure](https://andgineer.github.io/ibkr-porez/usage/#configuration-config)
+2. Start `ibkr-porez` to use the GUI.
 
-3.  [Import Historical Data](https://andgineer.github.io/ibkr-porez/usage/#import-historical-data-import)
-(only if you have more than a year of transaction history)
+3. If you prefer, use the CLI commands instead.
 
-The application offers two modes:
-- Create a specific declaration [fetch](https://andgineer.github.io/ibkr-porez/usage/#fetch-data-fetch) -> [report](https://andgineer.github.io/ibkr-porez/usage/#generate-tax-report-report)
-- Automatically create and manage declarations [sync](https://andgineer.github.io/ibkr-porez/usage/#sync-data-and-create-declarations-sync) -> [submit / pay](https://andgineer.github.io/ibkr-porez/usage/#declaration-management)
-
-See detailes in [documentation](https://andgineer.github.io/ibkr-porez/)
+See CLI usage in the [documentation](https://andgineer.github.io/ibkr-porez/).
 
 ---
 

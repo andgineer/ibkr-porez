@@ -2,13 +2,22 @@
 Automated PPDG-3R (Capital Gains) and PP-OPO (Dividends / Interest) tax reports generation for Interactive Brokers in Serbia.
 The application automatically fetches transaction data and creates a ready-to-upload XML file, converting all prices to dinars (RSD).
 
-1. [Install ibkr-porez ↗](installation.md)
+[Install ibkr-porez ↗](installation.md)
 
-2. [Configuration (config) ↗](usage.md#config)
+Then you can use either the GUI (starts as `ibkr-porez` without arguments) or the command line interface, see below.
+The GUI and the CLI use the same database.
 
-3. [Import Historical Data (import) ↗](usage.md/#import-historical-data-import)
+> ⚠️ Do not use the command line while the GUI is running,
+> as simultaneous usage may cause database errors.
 
-    > ⚠️ **Import is only necessary if you have more than a year of transaction history in Interactive Brokers.** Flex Query allows downloading data for no more than the last year, so older data must be loaded from a [full export to CSV file ↗](ibkr.md/#export-full-history-for-import-command).
+In the GUI, configure your data (the `Config` button), then use `Sync` to refresh data and create declarations.
+
+If you prefer doing everything through the command line, continue with:
+
+- [Configuration (config) ↗](usage.md#config)
+- [Import Historical Data (import) ↗](usage.md/#import-historical-data-import)
+
+> ⚠️ **Import is only necessary if you have more than a year of transaction history in Interactive Brokers.** Flex Query allows downloading data for no more than the last year, so older data must be loaded from a [full export to CSV file ↗](ibkr.md/#export-full-history-for-import-command).
 
 === "Quickly create a specific declaration"
 

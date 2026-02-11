@@ -2,13 +2,22 @@
 Automatizovano generisanje poreske prijave PPDG-3R (Kapitalna dobit) i PP OPO (Prihodi od kapitala) za korisnike Interactive Brokers u Srbiji.
 Program automatski preuzima podatke o transakcijama i kreira spreman XML fajl za otpremanje, konvertujući sve cene u dinare (RSD).
 
-1. [Instalirajte ibkr-porez ↗](installation.md)
+[Instalirajte ibkr-porez ↗](installation.md)
 
-2. [Konfiguracija (config) ↗](usage.md#konfiguracija-config)
+Dalje možete koristiti ili grafički interfejs (pokreće se kao `ibkr-porez` bez parametara) ili komandnu liniju, vidi ispod.
+Grafički interfejs i komandna linija koriste istu bazu podataka.
 
-3. [Uvoz istorijskih podataka (import) ↗](usage.md/#uvoz-istorijskih-podataka-import)
+> ⚠️ Dok je grafički interfejs pokrenut, ne koristite komandnu liniju,
+> jer istovremeni rad može izazvati greške u bazi podataka.
 
-    > ⚠️ **Uvoz je potreban samo ako imate više od godinu dana istorije transakcija u Interactive Brokers.** Flex Query omogućava preuzimanje podataka za ne više od poslednje godine, tako da stariji podaci moraju biti učitani iz [punog izvoza u CSV fajl ↗](ibkr.md/#izvoz-pune-istorije-za-import-komandu).
+U grafičkom interfejsu podesite svoje podatke (dugme `Config`), a zatim koristite `Sync` za osvežavanje podataka i kreiranje prijava.
+
+Ako želite sve da radite kroz komandnu liniju, nastavite sa:
+
+- [Konfiguracija (config) ↗](usage.md#konfiguracija-config)
+- [Uvoz istorijskih podataka (import) ↗](usage.md/#uvoz-istorijskih-podataka-import)
+
+> ⚠️ **Uvoz je potreban samo ako imate više od godinu dana istorije transakcija u Interactive Brokers.** Flex Query omogućava preuzimanje podataka za ne više od poslednje godine, tako da stariji podaci moraju biti učitani iz [punog izvoza u CSV fajl ↗](ibkr.md/#izvoz-pune-istorije-za-import-komandu).
 
 === "Brzo kreirati određenu prijavu"
 
