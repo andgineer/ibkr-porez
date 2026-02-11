@@ -4,6 +4,7 @@ import os
 import sys
 from pathlib import Path
 
+import allure
 import pytest
 from PySide6.QtWidgets import QApplication, QLabel
 
@@ -110,3 +111,16 @@ def test_config_dialog_has_human_friendly_flex_help_link(qapp: QApplication) -> 
         assert "How to get Flex Token and Flex Query ID in IBKR" in link_labels[0].text()
     finally:
         dialog.close()
+
+
+def _apply_allure_labels() -> None:
+    labels = (allure.epic("GUI"), allure.feature("Config Dialog"))
+    for name, value in list(globals().items()):
+        if name.startswith("test_") and callable(value):
+            decorated = value
+            for label in labels:
+                decorated = label(decorated)
+            globals()[name] = decorated
+
+
+_apply_allure_labels()

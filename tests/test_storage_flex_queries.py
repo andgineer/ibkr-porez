@@ -1,9 +1,12 @@
 """Tests for raw reports delta storage and restoration."""
 
+import allure
 import re
 import xml.etree.ElementTree as ET
 import zipfile
 from datetime import date
+
+import pytest
 
 from ibkr_porez.storage_flex_queries import restore_report, save_raw_report_with_delta
 from ibkr_porez.storage import Storage
@@ -400,3 +403,16 @@ def test_restore_exact_match_no_duplicates(tmp_path, monkeypatch):
         )
     except ET.ParseError as e:
         pytest.fail(f"Restored XML is invalid: {e}")
+
+
+def _apply_allure_labels() -> None:
+    labels = (allure.epic("Storage"), allure.feature("Flex Queries"))
+    for name, value in list(globals().items()):
+        if name.startswith("test_") and callable(value):
+            decorated = value
+            for label in labels:
+                decorated = label(decorated)
+            globals()[name] = decorated
+
+
+_apply_allure_labels()

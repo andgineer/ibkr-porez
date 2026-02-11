@@ -1,5 +1,6 @@
 """E2E tests for declaration management commands (list, submit, pay, export, revert, attach)."""
 
+import allure
 import pytest
 from click.testing import CliRunner
 from datetime import date, datetime
@@ -391,3 +392,21 @@ class TestE2EAttach:
         result = runner.invoke(ibkr_porez, ["attach", "1", "nonexistent.txt", "--delete"])
         assert result.exit_code != 0
         assert "not found" in result.output.lower()
+
+
+def _apply_allure_labels() -> None:
+    labels = (allure.epic("End-to-end"), allure.feature("declaration commands"))
+    for name, value in list(globals().items()):
+        if name.startswith("test_") and callable(value):
+            decorated = value
+            for label in labels:
+                decorated = label(decorated)
+            globals()[name] = decorated
+        elif name.startswith("Test") and isinstance(value, type):
+            decorated_class = value
+            for label in labels:
+                decorated_class = label(decorated_class)
+            globals()[name] = decorated_class
+
+
+_apply_allure_labels()

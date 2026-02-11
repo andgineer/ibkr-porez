@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import allure
+
 import ibkr_porez.gui.export_worker as export_worker_module
 import ibkr_porez.gui.import_worker as import_worker_module
 import ibkr_porez.gui.sync_worker as sync_worker_module
@@ -235,3 +237,16 @@ def test_export_worker_emits_friendly_error_on_exception(monkeypatch) -> None:
     worker.run()
 
     assert failed_messages == ["Friendly export error"]
+
+
+def _apply_allure_labels() -> None:
+    labels = (allure.epic("GUI"), allure.feature("Workers"))
+    for name, value in list(globals().items()):
+        if name.startswith("test_") and callable(value):
+            decorated = value
+            for label in labels:
+                decorated = label(decorated)
+            globals()[name] = decorated
+
+
+_apply_allure_labels()

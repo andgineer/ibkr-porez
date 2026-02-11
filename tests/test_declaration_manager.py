@@ -1,5 +1,6 @@
 """Unit tests for DeclarationManager."""
 
+import allure
 import pytest
 from datetime import date, datetime
 from pathlib import Path
@@ -324,3 +325,21 @@ class TestDeclarationManagerDetach:
         """Test detaching file from non-existent declaration."""
         with pytest.raises(ValueError, match="not found"):
             manager.detach_file("nonexistent", "file.txt")
+
+
+def _apply_allure_labels() -> None:
+    labels = (allure.epic("Tax"), allure.feature("Declaration Manager"))
+    for name, value in list(globals().items()):
+        if name.startswith("test_") and callable(value):
+            decorated = value
+            for label in labels:
+                decorated = label(decorated)
+            globals()[name] = decorated
+        elif name.startswith("Test") and isinstance(value, type):
+            decorated_class = value
+            for label in labels:
+                decorated_class = label(decorated_class)
+            globals()[name] = decorated_class
+
+
+_apply_allure_labels()

@@ -4,6 +4,7 @@ import plistlib
 import sys
 from pathlib import Path
 
+import allure
 import pytest
 
 import ibkr_porez.gui.launcher as launcher_module
@@ -91,3 +92,16 @@ def test_ensure_macos_gui_bundle_falls_back_to_temp_directory(
 
     assert result == expected_bundle
     assert call_order == [first_base_dir, second_tmp_dir / "ibkr-porez"]
+
+
+def _apply_allure_labels() -> None:
+    labels = (allure.epic("GUI"), allure.feature("Launcher"))
+    for name, value in list(globals().items()):
+        if name.startswith("test_") and callable(value):
+            decorated = value
+            for label in labels:
+                decorated = label(decorated)
+            globals()[name] = decorated
+
+
+_apply_allure_labels()
