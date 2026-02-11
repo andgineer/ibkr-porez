@@ -1,0 +1,94 @@
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+import pytest
+from PySide6.QtWidgets import QApplication
+
+import ibkr_porez.gui.config_dialog as config_dialog_module
+from ibkr_porez.gui.config_dialog import ConfigDialog
+from ibkr_porez.models import UserConfig
+
+
+@pytest.fixture(scope="module")
+def qapp() -> QApplication:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(["pytest"])
+    return app
+
+
+def test_config_dialog_get_config_normalizes_and_applies_defaults(qapp: QApplication) -> None:  # noqa: ARG001
+    base_config = UserConfig(
+        full_name="Base Name",
+        address="Base Address",
+        ibkr_token="base-token",
+        ibkr_query_id="base-query",
+        personal_id="base-personal-id",
+        city_code="101",
+        phone="111",
+        email="base@example.com",
+        data_dir="/old/data",
+        output_folder="/old/output",
+    )
+
+    dialog = ConfigDialog(base_config)
+    try:
+        dialog.ibkr_token.setText("  new-token  ")
+        dialog.ibkr_query_id.setText(" new-query ")
+        dialog.personal_id.setText(" 123456 ")
+        dialog.full_name.setText(" New User ")
+        dialog.address.setText(" New Address ")
+        dialog.city_code.setText("   ")
+        dialog.phone.setText("  ")
+        dialog.email.setText("   ")
+        dialog.data_dir.setText("  ")
+        dialog.output_folder.setText(" /tmp/output ")
+
+        config = dialog.get_config()
+    finally:
+        dialog.close()
+
+    assert config.ibkr_token == "new-token"
+    assert config.ibkr_query_id == "new-query"
+    assert config.personal_id == "123456"
+    assert config.full_name == "New User"
+    assert config.address == "New Address"
+    assert config.city_code == "223"
+    assert config.phone == "0600000000"
+    assert config.email == "email@example.com"
+    assert config.data_dir is None
+    assert config.output_folder == "/tmp/output"
+
+
+def test_config_dialog_choose_directory_updates_field_when_selected(
+    qapp: QApplication,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    dialog = ConfigDialog(UserConfig(full_name="User", address="Address"))
+    chosen_dir = str(tmp_path / "selected-dir")
+
+    monkeypatch.setattr(
+        config_dialog_module.QFileDialog,
+        "getExistingDirectory",
+        lambda *_args, **_kwargs: chosen_dir,
+    )
+
+    try:
+        dialog.data_dir.setText("")
+        dialog._choose_directory(dialog.data_dir, "Select Data Directory")
+        assert dialog.data_dir.text() == chosen_dir
+
+        dialog.output_folder.setText("/keep/me")
+        monkeypatch.setattr(
+            config_dialog_module.QFileDialog,
+            "getExistingDirectory",
+            lambda *_args, **_kwargs: "",
+        )
+        dialog._choose_directory(dialog.output_folder, "Select Output Folder")
+        assert dialog.output_folder.text() == "/keep/me"
+    finally:
+        dialog.close()

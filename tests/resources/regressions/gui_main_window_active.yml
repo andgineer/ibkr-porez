@@ -1,0 +1,53 @@
+active_filter: Active
+bulk_controls_visible:
+  apply_button: false
+  status_combo: false
+filter_items:
+- Active
+- All
+- Draft
+- Submitted
+progress_bar_visible: false
+progress_label: ''
+rows:
+- actions:
+  - enabled: false
+    text: To Submitted
+  - enabled: true
+    text: To paid
+  - enabled: true
+    text: To draft
+  - enabled: true
+    text: Re-export
+  created: '2026-02-03'
+  id: 2026-02-03-ppo-aapl
+  period: '2026-01-15'
+  status: Submitted
+  type: PP OPO (AAPL)
+- actions:
+  - enabled: true
+    text: To Submitted
+  - enabled: true
+    text: To paid
+  - enabled: false
+    text: To draft
+  - enabled: true
+    text: Re-export
+  created: '2026-02-02'
+  id: 2026-q1-ppdg
+  period: 2026-01-01 to 2026-01-31
+  status: Draft
+  type: PPDG-3R
+selection_label: 0 selected
+table_headers:
+- ID
+- Type
+- Period
+- Status
+- Created
+- Actions
+top_buttons:
+- Sync
+- Import
+- Config
+window_title: ibkr-porez

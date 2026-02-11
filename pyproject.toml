@@ -66,6 +66,8 @@ dev-dependencies = [
     "pymdown-extensions>=10.15",
     "pyrefly>=0.50.0",
     "pytest-cov>=6.1.1",
+    "pytest-qt>=4.4.0",
+    "pytest-regressions>=2.8.3",
     "pytest>=8.3.5",
 ]
 
