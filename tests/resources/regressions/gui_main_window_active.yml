@@ -5,7 +5,7 @@ bulk_controls_visible:
 filter_items:
 - Active
 - All
-- Submitted
+- Pending payment
 progress_bar_visible: false
 progress_label: ''
 rows:
@@ -14,6 +14,8 @@ rows:
     text: Submit
   - enabled: true
     text: Pay
+  - enabled: true
+    text: Set tax
   - enabled: true
     text: Re-export
   created: '2026-02-03'

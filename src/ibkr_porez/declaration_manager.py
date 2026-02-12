@@ -6,7 +6,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from ibkr_porez.config import config_manager
-from ibkr_porez.models import Declaration, DeclarationStatus
+from ibkr_porez.models import Declaration, DeclarationStatus, DeclarationType
 from ibkr_porez.storage import Storage
 
 
@@ -26,10 +26,20 @@ class DeclarationManager:
             return False
         if target_status == DeclarationStatus.SUBMITTED:
             return current_status == DeclarationStatus.DRAFT
-        if target_status == DeclarationStatus.FINALIZED:
+        if target_status == DeclarationStatus.PENDING:
             return current_status in (DeclarationStatus.DRAFT, DeclarationStatus.SUBMITTED)
+        if target_status == DeclarationStatus.FINALIZED:
+            return current_status in (
+                DeclarationStatus.DRAFT,
+                DeclarationStatus.SUBMITTED,
+                DeclarationStatus.PENDING,
+            )
         if target_status == DeclarationStatus.DRAFT:
-            return current_status in (DeclarationStatus.SUBMITTED, DeclarationStatus.FINALIZED)
+            return current_status in (
+                DeclarationStatus.SUBMITTED,
+                DeclarationStatus.PENDING,
+                DeclarationStatus.FINALIZED,
+            )
         return False
 
     @staticmethod
@@ -39,7 +49,9 @@ class DeclarationManager:
 
         Missing/invalid metadata is treated as non-zero to avoid accidental auto-finalization.
         """
-        value = declaration.metadata.get("tax_due_rsd")
+        value = declaration.metadata.get("assessed_tax_due_rsd")
+        if value is None:
+            value = declaration.metadata.get("tax_due_rsd")
         if isinstance(value, Decimal):
             return value
         if value is None:
@@ -53,6 +65,17 @@ class DeclarationManager:
     def has_tax_to_pay(cls, declaration: Declaration) -> bool:
         """Return whether declaration has positive tax due."""
         return cls.tax_due_rsd(declaration) > Decimal("0")
+
+    @staticmethod
+    def has_assessed_tax(declaration: Declaration) -> bool:
+        """Return whether declaration has official assessed tax amount."""
+        value = declaration.metadata.get("assessed_tax_due_rsd")
+        if value is None:
+            return False
+        try:
+            return Decimal(str(value)) >= Decimal("0")
+        except (InvalidOperation, TypeError, ValueError):
+            return False
 
     def submit(
         self,
@@ -78,17 +101,20 @@ class DeclarationManager:
                 raise ValueError(
                     f"Declaration {declaration_id} is not in DRAFT status (current: {decl.status})",
                 )
-            target_status = (
-                DeclarationStatus.SUBMITTED
-                if self.has_tax_to_pay(decl)
-                else DeclarationStatus.FINALIZED
-            )
+            if decl.type == DeclarationType.PPDG3R:
+                target_status = DeclarationStatus.PENDING
+            else:
+                target_status = (
+                    DeclarationStatus.SUBMITTED
+                    if self.has_tax_to_pay(decl)
+                    else DeclarationStatus.FINALIZED
+                )
             self.storage.update_declaration_status(declaration_id, target_status, timestamp)
-            if target_status == DeclarationStatus.FINALIZED:
-                finalized = self.storage.get_declaration(declaration_id)
-                if finalized is not None and finalized.submitted_at is None:
-                    finalized.submitted_at = timestamp
-                    self.storage.save_declaration(finalized)
+            if target_status != DeclarationStatus.SUBMITTED:
+                updated = self.storage.get_declaration(declaration_id)
+                if updated is not None and updated.submitted_at is None:
+                    updated.submitted_at = timestamp
+                    self.storage.save_declaration(updated)
             submitted_ids.append(declaration_id)
 
         return submitted_ids
@@ -113,7 +139,11 @@ class DeclarationManager:
             decl = self.storage.get_declaration(declaration_id)
             if not decl:
                 raise ValueError(f"Declaration {declaration_id} not found")
-            if decl.status not in (DeclarationStatus.DRAFT, DeclarationStatus.SUBMITTED):
+            if decl.status not in (
+                DeclarationStatus.DRAFT,
+                DeclarationStatus.SUBMITTED,
+                DeclarationStatus.PENDING,
+            ):
                 raise ValueError(
                     f"Declaration {declaration_id} cannot be paid (current: {decl.status})",
                 )
@@ -129,6 +159,41 @@ class DeclarationManager:
             paid_ids.append(declaration_id)
 
         return paid_ids
+
+    def set_assessed_tax(
+        self,
+        declaration_id: str,
+        tax_due_rsd: Decimal,
+        mark_paid: bool = False,
+    ) -> Declaration:
+        """Set official assessed tax amount and update declaration status."""
+        decl = self.storage.get_declaration(declaration_id)
+        if not decl:
+            raise ValueError(f"Declaration {declaration_id} not found")
+        if decl.status == DeclarationStatus.DRAFT:
+            raise ValueError(f"Declaration {declaration_id} must be submitted before assessment")
+        if tax_due_rsd < Decimal("0"):
+            raise ValueError("Assessed tax cannot be negative")
+
+        timestamp = datetime.now()
+        decl.metadata["assessed_tax_due_rsd"] = tax_due_rsd
+        decl.metadata["tax_due_rsd"] = tax_due_rsd
+
+        if mark_paid:
+            decl.status = DeclarationStatus.FINALIZED
+            decl.paid_at = timestamp
+        elif tax_due_rsd > Decimal("0"):
+            decl.status = DeclarationStatus.SUBMITTED
+            decl.paid_at = None
+        else:
+            decl.status = DeclarationStatus.FINALIZED
+            decl.paid_at = None
+
+        if decl.submitted_at is None:
+            decl.submitted_at = timestamp
+
+        self.storage.save_declaration(decl)
+        return decl
 
     def export(
         self,
@@ -205,7 +270,11 @@ class DeclarationManager:
 
             # Validate transition
             if target_status == DeclarationStatus.DRAFT:
-                if decl.status not in (DeclarationStatus.SUBMITTED, DeclarationStatus.FINALIZED):
+                if decl.status not in (
+                    DeclarationStatus.SUBMITTED,
+                    DeclarationStatus.PENDING,
+                    DeclarationStatus.FINALIZED,
+                ):
                     raise ValueError(
                         f"Cannot revert declaration {declaration_id} "
                         f"from {decl.status} to {target_status}",

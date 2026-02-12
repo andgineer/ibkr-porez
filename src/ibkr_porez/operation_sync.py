@@ -189,8 +189,8 @@ class SyncOperation:
             "gross_income_rsd": total_positive_gain_rsd,
             "tax_base_rsd": tax_base_rsd,
             "calculated_tax_rsd": calculated_tax_rsd,
+            "estimated_tax_rsd": calculated_tax_rsd,
             "foreign_tax_paid_rsd": Decimal("0.00"),
-            "tax_due_rsd": calculated_tax_rsd,
         }
 
     def _extract_income_metadata(

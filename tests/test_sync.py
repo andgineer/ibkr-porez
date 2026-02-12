@@ -116,8 +116,9 @@ class TestSyncOperation:
         assert declarations[0].metadata.get("gross_income_rsd") == Decimal("1000.00")
         assert declarations[0].metadata.get("tax_base_rsd") == Decimal("1000.00")
         assert declarations[0].metadata.get("calculated_tax_rsd") == Decimal("150.00")
+        assert declarations[0].metadata.get("estimated_tax_rsd") == Decimal("150.00")
         assert declarations[0].metadata.get("foreign_tax_paid_rsd") == Decimal("0.00")
-        assert declarations[0].metadata.get("tax_due_rsd") == Decimal("150.00")
+        assert "tax_due_rsd" not in declarations[0].metadata
 
         # Verify file was created
         assert declarations[0].file_path is not None

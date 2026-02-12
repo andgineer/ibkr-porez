@@ -68,7 +68,7 @@ class TestDeclarationManagerSubmit:
 
         s = Storage()
         decl = s.get_declaration("test-1")
-        assert decl.status == DeclarationStatus.SUBMITTED
+        assert decl.status == DeclarationStatus.PENDING
         assert decl.submitted_at is not None
 
     def test_submit_multiple_declarations(self, manager, mock_user_data_dir):
@@ -96,7 +96,7 @@ class TestDeclarationManagerSubmit:
 
         for id in ids:
             decl = s.get_declaration(id)
-            assert decl.status == DeclarationStatus.SUBMITTED
+            assert decl.status == DeclarationStatus.PENDING
 
     def test_submit_nonexistent(self, manager):
         """Test submitting non-existent declaration."""
@@ -151,8 +151,9 @@ class TestDeclarationManagerPay:
         assert decl.paid_at is not None
 
     def test_pay_submitted_declaration(self, manager, sample_declaration):
-        """Test paying a submitted declaration."""
+        """Test paying a pending declaration after assessment is set."""
         manager.submit(["test-1"])
+        manager.set_assessed_tax("test-1", Decimal("100.00"), mark_paid=False)
 
         ids = manager.pay(["test-1"])
         assert ids == ["test-1"]
@@ -160,6 +161,17 @@ class TestDeclarationManagerPay:
         s = Storage()
         decl = s.get_declaration("test-1")
         assert decl.status == DeclarationStatus.FINALIZED
+
+    def test_pay_pending_without_assessed_tax_succeeds(self, manager, sample_declaration):
+        manager.submit(["test-1"])
+        ids = manager.pay(["test-1"])
+
+        assert ids == ["test-1"]
+        s = Storage()
+        decl = s.get_declaration("test-1")
+        assert decl is not None
+        assert decl.status == DeclarationStatus.FINALIZED
+        assert decl.paid_at is not None
 
     def test_pay_empty_list(self, manager):
         """Test paying empty list."""
@@ -191,6 +203,45 @@ class TestDeclarationManagerPay:
         """Test paying non-existent declaration."""
         with pytest.raises(ValueError, match="not found"):
             manager.pay(["nonexistent"])
+
+
+class TestDeclarationManagerAssess:
+    def test_assess_requires_non_draft_status(self, manager, sample_declaration):
+        with pytest.raises(ValueError, match="must be submitted"):
+            manager.set_assessed_tax("test-1", Decimal("100.00"), mark_paid=False)
+
+    def test_assess_positive_moves_to_submitted(self, manager, sample_declaration):
+        manager.submit(["test-1"])
+
+        updated = manager.set_assessed_tax("test-1", Decimal("120.50"), mark_paid=False)
+
+        assert updated.status == DeclarationStatus.SUBMITTED
+        assert updated.paid_at is None
+        assert updated.metadata["assessed_tax_due_rsd"] == Decimal("120.50")
+        assert updated.metadata["tax_due_rsd"] == Decimal("120.50")
+
+    def test_assess_zero_moves_to_finalized(self, manager, sample_declaration):
+        manager.submit(["test-1"])
+
+        updated = manager.set_assessed_tax("test-1", Decimal("0.00"), mark_paid=False)
+
+        assert updated.status == DeclarationStatus.FINALIZED
+        assert updated.paid_at is None
+        assert updated.metadata["assessed_tax_due_rsd"] == Decimal("0.00")
+
+    def test_assess_mark_paid_keeps_finalized(self, manager, sample_declaration):
+        manager.submit(["test-1"])
+
+        updated = manager.set_assessed_tax("test-1", Decimal("65.00"), mark_paid=True)
+
+        assert updated.status == DeclarationStatus.FINALIZED
+        assert updated.paid_at is not None
+        assert updated.metadata["assessed_tax_due_rsd"] == Decimal("65.00")
+
+    def test_assess_non_negative_validation(self, manager, sample_declaration):
+        manager.submit(["test-1"])
+        with pytest.raises(ValueError, match="cannot be negative"):
+            manager.set_assessed_tax("test-1", Decimal("-1.00"), mark_paid=False)
 
 
 class TestDeclarationManagerExport:
@@ -241,8 +292,8 @@ class TestDeclarationManagerRevert:
         assert decl.status == DeclarationStatus.DRAFT
         assert decl.paid_at is None
 
-    def test_revert_submitted_to_draft(self, manager, sample_declaration):
-        """Test reverting submitted declaration to draft."""
+    def test_revert_awaiting_assessment_to_draft(self, manager, sample_declaration):
+        """Test reverting pending declaration to draft."""
         manager.submit(["test-1"])
 
         manager.revert(["test-1"], DeclarationStatus.DRAFT)

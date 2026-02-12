@@ -67,7 +67,7 @@ Zatim možete [Upravljati kreiranim prijavama](#_2).
 > 💡 Ako ste pokrenuli `sync` prvi put i ona je kreirala prijave koje ste već podali pre početka korišćenja aplikacije,
 > možete brzo da ih sve označite kao plaćene i uklonite iz izlaza [list](#spisak-prijava-list):
 > ```bash
-> ibkr-porez pay
+> ibkr-porez list --status submitted -1 | xargs -I {} ibkr-porez pay {}
 > ```
 
 ## Prikaz statistike (`stat`)
@@ -111,7 +111,8 @@ Nakon kreiranja prijava putem komande [sync](#sinhronizacija-podataka-i-kreiranj
 Prikazuje spisak svih prijava sa mogućnošću filtriranja po statusu.
 
 ```bash
-# Prikaži samo nacrte (podrazumevano)
+# Prikaži aktivne prijave (podrazumevano):
+# draft + submitted + pending
 ibkr-porez list
 
 # Prikaži sve prijave
@@ -120,7 +121,8 @@ ibkr-porez list --all
 # Filter po statusu
 ibkr-porez list --status draft
 ibkr-porez list --status submitted
-ibkr-porez list --status paid
+ibkr-porez list --status pending
+ibkr-porez list --status finalized
 
 # Samo ID prijava (za korišćenje u cevima)
 ibkr-porez list --ids-only
@@ -145,7 +147,7 @@ Prikazuje:
 
 *   Tip prijave (PPDG-3R ili PP OPO)
 *   Period prijave
-*   Status (nacrt, podneta, plaćena)
+*   Status (nacrt, podneta, na čekanju, završena)
 *   Detalje transakcija i proračuna
 *   Priložene fajlove
 
@@ -156,14 +158,43 @@ ibkr-porez submit <declaration_id>
 
 Označava prijavu kao podnetu (uvezenu na poreski portal).
 
+Ponašanje zavisi od tipa prijave:
+
+*   `PPDG-3R` nakon `submit` prelazi u status `pending` (čeka rešenje poreske uprave o iznosu poreza).
+*   `PP OPO` nakon `submit`:
+    *   prelazi u `submitted` ako postoji porez za plaćanje;
+    *   prelazi direktno u `finalized` ako je porez `0`.
+
 ### Plaćanje prijave (`pay`)
 ```bash
 ibkr-porez pay <declaration_id>
+ibkr-porez pay <declaration_id> --tax 1234.56
 ```
 
-Označava prijavu kao plaćenu.
+Označava prijavu kao završenu (`finalized`) i čuva datum plaćanja.
+
+Opcija `--tax` omogućava da odmah zabeležite iznos poreza tokom plaćanja, bez posebnog koraka `assess`.
 
 Nakon toga će nestati sa spiska prikazanog [list](#spisak-prijava-list) (bez `--all`)
+
+### Evidencija iznosa po rešenju poreske (`assess`)
+```bash
+# Zabeleži zvaničan iznos poreza iz rešenja
+ibkr-porez assess <declaration_id> --tax-due 1234.56
+
+# Zabeleži iznos i odmah označi kao već plaćeno
+ibkr-porez assess <declaration_id> --tax-due 1234.56 --paid
+```
+
+Komanda je najvažnija za `PPDG-3R`, gde iznos poreza određuje poreska uprava nakon podnošenja prijave.
+
+Šta komanda radi:
+
+*   upisuje zvaničan iznos poreza u metapodatke prijave;
+*   sa `--paid` odmah prebacuje prijavu u `finalized`;
+*   bez `--paid`:
+    *   ako je iznos veći od nule, prijava ostaje aktivna (`submitted`) za naknadno plaćanje;
+    *   ako je iznos nula, prijava prelazi u `finalized`.
 
 ### Izvoz prijave (`export`)
 ```bash

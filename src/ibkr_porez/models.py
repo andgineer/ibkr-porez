@@ -126,6 +126,7 @@ class DeclarationStatus(StrEnum):
 
     DRAFT = "draft"  # Created but not submitted
     SUBMITTED = "submitted"  # Submitted to tax portal
+    PENDING = "pending"  # Waiting tax authority assessment
     FINALIZED = "finalized"  # Finalized
 
 

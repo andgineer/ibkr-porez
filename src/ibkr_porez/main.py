@@ -3,6 +3,7 @@
 import logging
 import sys
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
@@ -87,6 +88,16 @@ def _validate_lookback_option(ctx, param, value):  # noqa: ARG001
     if value <= 0:
         raise click.BadParameter("must be a positive integer")
     return value
+
+
+def _parse_non_negative_decimal(value: str, option_name: str) -> Decimal:
+    try:
+        parsed = Decimal(value)
+    except (InvalidOperation, TypeError, ValueError) as error:
+        raise click.BadParameter(f"{option_name} must be a decimal number") from error
+    if parsed < Decimal("0"):
+        raise click.BadParameter(f"{option_name} must be non-negative")
+    return parsed.quantize(Decimal("0.01"))
 
 
 @click.group(
@@ -538,7 +549,10 @@ def export_flex(date: str, output_path: str | None):
 @click.option("--all", is_flag=True, help="Show all declarations including submitted/paid")
 @click.option(
     "--status",
-    type=click.Choice(["draft", "submitted", "finalized"], case_sensitive=False),
+    type=click.Choice(
+        ["draft", "submitted", "pending", "finalized"],
+        case_sensitive=False,
+    ),
     help="Filter by status",
 )
 @click.option(
@@ -550,7 +564,7 @@ def export_flex(date: str, output_path: str | None):
 )
 @verbose_option
 def list_declarations(all: bool, status: str | None, ids_only: bool):
-    """List declarations (default: active = draft + submitted)."""
+    """List declarations (default: active = draft + submitted + pending)."""
     controller = ListDeclarations()
     status_enum = DeclarationStatus(status.lower()) if status else None
     result = controller.generate(show_all=all, status=status_enum, ids_only=ids_only)
@@ -583,6 +597,10 @@ def submit(declaration_id: str):
         updated = manager.storage.get_declaration(declaration_id)
         if updated is not None and updated.status == DeclarationStatus.FINALIZED:
             console.print(f"[green]Finalized: {declaration_id} (no tax to pay)[/green]")
+        elif updated is not None and updated.status == DeclarationStatus.PENDING:
+            console.print(
+                f"[green]Submitted: {declaration_id} (pending tax authority assessment)[/green]",
+            )
         else:
             console.print(f"[green]Submitted: {declaration_id}[/green]")
     except ValueError as e:
@@ -594,8 +612,14 @@ def submit(declaration_id: str):
     epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/#pay-declaration-pay",
 )
 @click.argument("declaration_id", type=str)
+@click.option(
+    "--tax",
+    "tax_str",
+    type=str,
+    help="Record tax due amount (RSD) while marking declaration as paid",
+)
 @verbose_option
-def pay(declaration_id: str):
+def pay(declaration_id: str, tax_str: str | None):
     """Mark declaration as paid.
 
     Example: ibkr-porez pay 1
@@ -604,8 +628,64 @@ def pay(declaration_id: str):
     manager = DeclarationManager()
 
     try:
-        manager.pay([declaration_id])
-        console.print(f"[green]Paid: {declaration_id}[/green]")
+        if tax_str is None:
+            manager.pay([declaration_id])
+            console.print(f"[green]Paid: {declaration_id}[/green]")
+        else:
+            tax_due_rsd = _parse_non_negative_decimal(tax_str, "--tax")
+            manager.set_assessed_tax(
+                declaration_id=declaration_id,
+                tax_due_rsd=tax_due_rsd,
+                mark_paid=True,
+            )
+            console.print(f"[green]Paid: {declaration_id} ({tax_due_rsd} RSD recorded)[/green]")
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise click.ClickException(str(e)) from e
+
+
+@ibkr_porez.command(
+    epilog="\nDocumentation: https://andgineer.github.io/ibkr-porez/usage/",
+)
+@click.argument("declaration_id", type=str)
+@click.option(
+    "-t",
+    "--tax-due",
+    "tax_due_str",
+    type=str,
+    required=True,
+    help="Official tax due in RSD from tax authority assessment",
+)
+@click.option(
+    "--paid",
+    "mark_paid",
+    is_flag=True,
+    help="Mark declaration as already paid and finalize it",
+)
+@verbose_option
+def assess(declaration_id: str, tax_due_str: str, mark_paid: bool):
+    """Set official assessed tax amount for a declaration."""
+    manager = DeclarationManager()
+    tax_due_rsd = _parse_non_negative_decimal(tax_due_str, "--tax-due")
+
+    try:
+        updated = manager.set_assessed_tax(
+            declaration_id=declaration_id,
+            tax_due_rsd=tax_due_rsd,
+            mark_paid=mark_paid,
+        )
+        if mark_paid:
+            console.print(
+                f"[green]Assessment saved and paid: {declaration_id} ({tax_due_rsd} RSD)[/green]",
+            )
+        elif updated.status == DeclarationStatus.FINALIZED:
+            console.print(
+                f"[green]Assessment saved: {declaration_id} (no tax to pay)[/green]",
+            )
+        else:
+            console.print(
+                f"[green]Assessment saved: {declaration_id} ({tax_due_rsd} RSD to pay)[/green]",
+            )
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
         raise click.ClickException(str(e)) from e

@@ -115,7 +115,7 @@ def test_qtbot_renders_main_window(qtbot, patched_main_window: MainWindow) -> No
 def test_qtbot_can_change_filter(qtbot, patched_main_window: MainWindow) -> None:
     qtbot.addWidget(patched_main_window)
     patched_main_window.show()
-    patched_main_window.filter_combo.setCurrentText("Submitted")
+    patched_main_window.filter_combo.setCurrentText("Pending payment")
     qtbot.waitUntil(lambda: patched_main_window.table.rowCount() == 1)
 
     assert patched_main_window.table.item(0, 0).text() == "2026-02-03-ppo-aapl"
@@ -187,4 +187,5 @@ def test_qtbot_finalized_row_has_revert_action(qtbot, patched_main_window: MainW
     assert "Submit" not in button_by_text
     assert "Pay" not in button_by_text
     assert "Revert" in button_by_text
+    assert "Set tax" in button_by_text
     assert button_by_text["Revert"].isEnabled()

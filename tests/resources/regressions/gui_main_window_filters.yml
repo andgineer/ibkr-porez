@@ -9,7 +9,7 @@ All:
   - 2026-q1-ppdg
   - 2026-01-ppdg-finalized
   row_count: 3
-Submitted:
+Pending payment:
   ids:
   - 2026-02-03-ppo-aapl
   row_count: 1

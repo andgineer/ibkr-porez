@@ -29,22 +29,24 @@ class TestGuiMainWindowUnit:
             _declaration("d1", DeclarationStatus.DRAFT),
             _declaration("d2", DeclarationStatus.SUBMITTED),
             _declaration("d3", DeclarationStatus.FINALIZED),
+            _declaration("d4", DeclarationStatus.PENDING),
         ]
 
         window.status_filter = "Active"
-        assert window._visible_declaration_indices() == [0, 1]
+        assert window._visible_declaration_indices() == [0, 1, 3]
 
         window.status_filter = "All"
-        assert window._visible_declaration_indices() == [0, 1, 2]
+        assert window._visible_declaration_indices() == [0, 1, 2, 3]
 
-        window.status_filter = "Submitted"
-        assert window._visible_declaration_indices() == [1]
+        window.status_filter = "Pending payment"
+        assert window._visible_declaration_indices() == [1, 3]
 
     @pytest.mark.parametrize(
         ("declaration_status", "target_status", "expected_method"),
         [
             (DeclarationStatus.DRAFT, "Submitted", "submit"),
             (DeclarationStatus.DRAFT, "Finalized", "pay"),
+            (DeclarationStatus.PENDING, "Finalized", "pay"),
             (DeclarationStatus.SUBMITTED, "Draft", "revert"),
         ],
     )
@@ -59,6 +61,10 @@ class TestGuiMainWindowUnit:
         class FakeManager:
             @staticmethod
             def has_tax_to_pay(_declaration: Declaration) -> bool:
+                return True
+
+            @staticmethod
+            def has_assessed_tax(_declaration: Declaration) -> bool:
                 return True
 
             def submit(self, ids: list[str]) -> None:

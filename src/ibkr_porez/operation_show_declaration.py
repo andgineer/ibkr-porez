@@ -71,7 +71,9 @@ def show_declaration(declaration_id: str, console: Console) -> None:  # noqa: C9
             "gross_income_rsd",
             "tax_base_rsd",
             "calculated_tax_rsd",
+            "estimated_tax_rsd",
             "foreign_tax_paid_rsd",
+            "assessed_tax_due_rsd",
             "tax_due_rsd",
         ]
         ordered_keys = [key for key in preferred_order if key in declaration.metadata]

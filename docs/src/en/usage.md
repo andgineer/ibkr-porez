@@ -67,7 +67,7 @@ You can then [Manage created declarations](#declaration-management).
 > 💡 If you ran `sync` for the first time and it created declarations that you already submitted before starting to use the application,
 > you can quickly mark them all as paid and remove them from [list](#list-declarations-list) output:
 > ```bash
-> ibkr-porez pay
+> ibkr-porez list --status submitted -1 | xargs -I {} ibkr-porez pay {}
 > ```
 
 ## View Statistics (`stat`)
@@ -111,7 +111,8 @@ After creating declarations through the [sync](#sync-data-and-create-declaration
 Shows a list of all declarations with the ability to filter by status.
 
 ```bash
-# Show only drafts (default)
+# Show active declarations (default):
+# draft + submitted + pending
 ibkr-porez list
 
 # Show all declarations
@@ -120,7 +121,8 @@ ibkr-porez list --all
 # Filter by status
 ibkr-porez list --status draft
 ibkr-porez list --status submitted
-ibkr-porez list --status paid
+ibkr-porez list --status pending
+ibkr-porez list --status finalized
 
 # Only declaration IDs (for use in pipes)
 ibkr-porez list --ids-only
@@ -145,7 +147,7 @@ Displays:
 
 *   Declaration type (PPDG-3R or PP OPO)
 *   Declaration period
-*   Status (draft, submitted, paid)
+*   Status (draft, submitted, pending, finalized)
 *   Transaction details and calculations
 *   Attached files
 
@@ -156,14 +158,43 @@ ibkr-porez submit <declaration_id>
 
 Marks the declaration as submitted (imported to the tax portal).
 
+Behavior depends on declaration type:
+
+*   `PPDG-3R` moves to `pending` after `submit` (waiting for tax authority assessment).
+*   `PP OPO` after `submit`:
+    *   moves to `submitted` if tax is due;
+    *   moves directly to `finalized` if tax due is `0`.
+
 ### Pay Declaration (`pay`)
 ```bash
 ibkr-porez pay <declaration_id>
+ibkr-porez pay <declaration_id> --tax 1234.56
 ```
 
-Marks the declaration as paid.
+Marks the declaration as finalized and stores payment date.
+
+Option `--tax` lets you record tax amount during payment, without a separate `assess` step.
 
 After this, it will disappear from the list shown by [list](#list-declarations-list) (without `--all`)
+
+### Record Assessed Tax (`assess`)
+```bash
+# Record official tax amount from the tax authority
+ibkr-porez assess <declaration_id> --tax-due 1234.56
+
+# Record amount and immediately mark as already paid
+ibkr-porez assess <declaration_id> --tax-due 1234.56 --paid
+```
+
+This command is mainly for `PPDG-3R`, where tax amount is determined by the tax authority after submission.
+
+What it does:
+
+*   stores official tax amount in declaration metadata;
+*   with `--paid`, immediately moves declaration to `finalized`;
+*   without `--paid`:
+    *   if amount is greater than zero, keeps declaration active (`submitted`) for later payment;
+    *   if amount is zero, moves declaration to `finalized`.
 
 ### Export Declaration (`export`)
 ```bash

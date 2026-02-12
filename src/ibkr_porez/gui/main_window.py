@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
+
 from PySide6.QtCore import QItemSelectionModel, QThread, Slot
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
@@ -23,6 +25,7 @@ from PySide6.QtWidgets import (
 
 from ibkr_porez.config import config_manager, get_data_dir_change_warning
 from ibkr_porez.declaration_manager import DeclarationManager
+from ibkr_porez.gui.assessment_dialog import AssessmentDialog
 from ibkr_porez.gui.config_dialog import ConfigDialog
 from ibkr_porez.gui.constants import (
     BULK_STATUS_OPTIONS,
@@ -193,7 +196,7 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _status_label(status: DeclarationStatus) -> str:
-        return status.value.capitalize()
+        return status.value.replace("-", " ").replace("_", " ").title()
 
     @staticmethod
     def _status_from_label(label: str) -> DeclarationStatus:
@@ -214,6 +217,18 @@ class MainWindow(QMainWindow):
     ) -> bool:
         return DeclarationManager.is_transition_allowed(current_status, target_status)
 
+    @staticmethod
+    def _tax_due_from_metadata(declaration: Declaration) -> Decimal | None:
+        for key in ("assessed_tax_due_rsd", "tax_due_rsd"):
+            value = declaration.metadata.get(key)
+            if value is None:
+                continue
+            try:
+                return Decimal(str(value)).quantize(Decimal("0.01"))
+            except (InvalidOperation, TypeError, ValueError):
+                continue
+        return None
+
     def _visible_declaration_indices(self) -> list[int]:
         if self.status_filter == "All":
             return list(range(len(self.declarations)))
@@ -221,7 +236,18 @@ class MainWindow(QMainWindow):
             return [
                 index
                 for index, declaration in enumerate(self.declarations)
-                if declaration.status in {DeclarationStatus.DRAFT, DeclarationStatus.SUBMITTED}
+                if declaration.status
+                in {
+                    DeclarationStatus.DRAFT,
+                    DeclarationStatus.SUBMITTED,
+                    DeclarationStatus.PENDING,
+                }
+            ]
+        if self.status_filter == "Pending payment":
+            return [
+                index
+                for index, declaration in enumerate(self.declarations)
+                if declaration.status in {DeclarationStatus.SUBMITTED, DeclarationStatus.PENDING}
             ]
         status_enum = self._status_from_label(self.status_filter)
         return [
@@ -304,6 +330,16 @@ class MainWindow(QMainWindow):
             )
             layout.addWidget(action_button)
 
+        if current_status != DeclarationStatus.DRAFT:
+            assess_button = QToolButton()
+            assess_button.setObjectName("statusActionButton")
+            assess_button.setText("Set tax")
+            assess_button.setToolTip("Set official assessed tax amount")
+            assess_button.clicked.connect(
+                lambda _checked=False, row=source_row: self.open_assessment_dialog(row),
+            )
+            layout.addWidget(assess_button)
+
         export_button = QToolButton()
         export_button.setObjectName("exportActionButton")
         export_button.setText("Re-export")
@@ -330,6 +366,43 @@ class MainWindow(QMainWindow):
             self.populate_table(reselect_declaration_ids=[declaration_id])
         except ValueError as e:
             QMessageBox.warning(self, "Status change failed", str(e))
+
+    def open_assessment_dialog(self, source_row: int) -> None:
+        if source_row < 0 or source_row >= len(self.declarations):
+            return
+        declaration = self.declarations[source_row]
+        dialog = AssessmentDialog(
+            declaration_id=declaration.declaration_id,
+            initial_tax_due_rsd=self._tax_due_from_metadata(declaration),
+            parent=self,
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted or dialog.tax_due_rsd is None:
+            return
+
+        try:
+            updated = self.declaration_manager.set_assessed_tax(
+                declaration_id=declaration.declaration_id,
+                tax_due_rsd=dialog.tax_due_rsd,
+                mark_paid=dialog.mark_paid,
+            )
+            self.reload_declarations()
+            self.populate_table(reselect_declaration_ids=[declaration.declaration_id])
+            if dialog.mark_paid:
+                self._show_command_success(
+                    f"Assessment saved and paid: {declaration.declaration_id} "
+                    f"({dialog.tax_due_rsd} RSD)",
+                )
+            elif updated.status == DeclarationStatus.FINALIZED:
+                self._show_command_success(
+                    f"Assessment saved: {declaration.declaration_id} (no tax to pay)",
+                )
+            else:
+                self._show_command_success(
+                    f"Assessment saved: {declaration.declaration_id} "
+                    f"({dialog.tax_due_rsd} RSD to pay)",
+                )
+        except ValueError as e:
+            self._show_command_error("Assessment error", str(e), "Assessment update failed")
 
     def re_export_declaration(self, source_row: int, button: QToolButton | None = None) -> None:
         if self.export_thread is not None and self.export_thread.isRunning():

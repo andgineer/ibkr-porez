@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-FILTER_ORDER = ("Active", "All", "Submitted")
+FILTER_ORDER = ("Active", "All", "Pending payment")
 ROW_STATUS_ACTIONS = (
     ("Submit", "Submitted"),
     ("Pay", "Finalized"),

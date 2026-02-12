@@ -104,7 +104,21 @@ def setup_declarations(mock_user_data_dir):
 
 class TestE2EList:
     def test_list_default_shows_active(self, runner, setup_declarations, mock_user_data_dir):
-        """Test that list command shows active (DRAFT + SUBMITTED) by default."""
+        """Test that list command shows active declarations by default."""
+        awaiting_declaration = Declaration(
+            declaration_id="4",
+            type=DeclarationType.PPDG3R,
+            status=DeclarationStatus.PENDING,
+            period_start=date(2024, 2, 1),
+            period_end=date(2024, 2, 29),
+            created_at=datetime(2024, 2, 29, 10, 0),
+            submitted_at=datetime(2024, 3, 1, 9, 0),
+            file_path=str(setup_declarations.declarations_dir / "4-ppdg3r-2024-H1.xml"),
+            xml_content="<xml>test4</xml>",
+            report_data=[],
+        )
+        setup_declarations.save_declaration(awaiting_declaration)
+
         mock_config = UserConfig(
             full_name="Test", address="Test", data_dir=None, output_folder=None
         )
@@ -116,6 +130,7 @@ class TestE2EList:
                     assert "│ 1  │" in result.output
                     assert "│ 2  │" in result.output
                     assert "│ 3  │" in result.output  # Submitted is active by default
+                    assert "│ 4  │" in result.output  # Awaiting assessment is active by default
 
     def test_list_all_shows_all(self, runner, setup_declarations, mock_user_data_dir):
         """Test that list --all shows all declarations."""
@@ -213,10 +228,10 @@ class TestE2ESubmit:
         """Test submitting a single declaration."""
         result = runner.invoke(ibkr_porez, ["submit", "1"])
         assert result.exit_code == 0
-        assert "Submitted: 1" in result.output
+        assert "Submitted: 1 (pending tax authority assessment)" in result.output
 
         decl = setup_declarations.get_declaration("1")
-        assert decl.status == DeclarationStatus.SUBMITTED
+        assert decl.status == DeclarationStatus.PENDING
         assert decl.submitted_at is not None
 
     def test_submit_nonexistent(self, runner, setup_declarations):
@@ -279,6 +294,65 @@ class TestE2EPay:
 
         decl = setup_declarations.get_declaration("3")
         assert decl.status == DeclarationStatus.FINALIZED
+
+    def test_pay_pending_without_assessed_tax_succeeds(self, runner, setup_declarations):
+        runner.invoke(ibkr_porez, ["submit", "1"])
+        result = runner.invoke(ibkr_porez, ["pay", "1"])
+
+        assert result.exit_code == 0
+        assert "Paid: 1" in result.output
+
+        decl = setup_declarations.get_declaration("1")
+        assert decl.status == DeclarationStatus.FINALIZED
+        assert decl.paid_at is not None
+
+    def test_pay_with_tax_records_amount(self, runner, setup_declarations):
+        result = runner.invoke(ibkr_porez, ["pay", "3", "--tax", "99.90"])
+
+        assert result.exit_code == 0
+        assert "Paid: 3 (99.90 RSD recorded)" in result.output
+
+        decl = setup_declarations.get_declaration("3")
+        assert decl.status == DeclarationStatus.FINALIZED
+        assert decl.paid_at is not None
+        assert Decimal(str(decl.metadata["assessed_tax_due_rsd"])) == Decimal("99.90")
+        assert Decimal(str(decl.metadata["tax_due_rsd"])) == Decimal("99.90")
+
+
+class TestE2EAssess:
+    def test_assess_sets_tax_and_keeps_active(self, runner, setup_declarations):
+        result = runner.invoke(ibkr_porez, ["assess", "3", "--tax-due", "100.50"])
+        assert result.exit_code == 0
+        assert "Assessment saved: 3 (100.50 RSD to pay)" in result.output
+
+        decl = setup_declarations.get_declaration("3")
+        assert decl.status == DeclarationStatus.SUBMITTED
+        assert Decimal(str(decl.metadata["assessed_tax_due_rsd"])) == Decimal("100.50")
+        assert Decimal(str(decl.metadata["tax_due_rsd"])) == Decimal("100.50")
+        assert decl.paid_at is None
+
+    def test_assess_zero_finalizes_without_payment_mark(self, runner, setup_declarations):
+        result = runner.invoke(ibkr_porez, ["assess", "3", "--tax-due", "0"])
+        assert result.exit_code == 0
+        assert "Assessment saved: 3 (no tax to pay)" in result.output
+
+        decl = setup_declarations.get_declaration("3")
+        assert decl.status == DeclarationStatus.FINALIZED
+        assert decl.paid_at is None
+
+    def test_assess_with_paid_marks_finalized(self, runner, setup_declarations):
+        result = runner.invoke(ibkr_porez, ["assess", "3", "--tax-due", "75", "--paid"])
+        assert result.exit_code == 0
+        assert "Assessment saved and paid: 3 (75.00 RSD)" in result.output
+
+        decl = setup_declarations.get_declaration("3")
+        assert decl.status == DeclarationStatus.FINALIZED
+        assert decl.paid_at is not None
+
+    def test_assess_draft_fails(self, runner, setup_declarations):
+        result = runner.invoke(ibkr_porez, ["assess", "1", "--tax-due", "10"])
+        assert result.exit_code != 0
+        assert "must be submitted before assessment" in result.output
 
 
 class TestE2EExport:
@@ -345,6 +419,18 @@ class TestE2ERevert:
         assert decl.status == DeclarationStatus.DRAFT
         assert decl.paid_at is None
 
+    def test_revert_awaiting_assessment_to_draft(self, runner, setup_declarations):
+        """Test reverting pending declaration to draft."""
+        runner.invoke(ibkr_porez, ["submit", "1"])
+
+        # Then revert
+        result = runner.invoke(ibkr_porez, ["revert", "1", "--to", "draft"])
+        assert result.exit_code == 0
+
+        decl = setup_declarations.get_declaration("1")
+        assert decl.status == DeclarationStatus.DRAFT
+        assert decl.submitted_at is None
+
     def test_revert_submitted_to_draft(self, runner, setup_declarations):
         """Test reverting submitted declaration to draft."""
         result = runner.invoke(ibkr_porez, ["revert", "3", "--to", "draft"])
@@ -375,7 +461,10 @@ class TestE2ERevert:
 
         for decl_id in ids:
             decl = setup_declarations.get_declaration(decl_id)
-            assert decl.status == DeclarationStatus.SUBMITTED
+            if decl.type == DeclarationType.PPDG3R:
+                assert decl.status == DeclarationStatus.PENDING
+            else:
+                assert decl.status == DeclarationStatus.SUBMITTED
 
 
 class TestE2EAttach:
