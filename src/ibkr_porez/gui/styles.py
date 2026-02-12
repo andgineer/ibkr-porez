@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 APP_STYLESHEET = """
-QPushButton#syncButton {
+QPushButton#syncButton,
+QToolButton#syncButton {
     font-weight: 700;
     min-height: 40px;
 }

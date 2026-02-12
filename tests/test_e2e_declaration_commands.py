@@ -4,6 +4,7 @@ import allure
 import pytest
 from click.testing import CliRunner
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 
@@ -230,6 +231,34 @@ class TestE2ESubmit:
         assert result.exit_code != 0
         assert "not in DRAFT status" in result.output
 
+    def test_submit_zero_tax_marks_finalized(self, runner, setup_declarations):
+        """Test submit auto-finalizes declaration when tax due is zero."""
+        declaration = Declaration(
+            declaration_id="4",
+            type=DeclarationType.PPO,
+            status=DeclarationStatus.DRAFT,
+            period_start=date(2024, 1, 20),
+            period_end=date(2024, 1, 20),
+            created_at=datetime(2024, 1, 20, 10, 0),
+            file_path=str(setup_declarations.declarations_dir / "4-ppopo-2024-01-20.xml"),
+            xml_content="<xml>test4</xml>",
+            report_data=[],
+            metadata={"tax_due_rsd": Decimal("0.00")},
+        )
+        setup_declarations.save_declaration(declaration)
+        Path(declaration.file_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(declaration.file_path).write_text(declaration.xml_content)
+
+        result = runner.invoke(ibkr_porez, ["submit", "4"])
+        assert result.exit_code == 0
+        assert "Finalized: 4 (no tax to pay)" in result.output
+
+        updated = setup_declarations.get_declaration("4")
+        assert updated is not None
+        assert updated.status == DeclarationStatus.FINALIZED
+        assert updated.submitted_at is not None
+        assert updated.paid_at is None
+
 
 class TestE2EPay:
     def test_pay_single_declaration(self, runner, setup_declarations):
@@ -239,7 +268,7 @@ class TestE2EPay:
         assert "Paid: 1" in result.output
 
         decl = setup_declarations.get_declaration("1")
-        assert decl.status == DeclarationStatus.PAID
+        assert decl.status == DeclarationStatus.FINALIZED
         assert decl.paid_at is not None
 
     def test_pay_submitted_declaration(self, runner, setup_declarations):
@@ -249,7 +278,7 @@ class TestE2EPay:
         assert "Paid: 3" in result.output
 
         decl = setup_declarations.get_declaration("3")
-        assert decl.status == DeclarationStatus.PAID
+        assert decl.status == DeclarationStatus.FINALIZED
 
 
 class TestE2EExport:
@@ -302,8 +331,8 @@ class TestE2EExport:
 
 
 class TestE2ERevert:
-    def test_revert_paid_to_draft(self, runner, setup_declarations):
-        """Test reverting paid declaration to draft."""
+    def test_revert_finalized_to_draft(self, runner, setup_declarations):
+        """Test reverting finalized declaration to draft."""
         # First pay it
         runner.invoke(ibkr_porez, ["pay", "1"])
 

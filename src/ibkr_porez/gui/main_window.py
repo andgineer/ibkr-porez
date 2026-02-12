@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QItemSelectionModel, QThread, Slot
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -9,6 +10,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QProgressBar,
     QPushButton,
@@ -71,10 +73,22 @@ class MainWindow(QMainWindow):
         root.setSpacing(12)
 
         top_bar = QHBoxLayout()
-        self.sync_button = QPushButton("↻  Sync")
+        self.sync_button = QToolButton()
+        self.sync_button.setText("↻  Sync")
         self.sync_button.setObjectName("syncButton")
         self.sync_button.setMinimumSize(220, 56)
+        self.sync_button.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
         self.sync_button.clicked.connect(self.start_sync)
+        self.sync_menu = QMenu(self.sync_button)
+        self.sync_menu.setToolTipsVisible(True)
+        self.force_sync_action = QAction("Force sync", self.sync_menu)
+        self.force_sync_action.setToolTip(
+            "Ignore last sync date, rescan recent history, and create declarations even if "
+            "withholding tax is not found.",
+        )
+        self.force_sync_action.triggered.connect(lambda _checked=False: self.start_forced_sync())
+        self.sync_menu.addAction(self.force_sync_action)
+        self.sync_button.setMenu(self.sync_menu)
 
         self.config_button = QPushButton("Config")
         self.config_button.setObjectName("configButton")
@@ -186,6 +200,14 @@ class MainWindow(QMainWindow):
         return DeclarationStatus(label.lower())
 
     @staticmethod
+    def _status_from_action(action: str) -> str:
+        if action == "Submit":
+            return "Submitted"
+        if action == "Pay":
+            return "Finalized"
+        return action
+
+    @staticmethod
     def _is_transition_allowed(
         current_status: DeclarationStatus,
         target_status: DeclarationStatus,
@@ -255,13 +277,24 @@ class MainWindow(QMainWindow):
 
         current_status = self.declarations[source_row].status
         for label, status in ROW_STATUS_ACTIONS:
+            if current_status == DeclarationStatus.FINALIZED and label in {"Submit", "Pay"}:
+                continue
+            if current_status != DeclarationStatus.FINALIZED and label == "Revert":
+                continue
             target_status = self._status_from_label(status)
             action_button = QToolButton()
             action_button.setObjectName("statusActionButton")
             action_button.setText(label)
             allowed = self._is_transition_allowed(current_status, target_status)
+            if (
+                allowed
+                and target_status == DeclarationStatus.FINALIZED
+                and not self.declaration_manager.has_tax_to_pay(self.declarations[source_row])
+            ):
+                allowed = False
+                action_button.setToolTip("No tax to pay. Use Submit to finalize declaration.")
             action_button.setEnabled(allowed)
-            if not allowed:
+            if not allowed and not action_button.toolTip():
                 action_button.setToolTip("Status transition not allowed")
             action_button.clicked.connect(
                 lambda _checked=False, row=source_row, target_status=status: self.set_row_status(
@@ -458,7 +491,9 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def apply_selected_status_from_combo(self) -> None:
-        self.apply_status_to_selected(self.bulk_status_combo.currentText())
+        self.apply_status_to_selected(
+            self._status_from_action(self.bulk_status_combo.currentText()),
+        )
 
     def apply_status_to_ids(self, declaration_ids: list[str], status: str) -> None:
         target_status = self._status_from_label(status)
@@ -469,6 +504,12 @@ class MainWindow(QMainWindow):
             if declaration is None or not self._is_transition_allowed(
                 declaration.status,
                 target_status,
+            ):
+                invalid_ids.append(declaration_id)
+                continue
+            if (
+                target_status == DeclarationStatus.FINALIZED
+                and not self.declaration_manager.has_tax_to_pay(declaration)
             ):
                 invalid_ids.append(declaration_id)
 
@@ -482,7 +523,7 @@ class MainWindow(QMainWindow):
         if target_status == DeclarationStatus.SUBMITTED:
             self.declaration_manager.submit(declaration_ids)
             return
-        if target_status == DeclarationStatus.PAID:
+        if target_status == DeclarationStatus.FINALIZED:
             self.declaration_manager.pay(declaration_ids)
             return
         if target_status == DeclarationStatus.DRAFT:
@@ -509,6 +550,15 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def start_sync(self) -> None:
+        self._start_sync(forced=False)
+
+    @Slot()
+    def start_forced_sync(self) -> None:
+        if not self._confirm_forced_sync():
+            return
+        self._start_sync(forced=True)
+
+    def _start_sync(self, forced: bool) -> None:
         if self.sync_thread is not None and self.sync_thread.isRunning():
             return
 
@@ -519,12 +569,12 @@ class MainWindow(QMainWindow):
             self._update_empty_transactions_warning(force=True)
             return
 
-        self.progress_label.setText("Sync started")
+        self.progress_label.setText("Forced sync started" if forced else "Sync started")
         self.progress_bar.setVisible(True)
         self.progress_bar.setRange(0, 0)
         self.sync_button.setEnabled(False)
 
-        self.sync_worker = SyncWorker()
+        self.sync_worker = SyncWorker(forced=forced)
         self.sync_thread = QThread(self)
         self.sync_worker.moveToThread(self.sync_thread)
 
@@ -541,6 +591,27 @@ class MainWindow(QMainWindow):
         self.sync_thread.finished.connect(self.sync_thread.deleteLater)
 
         self.sync_thread.start()
+
+    def _confirm_forced_sync(self) -> bool:
+        confirm = QMessageBox(self)
+        confirm.setIcon(QMessageBox.Icon.Warning)
+        confirm.setWindowTitle("Force sync")
+        confirm.setText(
+            "Force sync ignores last sync date and can create declarations even when "
+            "withholding tax is not found.",
+        )
+        confirm.setInformativeText("Continue?")
+        confirm.setStandardButtons(
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+        )
+        continue_button = confirm.button(QMessageBox.StandardButton.Ok)
+        if continue_button is not None:
+            continue_button.setText("Continue")
+        cancel_button = confirm.button(QMessageBox.StandardButton.Cancel)
+        if cancel_button is not None:
+            cancel_button.setText("Cancel")
+        confirm.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        return confirm.exec() == int(QMessageBox.StandardButton.Ok)
 
     @Slot(int, str)
     def on_sync_finished(self, created_count: int, output_folder: str) -> None:

@@ -186,7 +186,7 @@ class TestE2EIncome:
         # Error should be displayed (but exit_code might be 0 if error is caught and displayed)
         assert "Withholding tax in IBKR" in result.output
         assert "not found" in result.output
-        assert "--force" in result.output
+        assert "force" in result.output
         # The error is displayed but command might exit with 0
         # Check that no declarations were created
         assert (

@@ -102,7 +102,7 @@ def test_main_launcher_raises_when_child_exits_early(monkeypatch):
     monkeypatch.setattr(gui_launcher.time, "monotonic", fake_monotonic)
     monkeypatch.setattr(gui_launcher.time, "sleep", lambda _seconds: None)
 
-    with pytest.raises(RuntimeError, match="exited immediately"):
+    with pytest.raises(RuntimeError, match="failed to start"):
         gui_launcher.launch_gui_process(console=main_module.console, app_version="0.0.0")
 
 

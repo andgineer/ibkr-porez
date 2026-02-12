@@ -74,3 +74,24 @@ class TestGuiMainUnit:
         assert calls["app_icon"] == "ICON"
         assert calls["window_icon"] == "ICON"
         assert calls["window_show_called"] is True
+
+    def test_main_shows_dialog_and_returns_non_zero_on_startup_error(
+        self,
+        monkeypatch,
+    ) -> None:
+        captured: dict[str, object] = {}
+
+        def fake_run() -> int:
+            raise RuntimeError("boom")
+
+        def fake_show(error: Exception) -> None:
+            captured["error"] = error
+
+        monkeypatch.setattr(gui_main_module, "run", fake_run)
+        monkeypatch.setattr(gui_main_module, "_show_startup_error_dialog", fake_show)
+
+        result = gui_main_module.main()
+
+        assert result == 1
+        assert isinstance(captured["error"], RuntimeError)
+        assert str(captured["error"]) == "boom"

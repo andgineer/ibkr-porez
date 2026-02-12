@@ -440,8 +440,9 @@ class IncomeReportGenerator(ReportGeneratorBase):
 
                 if not force:
                     raise ValueError(
-                        f"Withholding tax in IBKR for payment {income_desc} not found. "
-                        "To create a declaration with zero withholding tax, use the --force flag. "
+                        f"Withholding tax in IBKR for payment {income_desc} not found,"
+                        f" maybe it will come later. "
+                        "To create a declaration with zero withholding tax, use `forced` sync. "
                         "Warning: this means you will need to pay the tax in Serbia.",
                     )
 

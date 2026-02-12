@@ -5,18 +5,15 @@ bulk_controls_visible:
 filter_items:
 - Active
 - All
-- Draft
 - Submitted
 progress_bar_visible: false
 progress_label: ''
 rows:
 - actions:
   - enabled: false
-    text: To Submitted
+    text: Submit
   - enabled: true
-    text: To paid
-  - enabled: true
-    text: To draft
+    text: Pay
   - enabled: true
     text: Re-export
   created: '2026-02-03'
@@ -26,11 +23,9 @@ rows:
   type: PP OPO (AAPL)
 - actions:
   - enabled: true
-    text: To Submitted
+    text: Submit
   - enabled: true
-    text: To paid
-  - enabled: false
-    text: To draft
+    text: Pay
   - enabled: true
     text: Re-export
   created: '2026-02-02'

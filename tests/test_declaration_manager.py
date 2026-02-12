@@ -3,6 +3,7 @@
 import allure
 import pytest
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 
@@ -114,6 +115,29 @@ class TestDeclarationManagerSubmit:
         ids = manager.submit([])
         assert ids == []
 
+    def test_submit_with_zero_tax_due_marks_finalized(self, manager, mock_user_data_dir):
+        """Submit should finalize declaration when no tax payment is required."""
+        s = Storage()
+        decl = Declaration(
+            declaration_id="zero-tax",
+            type=DeclarationType.PPO,
+            status=DeclarationStatus.DRAFT,
+            period_start=date(2024, 1, 1),
+            period_end=date(2024, 1, 1),
+            created_at=datetime(2024, 1, 1, 10, 0),
+            metadata={"tax_due_rsd": Decimal("0.00")},
+        )
+        s.save_declaration(decl)
+
+        ids = manager.submit(["zero-tax"])
+        assert ids == ["zero-tax"]
+
+        updated = s.get_declaration("zero-tax")
+        assert updated is not None
+        assert updated.status == DeclarationStatus.FINALIZED
+        assert updated.submitted_at is not None
+        assert updated.paid_at is None
+
 
 class TestDeclarationManagerPay:
     def test_pay_single_declaration(self, manager, sample_declaration):
@@ -123,7 +147,7 @@ class TestDeclarationManagerPay:
 
         s = Storage()
         decl = s.get_declaration("test-1")
-        assert decl.status == DeclarationStatus.PAID
+        assert decl.status == DeclarationStatus.FINALIZED
         assert decl.paid_at is not None
 
     def test_pay_submitted_declaration(self, manager, sample_declaration):
@@ -135,7 +159,7 @@ class TestDeclarationManagerPay:
 
         s = Storage()
         decl = s.get_declaration("test-1")
-        assert decl.status == DeclarationStatus.PAID
+        assert decl.status == DeclarationStatus.FINALIZED
 
     def test_pay_empty_list(self, manager):
         """Test paying empty list."""
@@ -206,8 +230,8 @@ class TestDeclarationManagerExport:
 
 
 class TestDeclarationManagerRevert:
-    def test_revert_paid_to_draft(self, manager, sample_declaration):
-        """Test reverting paid declaration to draft."""
+    def test_revert_finalized_to_draft(self, manager, sample_declaration):
+        """Test reverting finalized declaration to draft."""
         manager.pay(["test-1"])
 
         manager.revert(["test-1"], DeclarationStatus.DRAFT)

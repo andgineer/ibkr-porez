@@ -2,10 +2,11 @@
 
 import shutil
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from ibkr_porez.config import config_manager
-from ibkr_porez.models import DeclarationStatus
+from ibkr_porez.models import Declaration, DeclarationStatus
 from ibkr_porez.storage import Storage
 
 
@@ -25,11 +26,33 @@ class DeclarationManager:
             return False
         if target_status == DeclarationStatus.SUBMITTED:
             return current_status == DeclarationStatus.DRAFT
-        if target_status == DeclarationStatus.PAID:
+        if target_status == DeclarationStatus.FINALIZED:
             return current_status in (DeclarationStatus.DRAFT, DeclarationStatus.SUBMITTED)
         if target_status == DeclarationStatus.DRAFT:
-            return current_status in (DeclarationStatus.SUBMITTED, DeclarationStatus.PAID)
+            return current_status in (DeclarationStatus.SUBMITTED, DeclarationStatus.FINALIZED)
         return False
+
+    @staticmethod
+    def tax_due_rsd(declaration: Declaration) -> Decimal:
+        """
+        Return tax due from declaration metadata.
+
+        Missing/invalid metadata is treated as non-zero to avoid accidental auto-finalization.
+        """
+        value = declaration.metadata.get("tax_due_rsd")
+        if isinstance(value, Decimal):
+            return value
+        if value is None:
+            return Decimal("1.00")
+        try:
+            return Decimal(str(value))
+        except (InvalidOperation, TypeError, ValueError):
+            return Decimal("1.00")
+
+    @classmethod
+    def has_tax_to_pay(cls, declaration: Declaration) -> bool:
+        """Return whether declaration has positive tax due."""
+        return cls.tax_due_rsd(declaration) > Decimal("0")
 
     def submit(
         self,
@@ -55,11 +78,17 @@ class DeclarationManager:
                 raise ValueError(
                     f"Declaration {declaration_id} is not in DRAFT status (current: {decl.status})",
                 )
-            self.storage.update_declaration_status(
-                declaration_id,
-                DeclarationStatus.SUBMITTED,
-                timestamp,
+            target_status = (
+                DeclarationStatus.SUBMITTED
+                if self.has_tax_to_pay(decl)
+                else DeclarationStatus.FINALIZED
             )
+            self.storage.update_declaration_status(declaration_id, target_status, timestamp)
+            if target_status == DeclarationStatus.FINALIZED:
+                finalized = self.storage.get_declaration(declaration_id)
+                if finalized is not None and finalized.submitted_at is None:
+                    finalized.submitted_at = timestamp
+                    self.storage.save_declaration(finalized)
             submitted_ids.append(declaration_id)
 
         return submitted_ids
@@ -69,13 +98,13 @@ class DeclarationManager:
         declaration_ids: list[str],
     ) -> list[str]:
         """
-        Mark declaration(s) as paid.
+        Mark declaration(s) as finalized.
 
         Args:
             declaration_ids: List of declaration IDs to pay
 
         Returns:
-            list[str]: List of declaration IDs that were paid
+            list[str]: List of declaration IDs that were marked finalized
         """
         paid_ids = []
         timestamp = datetime.now()
@@ -90,9 +119,13 @@ class DeclarationManager:
                 )
             self.storage.update_declaration_status(
                 declaration_id,
-                DeclarationStatus.PAID,
+                DeclarationStatus.FINALIZED,
                 timestamp,
             )
+            updated_decl = self.storage.get_declaration(declaration_id)
+            if updated_decl is not None:
+                updated_decl.paid_at = timestamp
+                self.storage.save_declaration(updated_decl)
             paid_ids.append(declaration_id)
 
         return paid_ids
@@ -159,7 +192,7 @@ class DeclarationManager:
         target_status: DeclarationStatus,
     ) -> None:
         """
-        Revert declaration status (e.g., paid -> draft).
+        Revert declaration status (e.g., finalized -> draft).
 
         Args:
             declaration_ids: List of declaration IDs to revert
@@ -172,7 +205,7 @@ class DeclarationManager:
 
             # Validate transition
             if target_status == DeclarationStatus.DRAFT:
-                if decl.status not in (DeclarationStatus.SUBMITTED, DeclarationStatus.PAID):
+                if decl.status not in (DeclarationStatus.SUBMITTED, DeclarationStatus.FINALIZED):
                     raise ValueError(
                         f"Cannot revert declaration {declaration_id} "
                         f"from {decl.status} to {target_status}",

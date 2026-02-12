@@ -364,10 +364,10 @@ class TestE2EShow:
         assert "Submitted:" in result.output
         assert "2024-01-10" in result.output
 
-    def test_show_declaration_with_paid_status(self, runner, mock_user_data_dir):
+    def test_show_declaration_with_finalized_status(self, runner, mock_user_data_dir):
         """
-        Scenario: Run `show 4` where declaration has been paid.
-        Expect: Declaration details including paid timestamp.
+        Scenario: Run `show 4` where declaration is finalized.
+        Expect: Declaration details including finalization timestamp.
         """
         storage = Storage()
 
@@ -384,7 +384,7 @@ class TestE2EShow:
         declaration = Declaration(
             declaration_id="4",
             type=DeclarationType.PPO,
-            status=DeclarationStatus.PAID,
+            status=DeclarationStatus.FINALIZED,
             period_start=date(2023, 6, 15),
             period_end=date(2023, 6, 15),
             created_at=datetime(2023, 6, 16, 9, 0, 0),
@@ -402,7 +402,7 @@ class TestE2EShow:
 
         assert result.exit_code == 0
         assert "Declaration ID: 4" in result.output
-        assert "paid" in result.output
+        assert "finalized" in result.output
         assert "Submitted:" in result.output
         assert "Paid:" in result.output
         assert "2023-06-25" in result.output

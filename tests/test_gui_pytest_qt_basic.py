@@ -7,6 +7,7 @@ from datetime import date, datetime
 import allure
 import pytest
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QToolButton
 
 import ibkr_porez.gui.main_window as main_window_module
 from ibkr_porez.declaration_manager import DeclarationManager as RealDeclarationManager
@@ -34,6 +35,7 @@ class _FakeStorage:
 
 class _FakeDeclarationManager:
     is_transition_allowed = staticmethod(RealDeclarationManager.is_transition_allowed)
+    has_tax_to_pay = staticmethod(lambda _declaration: True)
 
     def __init__(self) -> None:
         return
@@ -60,9 +62,9 @@ def sample_declarations() -> list[Declaration]:
             created_at=datetime(2026, 2, 2, 8, 15, 0),
         ),
         Declaration(
-            declaration_id="2026-01-ppdg-paid",
+            declaration_id="2026-01-ppdg-finalized",
             type=DeclarationType.PPDG3R,
-            status=DeclarationStatus.PAID,
+            status=DeclarationStatus.FINALIZED,
             period_start=date(2026, 1, 10),
             period_end=date(2026, 1, 10),
             created_at=datetime(2026, 2, 1, 9, 0, 0),
@@ -103,6 +105,7 @@ def test_qtbot_renders_main_window(qtbot, patched_main_window: MainWindow) -> No
 
     assert patched_main_window.windowTitle() == "ibkr-porez"
     assert patched_main_window.sync_button.text().endswith("Sync")
+    assert isinstance(patched_main_window.sync_button, QToolButton)
     assert patched_main_window.filter_combo.currentText() == "Active"
     assert patched_main_window.table.item(0, 0).text() == "2026-02-03-ppo-aapl"
 
@@ -112,10 +115,10 @@ def test_qtbot_renders_main_window(qtbot, patched_main_window: MainWindow) -> No
 def test_qtbot_can_change_filter(qtbot, patched_main_window: MainWindow) -> None:
     qtbot.addWidget(patched_main_window)
     patched_main_window.show()
-    patched_main_window.filter_combo.setCurrentText("Draft")
+    patched_main_window.filter_combo.setCurrentText("Submitted")
     qtbot.waitUntil(lambda: patched_main_window.table.rowCount() == 1)
 
-    assert patched_main_window.table.item(0, 0).text() == "2026-q1-ppdg"
+    assert patched_main_window.table.item(0, 0).text() == "2026-02-03-ppo-aapl"
 
 
 @allure.epic("GUI")
@@ -145,3 +148,43 @@ def test_qtbot_selection_shows_bulk_controls(
 
     assert not patched_main_window.bulk_status_combo.isVisible()
     assert not patched_main_window.apply_status_button.isVisible()
+
+
+@allure.epic("GUI")
+@allure.feature("pytest-qt")
+def test_qtbot_sync_button_has_force_action(qtbot, patched_main_window: MainWindow) -> None:
+    qtbot.addWidget(patched_main_window)
+    patched_main_window.show()
+    menu = patched_main_window.sync_button.menu()
+    assert menu is not None
+    assert [action.text() for action in menu.actions()] == ["Force sync"]
+    assert (
+        menu.actions()[0].toolTip()
+        == "Ignore last sync date, rescan recent history, and create declarations even if "
+        "withholding tax is not found."
+    )
+
+
+@allure.epic("GUI")
+@allure.feature("pytest-qt")
+def test_qtbot_finalized_row_has_revert_action(qtbot, patched_main_window: MainWindow) -> None:
+    qtbot.addWidget(patched_main_window)
+    patched_main_window.show()
+    patched_main_window.filter_combo.setCurrentText("All")
+    qtbot.waitUntil(lambda: patched_main_window.table.rowCount() == 3)
+
+    finalized_row = None
+    for row in range(patched_main_window.table.rowCount()):
+        if patched_main_window.table.item(row, 0).text() == "2026-01-ppdg-finalized":
+            finalized_row = row
+            break
+
+    assert finalized_row is not None
+    row_widget = patched_main_window.table.cellWidget(finalized_row, 5)
+    assert row_widget is not None
+    buttons = row_widget.findChildren(QToolButton)
+    button_by_text = {button.text(): button for button in buttons}
+    assert "Submit" not in button_by_text
+    assert "Pay" not in button_by_text
+    assert "Revert" in button_by_text
+    assert button_by_text["Revert"].isEnabled()

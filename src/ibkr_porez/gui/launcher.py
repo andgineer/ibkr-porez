@@ -59,14 +59,19 @@ def launch_gui_process(console: Console, app_version: str) -> None:
         else:
             popen_kwargs["start_new_session"] = True
 
-        process = subprocess.Popen(command, **popen_kwargs)  # noqa: S603
+        try:
+            process = subprocess.Popen(command, **popen_kwargs)  # noqa: S603
+        except OSError as error:
+            raise RuntimeError(f"Unable to start GUI process: {error}") from error
 
         deadline = time.monotonic() + 1.4
         while time.monotonic() < deadline:
             return_code = process.poll()
             if return_code is not None:
                 if return_code != 0:
-                    raise RuntimeError("GUI process exited immediately.")
+                    raise RuntimeError(
+                        f"GUI process failed to start (exit code {return_code}).",
+                    )
                 break
             time.sleep(0.14)
         elapsed = time.monotonic() - started_at

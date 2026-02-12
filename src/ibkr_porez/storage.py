@@ -488,8 +488,6 @@ class Storage:
         decl.status = status
         if status == DeclarationStatus.SUBMITTED:
             decl.submitted_at = timestamp
-        elif status == DeclarationStatus.PAID:
-            decl.paid_at = timestamp
 
         self.save_declaration(decl)
 

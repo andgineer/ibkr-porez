@@ -11,6 +11,10 @@ class SyncWorker(QObject):
     finished = Signal(int, str)
     failed = Signal(str)
 
+    def __init__(self, forced: bool = False) -> None:
+        super().__init__()
+        self.forced = forced
+
     @Slot()
     def run(self) -> None:
         try:
@@ -20,7 +24,10 @@ class SyncWorker(QObject):
                     "Missing IBKR configuration. Open Config and set Flex Token and Flex Query ID.",
                 )
                 return
-            operation = SyncOperation(cfg)
+            forced_lookback_days = (
+                SyncOperation.DEFAULT_FIRST_SYNC_LOOKBACK_DAYS if self.forced else None
+            )
+            operation = SyncOperation(cfg, forced_lookback_days=forced_lookback_days)
             created = operation.execute()
             output_folder = str(operation.get_output_folder()) if created else ""
             self.finished.emit(len(created), output_folder)

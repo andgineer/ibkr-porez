@@ -28,7 +28,7 @@ class TestGuiMainWindowUnit:
         window.declarations = [
             _declaration("d1", DeclarationStatus.DRAFT),
             _declaration("d2", DeclarationStatus.SUBMITTED),
-            _declaration("d3", DeclarationStatus.PAID),
+            _declaration("d3", DeclarationStatus.FINALIZED),
         ]
 
         window.status_filter = "Active"
@@ -37,9 +37,6 @@ class TestGuiMainWindowUnit:
         window.status_filter = "All"
         assert window._visible_declaration_indices() == [0, 1, 2]
 
-        window.status_filter = "Draft"
-        assert window._visible_declaration_indices() == [0]
-
         window.status_filter = "Submitted"
         assert window._visible_declaration_indices() == [1]
 
@@ -47,7 +44,7 @@ class TestGuiMainWindowUnit:
         ("declaration_status", "target_status", "expected_method"),
         [
             (DeclarationStatus.DRAFT, "Submitted", "submit"),
-            (DeclarationStatus.DRAFT, "Paid", "pay"),
+            (DeclarationStatus.DRAFT, "Finalized", "pay"),
             (DeclarationStatus.SUBMITTED, "Draft", "revert"),
         ],
     )
@@ -60,6 +57,10 @@ class TestGuiMainWindowUnit:
         called: list[tuple[str, list[str]]] = []
 
         class FakeManager:
+            @staticmethod
+            def has_tax_to_pay(_declaration: Declaration) -> bool:
+                return True
+
             def submit(self, ids: list[str]) -> None:
                 called.append(("submit", ids))
 
@@ -107,8 +108,30 @@ class TestGuiMainWindowUnit:
                 raise AssertionError("should not be called")
 
         window = MainWindow.__new__(MainWindow)
-        window.declarations = [_declaration("paid-decl", DeclarationStatus.PAID)]
+        window.declarations = [_declaration("finalized-decl", DeclarationStatus.FINALIZED)]
         window.declaration_manager = FakeManager()
 
-        with pytest.raises(ValueError, match="paid-decl"):
-            window.apply_status_to_ids(["paid-decl"], "Submitted")
+        with pytest.raises(ValueError, match="finalized-decl"):
+            window.apply_status_to_ids(["finalized-decl"], "Submitted")
+
+    def test_apply_status_to_ids_disallows_finalized_when_no_tax_due(self) -> None:
+        class FakeManager:
+            @staticmethod
+            def has_tax_to_pay(_declaration: Declaration) -> bool:
+                return False
+
+            def submit(self, ids: list[str]) -> None:  # noqa: ARG002
+                raise AssertionError("should not be called")
+
+            def pay(self, ids: list[str]) -> None:  # noqa: ARG002
+                raise AssertionError("should not be called")
+
+            def revert(self, ids: list[str], _target: DeclarationStatus) -> None:  # noqa: ARG002
+                raise AssertionError("should not be called")
+
+        window = MainWindow.__new__(MainWindow)
+        window.declarations = [_declaration("zero-tax", DeclarationStatus.DRAFT)]
+        window.declaration_manager = FakeManager()
+
+        with pytest.raises(ValueError, match="zero-tax"):
+            window.apply_status_to_ids(["zero-tax"], "Finalized")

@@ -38,6 +38,7 @@ class _FakeStorage:
 
 class _FakeDeclarationManager:
     is_transition_allowed = staticmethod(RealDeclarationManager.is_transition_allowed)
+    has_tax_to_pay = staticmethod(lambda _declaration: True)
 
     def __init__(self) -> None:
         return
@@ -73,9 +74,9 @@ def sample_declarations() -> list[Declaration]:
             created_at=datetime(2026, 2, 2, 8, 15, 0),
         ),
         Declaration(
-            declaration_id="2026-01-ppdg-paid",
+            declaration_id="2026-01-ppdg-finalized",
             type=DeclarationType.PPDG3R,
-            status=DeclarationStatus.PAID,
+            status=DeclarationStatus.FINALIZED,
             period_start=date(2026, 1, 10),
             period_end=date(2026, 1, 10),
             created_at=datetime(2026, 2, 1, 9, 0, 0),

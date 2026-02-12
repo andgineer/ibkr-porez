@@ -538,7 +538,7 @@ def export_flex(date: str, output_path: str | None):
 @click.option("--all", is_flag=True, help="Show all declarations including submitted/paid")
 @click.option(
     "--status",
-    type=click.Choice(["draft", "submitted", "paid"], case_sensitive=False),
+    type=click.Choice(["draft", "submitted", "finalized"], case_sensitive=False),
     help="Filter by status",
 )
 @click.option(
@@ -580,7 +580,11 @@ def submit(declaration_id: str):
 
     try:
         manager.submit([declaration_id])
-        console.print(f"[green]Submitted: {declaration_id}[/green]")
+        updated = manager.storage.get_declaration(declaration_id)
+        if updated is not None and updated.status == DeclarationStatus.FINALIZED:
+            console.print(f"[green]Finalized: {declaration_id} (no tax to pay)[/green]")
+        else:
+            console.print(f"[green]Submitted: {declaration_id}[/green]")
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
         raise click.ClickException(str(e)) from e
@@ -647,10 +651,10 @@ def export(declaration_id: str, output: str | None):
 )
 @verbose_option
 def revert(declaration_id: str, to: str):
-    """Revert declaration status (e.g., paid -> draft).
+    """Revert declaration status (e.g., finalized -> draft).
 
     Example: ibkr-porez revert 1
-    Example: ibkr-porez list --status paid -1 | xargs -I {} ibkr-porez revert {} --to draft
+    Example: ibkr-porez list --status finalized -1 | xargs -I {} ibkr-porez revert {} --to draft
     """
     manager = DeclarationManager()
 

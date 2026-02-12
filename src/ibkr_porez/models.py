@@ -126,7 +126,7 @@ class DeclarationStatus(StrEnum):
 
     DRAFT = "draft"  # Created but not submitted
     SUBMITTED = "submitted"  # Submitted to tax portal
-    PAID = "paid"  # Paid
+    FINALIZED = "finalized"  # Finalized
 
 
 class Declaration(BaseModel):

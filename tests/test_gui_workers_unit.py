@@ -34,10 +34,12 @@ def test_sync_worker_emits_error_when_ibkr_config_missing(monkeypatch) -> None:
 
 def test_sync_worker_emits_finished_with_output_folder(monkeypatch) -> None:
     expected_output_folder = str(Path("/tmp/gui-output"))
+    received_forced_lookback_days: list[int | None] = []
 
     class FakeSyncOperation:
-        def __init__(self, cfg: UserConfig) -> None:
+        def __init__(self, cfg: UserConfig, forced_lookback_days: int | None = None) -> None:
             self.cfg = cfg
+            received_forced_lookback_days.append(forced_lookback_days)
 
         @staticmethod
         def execute() -> list[str]:
@@ -69,12 +71,14 @@ def test_sync_worker_emits_finished_with_output_folder(monkeypatch) -> None:
 
     assert failed_messages == []
     assert finished_calls == [(2, expected_output_folder)]
+    assert received_forced_lookback_days == [None]
 
 
 def test_sync_worker_emits_finished_with_empty_folder_when_nothing_created(monkeypatch) -> None:
     class FakeSyncOperation:
-        def __init__(self, cfg: UserConfig) -> None:
+        def __init__(self, cfg: UserConfig, forced_lookback_days: int | None = None) -> None:
             self.cfg = cfg
+            self.forced_lookback_days = forced_lookback_days
 
         @staticmethod
         def execute() -> list[str]:
@@ -110,8 +114,9 @@ def test_sync_worker_emits_finished_with_empty_folder_when_nothing_created(monke
 
 def test_sync_worker_emits_friendly_error_on_exception(monkeypatch) -> None:
     class FakeSyncOperation:
-        def __init__(self, cfg: UserConfig) -> None:
+        def __init__(self, cfg: UserConfig, forced_lookback_days: int | None = None) -> None:
             self.cfg = cfg
+            self.forced_lookback_days = forced_lookback_days
 
         @staticmethod
         def execute() -> list[str]:
@@ -141,6 +146,49 @@ def test_sync_worker_emits_friendly_error_on_exception(monkeypatch) -> None:
     worker.run()
 
     assert failed_messages == ["Friendly sync error"]
+
+
+def test_sync_worker_forced_mode_uses_default_lookback(monkeypatch) -> None:
+    received_forced_lookback_days: list[int | None] = []
+
+    class FakeSyncOperation:
+        DEFAULT_FIRST_SYNC_LOOKBACK_DAYS = 45
+
+        def __init__(self, cfg: UserConfig, forced_lookback_days: int | None = None) -> None:
+            self.cfg = cfg
+            received_forced_lookback_days.append(forced_lookback_days)
+
+        @staticmethod
+        def execute() -> list[str]:
+            return []
+
+        @staticmethod
+        def get_output_folder() -> Path:
+            return Path("/tmp/unused")
+
+    worker = sync_worker_module.SyncWorker(forced=True)
+    finished_calls: list[tuple[int, str]] = []
+    failed_messages: list[str] = []
+    worker.finished.connect(lambda count, folder: finished_calls.append((count, folder)))
+    worker.failed.connect(failed_messages.append)
+
+    monkeypatch.setattr(
+        sync_worker_module.config_manager,
+        "load_config",
+        lambda: UserConfig(
+            full_name="Test",
+            address="Address",
+            ibkr_token="token",
+            ibkr_query_id="query-id",
+        ),
+    )
+    monkeypatch.setattr(sync_worker_module, "SyncOperation", FakeSyncOperation)
+
+    worker.run()
+
+    assert failed_messages == []
+    assert finished_calls == [(0, "")]
+    assert received_forced_lookback_days == [45]
 
 
 def test_import_worker_emits_finished_on_success(monkeypatch, tmp_path: Path) -> None:
