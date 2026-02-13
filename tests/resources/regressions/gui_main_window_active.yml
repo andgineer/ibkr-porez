@@ -21,6 +21,7 @@ rows:
   created: '2026-02-03'
   id: 2026-02-03-ppo-aapl
   period: '2026-01-15'
+  tax: ''
   status: Submitted
   type: PP OPO (AAPL)
 - actions:
@@ -33,6 +34,7 @@ rows:
   created: '2026-02-02'
   id: 2026-q1-ppdg
   period: 2026-01-01 to 2026-01-31
+  tax: ''
   status: Draft
   type: PPDG-3R
 selection_label: 0 selected
@@ -40,6 +42,7 @@ table_headers:
 - ID
 - Type
 - Period
+- Tax
 - Status
 - Created
 - Actions

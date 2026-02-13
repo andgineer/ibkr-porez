@@ -59,6 +59,7 @@ class ListDeclarations:
         table.add_column("ID", style="cyan", no_wrap=True)
         table.add_column("Type", style="magenta")
         table.add_column("Period", style="green")
+        table.add_column("Tax", style="bright_white", justify="right")
         table.add_column("Status", style="yellow")
         table.add_column("Created", style="blue")
         table.add_column("Attachments", style="dim")
@@ -74,6 +75,7 @@ class ListDeclarations:
                 decl.declaration_id,
                 decl.display_type(),
                 period_str,
+                decl.display_tax(),
                 status_str,
                 created_str,
                 files_str,

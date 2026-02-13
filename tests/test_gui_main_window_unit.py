@@ -141,3 +141,54 @@ class TestGuiMainWindowUnit:
 
         with pytest.raises(ValueError, match="zero-tax"):
             window.apply_status_to_ids(["zero-tax"], "Finalized")
+
+    def test_open_declaration_details_by_view_row_opens_dialog_for_selected_row(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        opened: list[str] = []
+
+        class FakeDialog:
+            def __init__(self, declaration_id: str, _parent: MainWindow) -> None:
+                opened.append(declaration_id)
+
+            def exec(self) -> int:
+                opened.append("exec")
+                return 0
+
+        monkeypatch.setattr("ibkr_porez.gui.main_window.DeclarationDetailsDialog", FakeDialog)
+
+        window = MainWindow.__new__(MainWindow)
+        window.declarations = [
+            _declaration("d0", DeclarationStatus.DRAFT),
+            _declaration("d1", DeclarationStatus.SUBMITTED),
+        ]
+        window.visible_indices = [1]
+
+        window.open_declaration_details_by_view_row(0)
+
+        assert opened == ["d1", "exec"]
+
+    def test_open_declaration_details_by_view_row_ignores_invalid_row(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        opened: list[str] = []
+
+        class FakeDialog:
+            def __init__(self, declaration_id: str, _parent: MainWindow) -> None:
+                opened.append(declaration_id)
+
+            def exec(self) -> int:
+                opened.append("exec")
+                return 0
+
+        monkeypatch.setattr("ibkr_porez.gui.main_window.DeclarationDetailsDialog", FakeDialog)
+
+        window = MainWindow.__new__(MainWindow)
+        window.declarations = [_declaration("d0", DeclarationStatus.DRAFT)]
+        window.visible_indices = [0]
+
+        window.open_declaration_details_by_view_row(99)
+
+        assert opened == []

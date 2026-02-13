@@ -218,7 +218,8 @@ class TestE2EList:
                 with patch("ibkr_porez.operation_list.Storage", return_value=setup_declarations):
                     result = runner.invoke(ibkr_porez, ["list"])
                     assert result.exit_code == 0
-                    assert "PP OPO (SGOV)" in result.output
+                    assert "PP OPO" in result.output
+                    assert "SGOV" in result.output
                     assert "2024-01-15 to 2024-01-15" not in result.output
                     assert "2024-01-15" in result.output
 

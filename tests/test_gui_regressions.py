@@ -109,7 +109,7 @@ def patched_main_window(monkeypatch, sample_declarations: list[Declaration]) -> 
 
 
 def _row_action_snapshot(window: MainWindow, row: int) -> list[dict[str, str | bool]]:
-    cell_widget = window.table.cellWidget(row, 5)
+    cell_widget = window.table.cellWidget(row, 6)
     if cell_widget is None or cell_widget.layout() is None:
         return []
     layout = cell_widget.layout()
@@ -138,8 +138,9 @@ def _table_rows_snapshot(window: MainWindow) -> list[dict[str, str | list[dict[s
                 "id": window.table.item(row, 0).text(),
                 "type": window.table.item(row, 1).text(),
                 "period": window.table.item(row, 2).text(),
-                "status": window.table.item(row, 3).text(),
-                "created": window.table.item(row, 4).text(),
+                "tax": window.table.item(row, 3).text(),
+                "status": window.table.item(row, 4).text(),
+                "created": window.table.item(row, 5).text(),
                 "actions": _row_action_snapshot(window, row),
             },
         )

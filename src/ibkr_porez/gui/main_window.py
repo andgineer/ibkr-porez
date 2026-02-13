@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
-from PySide6.QtCore import QItemSelectionModel, QThread, Slot
-from PySide6.QtGui import QAction
+from PySide6.QtCore import QItemSelectionModel, Qt, QThread, Slot
+from PySide6.QtGui import QAction, QKeySequence, QPalette, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -34,6 +34,7 @@ from ibkr_porez.gui.constants import (
     PROGRESS_MAX,
     ROW_STATUS_ACTIONS,
 )
+from ibkr_porez.gui.declaration_details_dialog import DeclarationDetailsDialog
 from ibkr_porez.gui.export_worker import ExportWorker
 from ibkr_porez.gui.import_dialog import ImportDialog
 from ibkr_porez.gui.styles import APP_STYLESHEET
@@ -156,12 +157,13 @@ class MainWindow(QMainWindow):
         action_bar.addWidget(self.apply_status_button)
         root.addLayout(action_bar)
 
-        self.table = QTableWidget(0, 6)
+        self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels(
             [
                 "ID",
                 "Type",
                 "Period",
+                "Tax",
                 "Status",
                 "Created",
                 "Actions",
@@ -173,6 +175,15 @@ class MainWindow(QMainWindow):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.itemSelectionChanged.connect(self.update_selection_info)
+        self.table.itemDoubleClicked.connect(self.open_declaration_details_for_item)
+        self.open_details_shortcut_return = QShortcut(QKeySequence("Return"), self.table)
+        self.open_details_shortcut_return.activated.connect(
+            self.open_declaration_details_for_selected_row,
+        )
+        self.open_details_shortcut_enter = QShortcut(QKeySequence("Enter"), self.table)
+        self.open_details_shortcut_enter.activated.connect(
+            self.open_declaration_details_for_selected_row,
+        )
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
@@ -180,9 +191,18 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
 
         root.addWidget(self.table)
+        self.details_hint_label = QLabel("Tip: double-click a row or press Enter to open details.")
+        hint_palette = self.details_hint_label.palette()
+        hint_palette.setColor(
+            QPalette.ColorRole.WindowText,
+            hint_palette.color(QPalette.ColorRole.PlaceholderText),
+        )
+        self.details_hint_label.setPalette(hint_palette)
+        root.addWidget(self.details_hint_label, alignment=Qt.AlignmentFlag.AlignRight)
 
         self.setCentralWidget(root_widget)
         self.setStyleSheet(APP_STYLESHEET)
@@ -280,14 +300,19 @@ class MainWindow(QMainWindow):
             self.table.setItem(
                 view_row,
                 3,
-                QTableWidgetItem(self._status_label(declaration.status)),
+                QTableWidgetItem(declaration.display_tax()),
             )
             self.table.setItem(
                 view_row,
                 4,
+                QTableWidgetItem(self._status_label(declaration.status)),
+            )
+            self.table.setItem(
+                view_row,
+                5,
                 QTableWidgetItem(declaration.created_at.strftime("%Y-%m-%d")),
             )
-            self.table.setCellWidget(view_row, 5, self.build_row_actions(source_row))
+            self.table.setCellWidget(view_row, 6, self.build_row_actions(source_row))
 
         if reselect_declaration_ids:
             self.table.clearSelection()
@@ -438,7 +463,7 @@ class MainWindow(QMainWindow):
 
     def _set_export_buttons_busy_state(self, active_button: QToolButton | None) -> None:
         for view_row in range(self.table.rowCount()):
-            row_widget = self.table.cellWidget(view_row, 5)
+            row_widget = self.table.cellWidget(view_row, 6)
             if row_widget is None:
                 continue
             for tool_button in row_widget.findChildren(QToolButton):
@@ -544,6 +569,35 @@ class MainWindow(QMainWindow):
             if self.declarations[source_row].declaration_id == declaration_id:
                 self.select_source_row(source_row)
                 break
+
+    @Slot(QTableWidgetItem)
+    def open_declaration_details_for_item(self, item: QTableWidgetItem) -> None:
+        self.open_declaration_details_by_view_row(item.row())
+
+    @Slot()
+    def open_declaration_details_for_selected_row(self) -> None:
+        model = self.table.selectionModel()
+        if model is None:
+            return
+
+        selected_rows = [index.row() for index in model.selectedRows()]
+        if selected_rows:
+            self.open_declaration_details_by_view_row(min(selected_rows))
+            return
+
+        current_row = self.table.currentRow()
+        if current_row >= 0:
+            self.open_declaration_details_by_view_row(current_row)
+
+    def open_declaration_details_by_view_row(self, view_row: int) -> None:
+        if view_row < 0 or view_row >= len(self.visible_indices):
+            return
+        source_row = self.visible_indices[view_row]
+        if source_row < 0 or source_row >= len(self.declarations):
+            return
+        declaration_id = self.declarations[source_row].declaration_id
+        dialog = DeclarationDetailsDialog(declaration_id, self)
+        dialog.exec()
 
     @Slot()
     def select_all_rows(self) -> None:

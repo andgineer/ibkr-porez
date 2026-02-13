@@ -180,7 +180,7 @@ def test_qtbot_finalized_row_has_revert_action(qtbot, patched_main_window: MainW
             break
 
     assert finalized_row is not None
-    row_widget = patched_main_window.table.cellWidget(finalized_row, 5)
+    row_widget = patched_main_window.table.cellWidget(finalized_row, 6)
     assert row_widget is not None
     buttons = row_widget.findChildren(QToolButton)
     button_by_text = {button.text(): button for button in buttons}
@@ -189,3 +189,68 @@ def test_qtbot_finalized_row_has_revert_action(qtbot, patched_main_window: MainW
     assert "Revert" in button_by_text
     assert "Set tax" in button_by_text
     assert button_by_text["Revert"].isEnabled()
+
+
+@allure.epic("GUI")
+@allure.feature("pytest-qt")
+def test_qtbot_double_click_opens_declaration_details(
+    qtbot,
+    patched_main_window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened: list[str] = []
+
+    class FakeDialog:
+        def __init__(self, declaration_id: str, _parent: MainWindow) -> None:
+            opened.append(declaration_id)
+
+        def exec(self) -> int:
+            opened.append("exec")
+            return 0
+
+    monkeypatch.setattr(main_window_module, "DeclarationDetailsDialog", FakeDialog)
+
+    qtbot.addWidget(patched_main_window)
+    patched_main_window.show()
+    qtbot.waitUntil(lambda: patched_main_window.table.rowCount() > 0)
+
+    first_item = patched_main_window.table.item(0, 0)
+    assert first_item is not None
+    qtbot.mouseDClick(
+        patched_main_window.table.viewport(),
+        Qt.MouseButton.LeftButton,
+        pos=patched_main_window.table.visualItemRect(first_item).center(),
+    )
+
+    assert opened == ["2026-02-03-ppo-aapl", "exec"]
+
+
+@allure.epic("GUI")
+@allure.feature("pytest-qt")
+def test_qtbot_enter_opens_declaration_details(
+    qtbot,
+    patched_main_window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened: list[str] = []
+
+    class FakeDialog:
+        def __init__(self, declaration_id: str, _parent: MainWindow) -> None:
+            opened.append(declaration_id)
+
+        def exec(self) -> int:
+            opened.append("exec")
+            return 0
+
+    monkeypatch.setattr(main_window_module, "DeclarationDetailsDialog", FakeDialog)
+
+    qtbot.addWidget(patched_main_window)
+    patched_main_window.show()
+    qtbot.waitUntil(lambda: patched_main_window.table.rowCount() > 0)
+    patched_main_window.table.setCurrentCell(0, 0)
+    patched_main_window.table.selectRow(0)
+    patched_main_window.table.setFocus()
+
+    qtbot.keyClick(patched_main_window.table, Qt.Key.Key_Return)
+
+    assert opened == ["2026-02-03-ppo-aapl", "exec"]

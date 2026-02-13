@@ -1,5 +1,7 @@
 """Display declaration details."""
 
+from io import StringIO
+
 from rich.console import Console
 from rich.table import Table
 
@@ -91,3 +93,11 @@ def show_declaration(declaration_id: str, console: Console) -> None:  # noqa: C9
             metadata_table.add_row(key, formatted_value)
 
         console.print(metadata_table)
+
+
+def render_declaration_details_text(declaration_id: str) -> str:
+    """Render declaration details exactly as CLI `show` output text."""
+    buffer = StringIO()
+    text_console = Console(file=buffer, force_terminal=False, color_system=None, width=120)
+    show_declaration(declaration_id, text_console)
+    return buffer.getvalue().strip()

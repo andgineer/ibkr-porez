@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -168,6 +168,24 @@ class Declaration(BaseModel):
         if self.period_start == self.period_end:
             return self.period_start.isoformat()
         return f"{self.period_start} to {self.period_end}"
+
+    def display_tax(self) -> str:
+        """Return user-facing tax amount."""
+        for key in (
+            "assessed_tax_due_rsd",
+            "tax_due_rsd",
+            "estimated_tax_rsd",
+            "calculated_tax_rsd",
+        ):
+            value = self.metadata.get(key)
+            if value is None:
+                continue
+            try:
+                amount = Decimal(str(value)).quantize(Decimal("0.01"))
+            except (InvalidOperation, TypeError, ValueError):
+                continue
+            return f"{amount:.2f}"
+        return ""
 
 
 class UserConfig(BaseModel):
