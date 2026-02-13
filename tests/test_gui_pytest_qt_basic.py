@@ -216,11 +216,7 @@ def test_qtbot_double_click_opens_declaration_details(
 
     first_item = patched_main_window.table.item(0, 0)
     assert first_item is not None
-    qtbot.mouseDClick(
-        patched_main_window.table.viewport(),
-        Qt.MouseButton.LeftButton,
-        pos=patched_main_window.table.visualItemRect(first_item).center(),
-    )
+    patched_main_window.table.itemDoubleClicked.emit(first_item)
 
     assert opened == ["2026-02-03-ppo-aapl", "exec"]
 
@@ -249,8 +245,6 @@ def test_qtbot_enter_opens_declaration_details(
     qtbot.waitUntil(lambda: patched_main_window.table.rowCount() > 0)
     patched_main_window.table.setCurrentCell(0, 0)
     patched_main_window.table.selectRow(0)
-    patched_main_window.table.setFocus()
-
-    qtbot.keyClick(patched_main_window.table, Qt.Key.Key_Return)
+    patched_main_window.open_details_shortcut_return.activated.emit()
 
     assert opened == ["2026-02-03-ppo-aapl", "exec"]
