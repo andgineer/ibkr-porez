@@ -1,9 +1,25 @@
+import os
 import pytest
 import tempfile
 import shutil
 from pathlib import Path
 from unittest.mock import patch
 from ibkr_porez.models import UserConfig
+
+TEST_ROOT = Path(__file__).resolve().parent.parent
+TEST_HOME_DIR = TEST_ROOT / ".tmp-home" / "home"
+TEST_LOG_DIR = TEST_ROOT / ".tmp-home" / "pytest-logs"
+TEST_HOME_DIR.mkdir(parents=True, exist_ok=True)
+TEST_LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Force all filesystem-sensitive defaults into test sandbox directories.
+os.environ["HOME"] = str(TEST_HOME_DIR)
+os.environ["USERPROFILE"] = str(TEST_HOME_DIR)
+os.environ["XDG_CONFIG_HOME"] = str(TEST_HOME_DIR / ".config")
+os.environ["XDG_DATA_HOME"] = str(TEST_HOME_DIR / ".local" / "share")
+os.environ["APPDATA"] = str(TEST_HOME_DIR / "AppData" / "Roaming")
+os.environ["LOCALAPPDATA"] = str(TEST_HOME_DIR / "AppData" / "Local")
+os.environ.setdefault("IBKR_POREZ_LOG_DIR", str(TEST_LOG_DIR))
 
 
 @pytest.fixture(scope="function", autouse=True)

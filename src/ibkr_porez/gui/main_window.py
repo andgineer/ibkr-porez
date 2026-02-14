@@ -95,12 +95,13 @@ class MainWindow(QMainWindow):
         self.sync_button.setMenu(self.sync_menu)
 
         self.config_button = QPushButton("Config")
-        self.config_button.setObjectName("configButton")
-        self.config_button.clicked.connect(self.open_config)
-
         self.import_button = QPushButton("Import")
-        self.import_button.setObjectName("configButton")
-        self.import_button.clicked.connect(self.open_import)
+        for button, slot in (
+            (self.import_button, self.open_import),
+            (self.config_button, self.open_config),
+        ):
+            button.setObjectName("configButton")
+            button.clicked.connect(slot)
 
         top_bar.addWidget(self.sync_button)
         top_bar.addStretch(1)
@@ -157,18 +158,18 @@ class MainWindow(QMainWindow):
         action_bar.addWidget(self.apply_status_button)
         root.addLayout(action_bar)
 
-        self.table = QTableWidget(0, 7)
-        self.table.setHorizontalHeaderLabels(
-            [
-                "ID",
-                "Type",
-                "Period",
-                "Tax",
-                "Status",
-                "Created",
-                "Actions",
-            ],
-        )
+        table_headers = [
+            "ID",
+            "Type",
+            "Period",
+            "Tax",
+            "Status",
+            "Created",
+            "Actions",
+        ]
+        self.actions_column = table_headers.index("Actions")
+        self.table = QTableWidget(0, len(table_headers))
+        self.table.setHorizontalHeaderLabels(table_headers)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -176,23 +177,16 @@ class MainWindow(QMainWindow):
         self.table.setAlternatingRowColors(True)
         self.table.itemSelectionChanged.connect(self.update_selection_info)
         self.table.itemDoubleClicked.connect(self.open_declaration_details_for_item)
-        self.open_details_shortcut_return = QShortcut(QKeySequence("Return"), self.table)
-        self.open_details_shortcut_return.activated.connect(
-            self.open_declaration_details_for_selected_row,
-        )
-        self.open_details_shortcut_enter = QShortcut(QKeySequence("Enter"), self.table)
-        self.open_details_shortcut_enter.activated.connect(
-            self.open_declaration_details_for_selected_row,
-        )
+        self.open_details_shortcuts: list[QShortcut] = []
+        for key in ("Return", "Enter"):
+            shortcut = QShortcut(QKeySequence(key), self.table)
+            shortcut.activated.connect(self.open_declaration_details_for_selected_row)
+            self.open_details_shortcuts.append(shortcut)
 
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(6, QHeaderView.ResizeMode.Stretch)
+        for column in range(self.actions_column):
+            header.setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(self.actions_column, QHeaderView.ResizeMode.Stretch)
 
         root.addWidget(self.table)
         self.details_hint_label = QLabel("Tip: double-click a row or press Enter to open details.")
@@ -224,11 +218,7 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _status_from_action(action: str) -> str:
-        if action == "Submit":
-            return "Submitted"
-        if action == "Pay":
-            return "Finalized"
-        return action
+        return {"Submit": "Submitted", "Pay": "Finalized"}.get(action, action)
 
     @staticmethod
     def _is_transition_allowed(
@@ -252,22 +242,24 @@ class MainWindow(QMainWindow):
     def _visible_declaration_indices(self) -> list[int]:
         if self.status_filter == "All":
             return list(range(len(self.declarations)))
-        if self.status_filter == "Active":
+
+        scoped_filters = {
+            "Active": {
+                DeclarationStatus.DRAFT,
+                DeclarationStatus.SUBMITTED,
+                DeclarationStatus.PENDING,
+            },
+            "Pending payment": {
+                DeclarationStatus.SUBMITTED,
+                DeclarationStatus.PENDING,
+            },
+        }
+        allowed_statuses = scoped_filters.get(self.status_filter)
+        if allowed_statuses:
             return [
                 index
                 for index, declaration in enumerate(self.declarations)
-                if declaration.status
-                in {
-                    DeclarationStatus.DRAFT,
-                    DeclarationStatus.SUBMITTED,
-                    DeclarationStatus.PENDING,
-                }
-            ]
-        if self.status_filter == "Pending payment":
-            return [
-                index
-                for index, declaration in enumerate(self.declarations)
-                if declaration.status in {DeclarationStatus.SUBMITTED, DeclarationStatus.PENDING}
+                if declaration.status in allowed_statuses
             ]
         status_enum = self._status_from_label(self.status_filter)
         return [
@@ -286,33 +278,21 @@ class MainWindow(QMainWindow):
 
         for view_row, source_row in enumerate(self.visible_indices):
             declaration = self.declarations[source_row]
-            self.table.setItem(view_row, 0, QTableWidgetItem(declaration.declaration_id))
-            self.table.setItem(
-                view_row,
-                1,
-                QTableWidgetItem(declaration.display_type()),
+            row_values = (
+                declaration.declaration_id,
+                declaration.display_type(),
+                declaration.display_period(),
+                declaration.display_tax(),
+                self._status_label(declaration.status),
+                declaration.created_at.strftime("%Y-%m-%d"),
             )
-            self.table.setItem(
+            for column, value in enumerate(row_values):
+                self.table.setItem(view_row, column, QTableWidgetItem(value))
+            self.table.setCellWidget(
                 view_row,
-                2,
-                QTableWidgetItem(declaration.display_period()),
+                self.actions_column,
+                self.build_row_actions(source_row),
             )
-            self.table.setItem(
-                view_row,
-                3,
-                QTableWidgetItem(declaration.display_tax()),
-            )
-            self.table.setItem(
-                view_row,
-                4,
-                QTableWidgetItem(self._status_label(declaration.status)),
-            )
-            self.table.setItem(
-                view_row,
-                5,
-                QTableWidgetItem(declaration.created_at.strftime("%Y-%m-%d")),
-            )
-            self.table.setCellWidget(view_row, 6, self.build_row_actions(source_row))
 
         if reselect_declaration_ids:
             self.table.clearSelection()
@@ -385,12 +365,11 @@ class MainWindow(QMainWindow):
         if source_row < 0 or source_row >= len(self.declarations):
             return
         declaration_id = self.declarations[source_row].declaration_id
-        try:
-            self.apply_status_to_ids([declaration_id], status)
-            self.reload_declarations()
-            self.populate_table(reselect_declaration_ids=[declaration_id])
-        except ValueError as e:
-            QMessageBox.warning(self, "Status change failed", str(e))
+        self._apply_status_and_refresh(
+            [declaration_id],
+            status,
+            error_title="Status change failed",
+        )
 
     def open_assessment_dialog(self, source_row: int) -> None:
         if source_row < 0 or source_row >= len(self.declarations):
@@ -412,20 +391,17 @@ class MainWindow(QMainWindow):
             )
             self.reload_declarations()
             self.populate_table(reselect_declaration_ids=[declaration.declaration_id])
+            message = (
+                f"Assessment saved: {declaration.declaration_id} ({dialog.tax_due_rsd} RSD to pay)"
+            )
             if dialog.mark_paid:
-                self._show_command_success(
+                message = (
                     f"Assessment saved and paid: {declaration.declaration_id} "
-                    f"({dialog.tax_due_rsd} RSD)",
+                    f"({dialog.tax_due_rsd} RSD)"
                 )
             elif updated.status == DeclarationStatus.FINALIZED:
-                self._show_command_success(
-                    f"Assessment saved: {declaration.declaration_id} (no tax to pay)",
-                )
-            else:
-                self._show_command_success(
-                    f"Assessment saved: {declaration.declaration_id} "
-                    f"({dialog.tax_due_rsd} RSD to pay)",
-                )
+                message = f"Assessment saved: {declaration.declaration_id} (no tax to pay)"
+            self._show_command_success(message)
         except ValueError as e:
             self._show_command_error("Assessment error", str(e), "Assessment update failed")
 
@@ -463,7 +439,7 @@ class MainWindow(QMainWindow):
 
     def _set_export_buttons_busy_state(self, active_button: QToolButton | None) -> None:
         for view_row in range(self.table.rowCount()):
-            row_widget = self.table.cellWidget(view_row, 6)
+            row_widget = self.table.cellWidget(view_row, self.actions_column)
             if row_widget is None:
                 continue
             for tool_button in row_widget.findChildren(QToolButton):
@@ -501,24 +477,6 @@ class MainWindow(QMainWindow):
         if self.progress_label.text() == EMPTY_TRANSACTIONS_WARNING:
             self.progress_label.setText("")
 
-    def _confirm_sync_with_empty_transactions(self) -> bool:
-        confirm = QMessageBox(self)
-        confirm.setIcon(QMessageBox.Icon.Warning)
-        confirm.setWindowTitle("Transaction history is empty")
-        confirm.setText(EMPTY_TRANSACTIONS_WARNING)
-        confirm.setInformativeText("Continue sync without imported history?")
-        confirm.setStandardButtons(
-            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
-        )
-        continue_button = confirm.button(QMessageBox.StandardButton.Ok)
-        if continue_button is not None:
-            continue_button.setText("Continue")
-        cancel_button = confirm.button(QMessageBox.StandardButton.Cancel)
-        if cancel_button is not None:
-            cancel_button.setText("Cancel")
-        confirm.setDefaultButton(QMessageBox.StandardButton.Cancel)
-        return confirm.exec() == int(QMessageBox.StandardButton.Ok)
-
     @Slot(str)
     def on_export_finished(self, export_dir: str) -> None:
         self._show_command_success(f"Declaration files saved in {export_dir}")
@@ -539,10 +497,9 @@ class MainWindow(QMainWindow):
         if model is None:
             return []
 
-        selected_view_rows = sorted({index.row() for index in model.selectedRows()})
         return [
             self.visible_indices[view_row]
-            for view_row in selected_view_rows
+            for view_row in sorted({index.row() for index in model.selectedRows()})
             if view_row < len(self.visible_indices)
         ]
 
@@ -581,13 +538,10 @@ class MainWindow(QMainWindow):
             return
 
         selected_rows = [index.row() for index in model.selectedRows()]
-        if selected_rows:
-            self.open_declaration_details_by_view_row(min(selected_rows))
+        current_row = min(selected_rows) if selected_rows else self.table.currentRow()
+        if current_row < 0:
             return
-
-        current_row = self.table.currentRow()
-        if current_row >= 0:
-            self.open_declaration_details_by_view_row(current_row)
+        self.open_declaration_details_by_view_row(current_row)
 
     def open_declaration_details_by_view_row(self, view_row: int) -> None:
         if view_row < 0 or view_row >= len(self.visible_indices):
@@ -647,16 +601,16 @@ class MainWindow(QMainWindow):
                 f"Status change to {status} is not allowed for: {invalid_sample}{suffix}",
             )
 
-        if target_status == DeclarationStatus.SUBMITTED:
-            self.declaration_manager.submit(declaration_ids)
-            return
-        if target_status == DeclarationStatus.FINALIZED:
-            self.declaration_manager.pay(declaration_ids)
-            return
         if target_status == DeclarationStatus.DRAFT:
             self.declaration_manager.revert(declaration_ids, DeclarationStatus.DRAFT)
             return
-        raise ValueError(f"Unsupported status: {status}")
+        update_status_operation = {
+            DeclarationStatus.SUBMITTED: self.declaration_manager.submit,
+            DeclarationStatus.FINALIZED: self.declaration_manager.pay,
+        }.get(target_status)
+        if update_status_operation is None:
+            raise ValueError(f"Unsupported status: {status}")
+        update_status_operation(declaration_ids)
 
     def apply_status_to_selected(self, status: str) -> None:
         declaration_ids = self.selected_declaration_ids()
@@ -664,16 +618,16 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "No selection", "Select one or more declarations first.")
             return
 
-        try:
-            self.apply_status_to_ids(declaration_ids, status)
-            self.reload_declarations()
-            self.populate_table(reselect_declaration_ids=declaration_ids)
-            self.statusBar().showMessage(
-                f"Updated {len(declaration_ids)} declarations to {status}",
-                4000,
-            )
-        except ValueError as e:
-            QMessageBox.warning(self, "Bulk update failed", str(e))
+        if not self._apply_status_and_refresh(
+            declaration_ids,
+            status,
+            error_title="Bulk update failed",
+        ):
+            return
+        self.statusBar().showMessage(
+            f"Updated {len(declaration_ids)} declarations to {status}",
+            4000,
+        )
 
     @Slot()
     def start_sync(self) -> None:
@@ -681,7 +635,14 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def start_forced_sync(self) -> None:
-        if not self._confirm_forced_sync():
+        if not self._confirm_action(
+            title="Force sync",
+            text=(
+                "Force sync ignores last sync date and can create declarations even when "
+                "withholding tax is not found."
+            ),
+            informative_text="Continue?",
+        ):
             return
         self._start_sync(forced=True)
 
@@ -689,9 +650,10 @@ class MainWindow(QMainWindow):
         if self.sync_thread is not None and self.sync_thread.isRunning():
             return
 
-        if (
-            self._is_transactions_history_empty()
-            and not self._confirm_sync_with_empty_transactions()
+        if self._is_transactions_history_empty() and not self._confirm_action(
+            title="Transaction history is empty",
+            text=EMPTY_TRANSACTIONS_WARNING,
+            informative_text="Continue sync without imported history?",
         ):
             self._update_empty_transactions_warning(force=True)
             return
@@ -719,27 +681,6 @@ class MainWindow(QMainWindow):
 
         self.sync_thread.start()
 
-    def _confirm_forced_sync(self) -> bool:
-        confirm = QMessageBox(self)
-        confirm.setIcon(QMessageBox.Icon.Warning)
-        confirm.setWindowTitle("Force sync")
-        confirm.setText(
-            "Force sync ignores last sync date and can create declarations even when "
-            "withholding tax is not found.",
-        )
-        confirm.setInformativeText("Continue?")
-        confirm.setStandardButtons(
-            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
-        )
-        continue_button = confirm.button(QMessageBox.StandardButton.Ok)
-        if continue_button is not None:
-            continue_button.setText("Continue")
-        cancel_button = confirm.button(QMessageBox.StandardButton.Cancel)
-        if cancel_button is not None:
-            cancel_button.setText("Cancel")
-        confirm.setDefaultButton(QMessageBox.StandardButton.Cancel)
-        return confirm.exec() == int(QMessageBox.StandardButton.Ok)
-
     @Slot(int, str)
     def on_sync_finished(self, created_count: int, output_folder: str) -> None:
         self.reload_declarations()
@@ -765,6 +706,48 @@ class MainWindow(QMainWindow):
         self.sync_button.setEnabled(True)
         self.sync_worker = None
         self.sync_thread = None
+
+    def _confirm_action(
+        self,
+        *,
+        title: str,
+        text: str,
+        informative_text: str,
+    ) -> bool:
+        confirm = QMessageBox(self)
+        confirm.setIcon(QMessageBox.Icon.Warning)
+        confirm.setWindowTitle(title)
+        confirm.setText(text)
+        confirm.setInformativeText(informative_text)
+        confirm.setStandardButtons(
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+        )
+        for standard_button, button_label in (
+            (QMessageBox.StandardButton.Ok, "Continue"),
+            (QMessageBox.StandardButton.Cancel, "Cancel"),
+        ):
+            button = confirm.button(standard_button)
+            if button is not None:
+                button.setText(button_label)
+        confirm.setDefaultButton(QMessageBox.StandardButton.Cancel)
+        return confirm.exec() == int(QMessageBox.StandardButton.Ok)
+
+    def _apply_status_and_refresh(
+        self,
+        declaration_ids: list[str],
+        status: str,
+        *,
+        error_title: str,
+    ) -> bool:
+        try:
+            self.apply_status_to_ids(declaration_ids, status)
+        except ValueError as e:
+            QMessageBox.warning(self, error_title, str(e))
+            return False
+
+        self.reload_declarations()
+        self.populate_table(reselect_declaration_ids=declaration_ids)
+        return True
 
     @Slot()
     def open_config(self) -> None:
