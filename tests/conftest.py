@@ -20,6 +20,7 @@ os.environ["XDG_DATA_HOME"] = str(TEST_HOME_DIR / ".local" / "share")
 os.environ["APPDATA"] = str(TEST_HOME_DIR / "AppData" / "Roaming")
 os.environ["LOCALAPPDATA"] = str(TEST_HOME_DIR / "AppData" / "Local")
 os.environ.setdefault("IBKR_POREZ_LOG_DIR", str(TEST_LOG_DIR))
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 
 @pytest.fixture(scope="function", autouse=True)

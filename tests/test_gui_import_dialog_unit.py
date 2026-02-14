@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-import sys
 from pathlib import Path
 
 import allure
@@ -10,15 +8,9 @@ from PySide6.QtWidgets import QApplication, QLabel
 
 from ibkr_porez.gui.import_dialog import IMPORT_DOCS_URL, IMPORT_GUIDANCE_TEXT, ImportDialog
 
-pytestmark = pytest.mark.skipif(
-    sys.platform != "linux",
-    reason="Qt UI tests run in CI only on Linux",
-)
-
 
 @pytest.fixture(scope="module")
 def qapp() -> QApplication:
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QApplication.instance()
     if app is None:
         app = QApplication(["pytest"])

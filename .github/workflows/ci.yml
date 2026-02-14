@@ -70,8 +70,6 @@ jobs:
       run: uv sync --frozen
 
     - name: Test with pytest
-      env:
-        QT_QPA_PLATFORM: ${{ runner.os == 'Linux' && 'offscreen' || '' }}
       run: ${{ env.PYTEST_CMD }}
 
 # Build with publishing Allure report, coverage report
@@ -117,8 +115,6 @@ jobs:
       run: uv sync --frozen
 
     - name: Test with pytest and Allure report
-      env:
-        QT_QPA_PLATFORM: offscreen
       run: "${{ env.PYTEST_CMD }} --alluredir=./allure-results"
 
     - name: Load Allure test report history

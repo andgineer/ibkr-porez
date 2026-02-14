@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-import sys
 from datetime import date, datetime
 
 import allure
@@ -13,12 +11,6 @@ import ibkr_porez.gui.main_window as main_window_module
 from ibkr_porez.declaration_manager import DeclarationManager as RealDeclarationManager
 from ibkr_porez.gui.main_window import MainWindow
 from ibkr_porez.models import Declaration, DeclarationStatus, DeclarationType, UserConfig
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-pytestmark = pytest.mark.skipif(
-    sys.platform != "linux",
-    reason="Qt UI tests run in CI only on Linux",
-)
 
 
 class _FakeStorage:

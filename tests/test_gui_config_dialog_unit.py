@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-import sys
 from pathlib import Path
 
 import allure
@@ -12,15 +10,9 @@ import ibkr_porez.gui.config_dialog as config_dialog_module
 from ibkr_porez.gui.config_dialog import FLEX_DOCS_URL, ConfigDialog
 from ibkr_porez.models import UserConfig
 
-pytestmark = pytest.mark.skipif(
-    sys.platform != "linux",
-    reason="Qt UI tests run in CI only on Linux",
-)
-
 
 @pytest.fixture(scope="module")
 def qapp() -> QApplication:
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QApplication.instance()
     if app is None:
         app = QApplication(["pytest"])

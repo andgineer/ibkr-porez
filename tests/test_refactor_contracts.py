@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-import sys
 from datetime import date, datetime
 from io import StringIO
 from pathlib import Path
@@ -23,9 +21,7 @@ from ibkr_porez.operation_import import ImportType
 from ibkr_porez.operation_list import ListDeclarations
 from ibkr_porez.operation_report import process_gains_report
 from ibkr_porez.operation_sync import SyncOperation
-
-if sys.platform == "linux":
-    from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 
 
 class _FakeListStorage:
@@ -146,12 +142,7 @@ def test_output_folder_contract_sync_report_and_export(
 
 @allure.epic("Contracts")
 @allure.feature("Refactor Safety")
-@pytest.mark.skipif(
-    sys.platform != "linux",
-    reason="Qt UI tests run in CI only on Linux",
-)
 def test_import_type_contract_cli_and_gui_match_enum() -> None:
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     app = QApplication.instance()
     if app is None:
         app = QApplication(["pytest"])
