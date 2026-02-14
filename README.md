@@ -8,7 +8,7 @@
 | src/ibkr\_porez/config.py                           |       42 |        0 |    100% |           |
 | src/ibkr\_porez/declaration\_gains\_xml.py          |       98 |        3 |     97% |135-136, 139 |
 | src/ibkr\_porez/declaration\_income\_xml.py         |       94 |        1 |     99% |        79 |
-| src/ibkr\_porez/declaration\_manager.py             |      179 |       22 |     88% |30, 43, 56, 61-62, 72-78, 147, 172, 193, 218-222, 230, 234, 291 |
+| src/ibkr\_porez/declaration\_manager.py             |      179 |       19 |     89% |30, 43, 56, 61-62, 72-78, 147, 172, 193, 222, 230, 234, 291 |
 | src/ibkr\_porez/error\_handling.py                  |       18 |        0 |    100% |           |
 | src/ibkr\_porez/gui/app\_icon.py                    |       94 |       75 |     20% |25-40, 44-49, 62-74, 85-118, 122-155, 159-161 |
 | src/ibkr\_porez/gui/assessment\_dialog.py           |       46 |       40 |     13% |25-59, 62-77 |
@@ -38,7 +38,7 @@
 | src/ibkr\_porez/operation\_report\_tables.py        |       21 |        0 |    100% |           |
 | src/ibkr\_porez/operation\_show\_declaration.py     |       54 |        0 |    100% |           |
 | src/ibkr\_porez/operation\_stat.py                  |      165 |       26 |     84% |45-50, 116, 118, 146-149, 195, 199, 216, 223, 229, 241-242, 363, 383-390 |
-| src/ibkr\_porez/operation\_sync.py                  |      158 |        5 |     97% |28, 83, 150, 203, 254 |
+| src/ibkr\_porez/operation\_sync.py                  |      158 |        4 |     97% |83, 150, 203, 254 |
 | src/ibkr\_porez/report\_base.py                     |       18 |        2 |     89% |    34, 54 |
 | src/ibkr\_porez/report\_gains.py                    |       28 |        0 |    100% |           |
 | src/ibkr\_porez/report\_income.py                   |      143 |       14 |     90% |92-95, 160-161, 165, 191, 202, 229, 234-235, 239, 408, 437 |
@@ -46,7 +46,7 @@
 | src/ibkr\_porez/storage\_flex\_queries.py           |      155 |       27 |     83% |125, 149, 159-161, 169-186, 226, 250, 256-257, 261-264, 284, 300 |
 | src/ibkr\_porez/tax.py                              |       71 |       14 |     80% |27, 33, 57-59, 87-103, 151-152, 155-156 |
 | src/ibkr\_porez/validation.py                       |       13 |        1 |     92% |        29 |
-| **TOTAL**                                           | **3922** |  **722** | **82%** |           |
+| **TOTAL**                                           | **3922** |  **718** | **82%** |           |
 
 
 ## Setup coverage badge
