@@ -67,17 +67,6 @@ class DeclarationManager:
         return cls.tax_due_rsd(declaration) > Decimal("0")
 
     @staticmethod
-    def has_assessed_tax(declaration: Declaration) -> bool:
-        """Return whether declaration has official assessed tax amount."""
-        value = declaration.metadata.get("assessed_tax_due_rsd")
-        if value is None:
-            return False
-        try:
-            return Decimal(str(value)) >= Decimal("0")
-        except (InvalidOperation, TypeError, ValueError):
-            return False
-
-    @staticmethod
     def assessment_message(declaration_id, tax_due_rsd, status, mark_paid):
         if mark_paid:
             return f"Assessment saved and paid: {declaration_id} ({tax_due_rsd} RSD)"

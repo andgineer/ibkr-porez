@@ -217,10 +217,6 @@ class MainWindow(QMainWindow):
         return DeclarationStatus(label.lower())
 
     @staticmethod
-    def _status_from_action(action: str) -> str:
-        return {"Submit": "Submitted", "Pay": "Finalized"}.get(action, action)
-
-    @staticmethod
     def _is_transition_allowed(
         current_status: DeclarationStatus,
         target_status: DeclarationStatus,
@@ -533,8 +529,6 @@ class MainWindow(QMainWindow):
         if view_row < 0 or view_row >= len(self.visible_indices):
             return
         source_row = self.visible_indices[view_row]
-        if source_row < 0 or source_row >= len(self.declarations):
-            return
         declaration_id = self.declarations[source_row].declaration_id
         dialog = DeclarationDetailsDialog(declaration_id, self)
         dialog.exec()
@@ -558,9 +552,9 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def apply_selected_status_from_combo(self) -> None:
-        self.apply_status_to_selected(
-            self._status_from_action(self.bulk_status_combo.currentText()),
-        )
+        action = self.bulk_status_combo.currentText()
+        status = {"Submit": "Submitted", "Pay": "Finalized"}.get(action, action)
+        self.apply_status_to_selected(status)
 
     def apply_status_to_ids(self, declaration_ids: list[str], status: str) -> None:
         target_status = self._status_from_label(status)
