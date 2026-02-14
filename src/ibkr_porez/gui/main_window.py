@@ -380,17 +380,14 @@ class MainWindow(QMainWindow):
             )
             self.reload_declarations()
             self.populate_table(reselect_declaration_ids=[declaration.declaration_id])
-            message = (
-                f"Assessment saved: {declaration.declaration_id} ({dialog.tax_due_rsd} RSD to pay)"
+            self._show_command_success(
+                self.declaration_manager.assessment_message(
+                    declaration.declaration_id,
+                    dialog.tax_due_rsd,
+                    updated.status,
+                    dialog.mark_paid,
+                ),
             )
-            if dialog.mark_paid:
-                message = (
-                    f"Assessment saved and paid: {declaration.declaration_id} "
-                    f"({dialog.tax_due_rsd} RSD)"
-                )
-            elif updated.status == DeclarationStatus.FINALIZED:
-                message = f"Assessment saved: {declaration.declaration_id} (no tax to pay)"
-            self._show_command_success(message)
         except ValueError as e:
             self._show_command_error("Assessment error", str(e), "Assessment update failed")
 

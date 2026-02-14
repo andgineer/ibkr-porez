@@ -552,12 +552,10 @@ def list_declarations(all: bool, status: str | None, ids_only: bool):
     result = controller.generate(show_all=all, status=status_enum, ids_only=ids_only)
 
     if ids_only:
-        # result is list[str] when ids_only=True
         assert isinstance(result, list), "Expected list when ids_only=True"
         for decl_id in result:
             print(decl_id)
     else:
-        # result is Table when ids_only=False
         console.print(result)
 
 
@@ -656,18 +654,13 @@ def assess(declaration_id: str, tax_due_str: str, mark_paid: bool):
             tax_due_rsd=tax_due_rsd,
             mark_paid=mark_paid,
         )
-        if mark_paid:
-            console.print(
-                f"[green]Assessment saved and paid: {declaration_id} ({tax_due_rsd} RSD)[/green]",
-            )
-        elif updated.status == DeclarationStatus.FINALIZED:
-            console.print(
-                f"[green]Assessment saved: {declaration_id} (no tax to pay)[/green]",
-            )
-        else:
-            console.print(
-                f"[green]Assessment saved: {declaration_id} ({tax_due_rsd} RSD to pay)[/green]",
-            )
+        msg = manager.assessment_message(
+            declaration_id,
+            tax_due_rsd,
+            updated.status,
+            mark_paid,
+        )
+        console.print(f"[green]{msg}[/green]")
     except ValueError as e:
         console.print(f"[red]{e}[/red]")
         raise click.ClickException(str(e)) from e

@@ -77,6 +77,14 @@ class DeclarationManager:
         except (InvalidOperation, TypeError, ValueError):
             return False
 
+    @staticmethod
+    def assessment_message(declaration_id, tax_due_rsd, status, mark_paid):
+        if mark_paid:
+            return f"Assessment saved and paid: {declaration_id} ({tax_due_rsd} RSD)"
+        if status == DeclarationStatus.FINALIZED:
+            return f"Assessment saved: {declaration_id} (no tax to pay)"
+        return f"Assessment saved: {declaration_id} ({tax_due_rsd} RSD to pay)"
+
     def submit(
         self,
         declaration_ids: list[str],
