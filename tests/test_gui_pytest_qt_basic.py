@@ -245,6 +245,7 @@ def test_qtbot_enter_opens_declaration_details(
     qtbot.waitUntil(lambda: patched_main_window.table.rowCount() > 0)
     patched_main_window.table.setCurrentCell(0, 0)
     patched_main_window.table.selectRow(0)
-    patched_main_window.open_details_shortcut_return.activated.emit()
+    assert patched_main_window.open_details_shortcuts
+    patched_main_window.open_details_shortcuts[0].activated.emit()
 
     assert opened == ["2026-02-03-ppo-aapl", "exec"]
