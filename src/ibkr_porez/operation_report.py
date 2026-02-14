@@ -7,21 +7,13 @@ from pathlib import Path
 from pydantic import ValidationError
 from rich.console import Console
 
-from ibkr_porez.config import config_manager
+from ibkr_porez.config import get_effective_output_dir_path
 from ibkr_porez.models import IncomeDeclarationEntry
 from ibkr_porez.operation_report_params import ReportParams, ReportType
 from ibkr_porez.operation_report_tables import render_declaration_table
 from ibkr_porez.report_gains import GainsReportGenerator
 from ibkr_porez.report_income import IncomeReportGenerator
 from ibkr_porez.validation import handle_validation_error
-
-
-def _get_output_folder() -> Path:
-    """Get output folder from config or default to Downloads."""
-    config = config_manager.load_config()
-    if config.output_folder:
-        return Path(config.output_folder)
-    return Path.home() / "Downloads"
 
 
 def generate_gains_filename(half: str | None) -> str | None:
@@ -74,7 +66,7 @@ def process_gains_report(
             end_date=end_date,
         )
 
-        output_folder = output_dir if output_dir else _get_output_folder()
+        output_folder = output_dir if output_dir else get_effective_output_dir_path()
         output_folder.mkdir(parents=True, exist_ok=True)
 
         declaration_count = 0
@@ -168,7 +160,7 @@ def process_income_report(
             force=force,
         )
 
-        output_folder = output_dir if output_dir else _get_output_folder()
+        output_folder = output_dir if output_dir else get_effective_output_dir_path()
         output_folder.mkdir(parents=True, exist_ok=True)
 
         declaration_count = 0

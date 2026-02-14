@@ -23,8 +23,8 @@ def mock_user_data_dir(tmp_path):
     with patch("ibkr_porez.storage.user_data_dir", lambda app: str(tmp_path)):
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
             with patch(
-                "ibkr_porez.declaration_manager.config_manager.load_config",
-                return_value=mock_config,
+                "ibkr_porez.declaration_manager.get_effective_output_dir_path",
+                return_value=tmp_path,
             ):
                 s = Storage()
                 s._ensure_dirs()

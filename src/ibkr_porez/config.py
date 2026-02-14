@@ -55,6 +55,19 @@ def get_effective_data_dir_path(config: UserConfig) -> Path:
     return get_default_data_dir_path().expanduser().resolve()
 
 
+def get_default_output_dir_path() -> Path:
+    """Return default output directory path."""
+    return Path.home() / "Downloads"
+
+
+def get_effective_output_dir_path(config: UserConfig | None = None) -> Path:
+    """Resolve output directory with fallback to default directory."""
+    resolved_config = config or config_manager.load_config()
+    if resolved_config.output_folder:
+        return Path(resolved_config.output_folder)
+    return get_default_output_dir_path()
+
+
 def get_data_dir_change_warning(old_config: UserConfig, new_config: UserConfig) -> str | None:
     """Return warning message if effective data directory changed."""
     old_path = get_effective_data_dir_path(old_config)

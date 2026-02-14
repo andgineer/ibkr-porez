@@ -12,7 +12,7 @@ from rich.console import Console
 from rich.logging import RichHandler
 
 from ibkr_porez import __version__
-from ibkr_porez.config import config_manager
+from ibkr_porez.config import config_manager, get_effective_output_dir_path
 from ibkr_porez.declaration_manager import DeclarationManager
 from ibkr_porez.error_handling import get_user_friendly_error_message
 from ibkr_porez.gui.launcher import launch_gui_process
@@ -35,14 +35,6 @@ from ibkr_porez.storage import Storage
 from ibkr_porez.storage_flex_queries import restore_report
 
 OUTPUT_FILE_DEFAULT = "output"
-
-
-def _get_output_folder() -> Path:
-    """Get output folder from config or default to Downloads."""
-    config = config_manager.load_config()
-    if config.output_folder:
-        return Path(config.output_folder)
-    return Path.home() / "Downloads"
 
 
 # Global Console instance to ensure logs and progress bars share the same stream
@@ -520,7 +512,7 @@ def export_flex(date: str, output_path: str | None):
         else:
             # Write to file
             if output_path is None:
-                output_folder = _get_output_folder()
+                output_folder = get_effective_output_dir_path()
                 output_folder.mkdir(parents=True, exist_ok=True)
                 file_path = output_folder / f"flex_query_{report_date.strftime('%Y%m%d')}.xml"
             else:

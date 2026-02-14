@@ -45,8 +45,8 @@ def mock_config_for_all_tests(request):
         )
         with patch("ibkr_porez.storage.config_manager.load_config", return_value=mock_config):
             with patch(
-                "ibkr_porez.declaration_manager.config_manager.load_config",
-                return_value=mock_config,
+                "ibkr_porez.declaration_manager.get_effective_output_dir_path",
+                return_value=temp_path,
             ):
                 with patch("ibkr_porez.storage.user_data_dir", lambda app: str(temp_path)):
                     yield

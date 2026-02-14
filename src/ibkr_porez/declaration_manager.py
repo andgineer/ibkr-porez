@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from ibkr_porez.config import config_manager
+from ibkr_porez.config import get_effective_output_dir_path
 from ibkr_porez.models import Declaration, DeclarationStatus, DeclarationType
 from ibkr_porez.storage import Storage
 
@@ -229,14 +229,7 @@ class DeclarationManager:
         if not decl:
             raise ValueError(f"Declaration {declaration_id} not found")
 
-        if output_dir is None:
-            config = config_manager.load_config()
-            if config.output_folder:
-                output_dir = Path(config.output_folder)
-            else:
-                output_dir = Path.home() / "Downloads"
-        else:
-            output_dir = Path(output_dir)
+        output_dir = get_effective_output_dir_path() if output_dir is None else Path(output_dir)
 
         output_dir.mkdir(parents=True, exist_ok=True)
 

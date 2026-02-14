@@ -110,12 +110,12 @@ class TestE2EReport:
 
     @patch("ibkr_porez.nbs.requests.get")
     @patch("ibkr_porez.report_base.NBSClient")
-    @patch("ibkr_porez.operation_report.config_manager")
+    @patch("ibkr_porez.operation_report.get_effective_output_dir_path")
     @patch("ibkr_porez.report_base.config_manager")
     def test_report_generation_h1_with_config_output_folder(
         self,
-        mock_report_cfg_mgr,
         mock_base_cfg_mgr,
+        mock_report_output_dir,
         mock_nbs_cls,
         mock_requests_get,
         runner,
@@ -146,7 +146,7 @@ class TestE2EReport:
             email="test@example.com",
             output_folder=str(output_folder),
         )
-        mock_report_cfg_mgr.load_config.return_value = mock_config
+        mock_report_output_dir.return_value = output_folder
         mock_base_cfg_mgr.load_config.return_value = mock_config
 
         # Mock NBS (Fixed rates for deterministic calc)
@@ -268,12 +268,12 @@ class TestE2EReport:
 
     @patch("ibkr_porez.nbs.requests.get")
     @patch("ibkr_porez.report_base.NBSClient")
-    @patch("ibkr_porez.operation_report.config_manager")
+    @patch("ibkr_porez.operation_report.get_effective_output_dir_path")
     @patch("ibkr_porez.report_base.config_manager")
     def test_report_generation_file_check_with_config_output_folder(
         self,
-        mock_report_cfg_mgr,
         mock_base_cfg_mgr,
+        mock_report_output_dir,
         mock_nbs_cls,
         mock_requests_get,
         runner,
@@ -293,7 +293,7 @@ class TestE2EReport:
             city_code="223",
             output_folder=str(output_folder),
         )
-        mock_report_cfg_mgr.load_config.return_value = mock_config
+        mock_report_output_dir.return_value = output_folder
         mock_base_cfg_mgr.load_config.return_value = mock_config
         mock_nbs = mock_nbs_cls.return_value
         mock_nbs.get_rate.return_value = Decimal("117.3")

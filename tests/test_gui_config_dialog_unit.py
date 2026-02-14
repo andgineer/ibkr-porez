@@ -105,6 +105,87 @@ def test_config_dialog_has_human_friendly_flex_help_link(qapp: QApplication) -> 
         dialog.close()
 
 
+def test_config_dialog_open_data_dir_uses_field_value(
+    qapp: QApplication,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    dialog = ConfigDialog(UserConfig(full_name="User", address="Address"))
+    opened_paths: list[str] = []
+    custom_dir = tmp_path / "custom-data-dir"
+
+    monkeypatch.setattr(
+        config_dialog_module.QDesktopServices,
+        "openUrl",
+        lambda url: opened_paths.append(url.toLocalFile()) or True,
+    )
+
+    try:
+        dialog.data_dir.setText(str(custom_dir))
+        dialog._open_data_dir()
+        assert custom_dir.exists()
+        assert opened_paths == [str(custom_dir)]
+    finally:
+        dialog.close()
+
+
+def test_config_dialog_open_output_dir_uses_default_when_field_empty(
+    qapp: QApplication,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    dialog = ConfigDialog(UserConfig(full_name="User", address="Address"))
+    opened_paths: list[str] = []
+    default_output = tmp_path / "default-output"
+
+    monkeypatch.setattr(
+        config_dialog_module,
+        "get_default_output_dir_path",
+        lambda: default_output,
+    )
+    monkeypatch.setattr(
+        config_dialog_module.QDesktopServices,
+        "openUrl",
+        lambda url: opened_paths.append(url.toLocalFile()) or True,
+    )
+
+    try:
+        dialog.output_folder.setText("")
+        dialog._open_output_folder()
+        assert default_output.exists()
+        assert opened_paths == [str(default_output)]
+    finally:
+        dialog.close()
+
+
+def test_config_dialog_open_directory_shows_warning_when_open_fails(
+    qapp: QApplication,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    dialog = ConfigDialog(UserConfig(full_name="User", address="Address"))
+    warnings: list[tuple[str, str]] = []
+    target_dir = tmp_path / "cannot-open-dir"
+
+    monkeypatch.setattr(
+        config_dialog_module.QDesktopServices,
+        "openUrl",
+        lambda _url: False,
+    )
+    monkeypatch.setattr(
+        config_dialog_module.QMessageBox,
+        "warning",
+        lambda _parent, title, text: warnings.append((title, text)),
+    )
+
+    try:
+        dialog._open_directory(str(target_dir), tmp_path / "unused")
+        assert target_dir.exists()
+        assert warnings == [("Open folder failed", f"Cannot open folder: {target_dir}")]
+    finally:
+        dialog.close()
+
+
 def _apply_allure_labels() -> None:
     labels = (allure.epic("GUI"), allure.feature("Config Dialog"))
     for name, value in list(globals().items()):

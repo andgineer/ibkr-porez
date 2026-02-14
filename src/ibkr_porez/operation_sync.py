@@ -7,7 +7,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
-from ibkr_porez.config import UserConfig, config_manager
+from ibkr_porez.config import UserConfig, get_effective_output_dir_path
 from ibkr_porez.models import (
     INCOME_CODE_DIVIDEND,
     Declaration,
@@ -19,14 +19,6 @@ from ibkr_porez.operation_get import GetOperation
 from ibkr_porez.report_gains import GainsReportGenerator
 from ibkr_porez.report_income import IncomeReportGenerator
 from ibkr_porez.storage import Storage
-
-
-def _get_output_folder() -> Path:
-    """Get output folder from config or default to Downloads."""
-    config = config_manager.load_config()
-    if config.output_folder:
-        return Path(config.output_folder)
-    return Path.home() / "Downloads"
 
 
 @dataclass
@@ -99,7 +91,7 @@ class SyncOperation:
 
     def get_output_folder(self) -> Path:
         """Get destination folder for declaration files."""
-        return self.output_dir if self.output_dir else _get_output_folder()
+        return self.output_dir if self.output_dir else get_effective_output_dir_path(self.config)
 
     def _generate_declaration_filename(
         self,

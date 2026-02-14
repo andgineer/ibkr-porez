@@ -13,7 +13,6 @@ import ibkr_porez.declaration_manager as declaration_manager_module
 import ibkr_porez.gui.import_dialog as import_dialog_module
 import ibkr_porez.operation_list as operation_list_module
 import ibkr_porez.operation_report as operation_report_module
-import ibkr_porez.operation_sync as operation_sync_module
 from ibkr_porez.declaration_manager import DeclarationManager
 from ibkr_porez.main import ibkr_porez
 from ibkr_porez.models import Declaration, DeclarationStatus, DeclarationType, UserConfig
@@ -101,9 +100,16 @@ def test_output_folder_contract_sync_report_and_export(
         output_folder=str(output_folder),
     )
 
-    monkeypatch.setattr(operation_sync_module.config_manager, "load_config", lambda: config)
-    monkeypatch.setattr(operation_report_module.config_manager, "load_config", lambda: config)
-    monkeypatch.setattr(declaration_manager_module.config_manager, "load_config", lambda: config)
+    monkeypatch.setattr(
+        operation_report_module,
+        "get_effective_output_dir_path",
+        lambda *_args, **_kwargs: output_folder,
+    )
+    monkeypatch.setattr(
+        declaration_manager_module,
+        "get_effective_output_dir_path",
+        lambda *_args, **_kwargs: output_folder,
+    )
 
     sync_output_folder = SyncOperation(config).get_output_folder()
     assert sync_output_folder == output_folder

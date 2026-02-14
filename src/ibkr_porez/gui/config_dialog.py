@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -12,11 +13,13 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
+from ibkr_porez.config import get_default_data_dir_path, get_default_output_dir_path
 from ibkr_porez.models import UserConfig
 
 FLEX_DOCS_URL = "https://andgineer.github.io/ibkr-porez/ibkr/#flex-web-service"
@@ -89,23 +92,39 @@ class ConfigDialog(QDialog):
     def _build_app_group(self) -> QGroupBox:
         group = QGroupBox("App Settings")
         form = QFormLayout(group)
-        form.addRow("Data Directory", self._build_path_row(self.data_dir, self._choose_data_dir))
+        form.addRow(
+            "Data Directory",
+            self._build_path_row(
+                self.data_dir,
+                self._choose_data_dir,
+                self._open_data_dir,
+            ),
+        )
         form.addRow(
             "Output Folder",
-            self._build_path_row(self.output_folder, self._choose_output_folder),
+            self._build_path_row(
+                self.output_folder,
+                self._choose_output_folder,
+                self._open_output_folder,
+            ),
         )
         return group
 
-    def _build_path_row(self, field: QLineEdit, browse_handler) -> QWidget:
+    def _build_path_row(self, field: QLineEdit, browse_handler, open_handler) -> QWidget:
         wrapper = QWidget()
         row = QHBoxLayout(wrapper)
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(8)
 
-        browse_button = QPushButton("Browse")
+        browse_button = QPushButton("Choose...")
+        browse_button.setToolTip("Select folder path")
+        open_button = QPushButton("Open Folder")
+        open_button.setToolTip("Open folder in file manager")
         browse_button.clicked.connect(browse_handler)
+        open_button.clicked.connect(open_handler)
         row.addWidget(field, 1)
         row.addWidget(browse_button)
+        row.addWidget(open_button)
         return wrapper
 
     def _choose_data_dir(self) -> None:
@@ -120,6 +139,31 @@ class ConfigDialog(QDialog):
         chosen = QFileDialog.getExistingDirectory(self, title, start_dir)
         if chosen:
             field.setText(chosen)
+
+    def _open_data_dir(self) -> None:
+        self._open_directory(self.data_dir.text().strip(), get_default_data_dir_path())
+
+    def _open_output_folder(self) -> None:
+        self._open_directory(self.output_folder.text().strip(), get_default_output_dir_path())
+
+    def _open_directory(self, value: str, fallback: Path) -> None:
+        directory = Path(value).expanduser() if value else fallback
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+        except OSError as error:
+            QMessageBox.warning(
+                self,
+                "Open folder failed",
+                f"Cannot create folder: {directory}\n\n{error}",
+            )
+            return
+
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(directory))):
+            QMessageBox.warning(
+                self,
+                "Open folder failed",
+                f"Cannot open folder: {directory}",
+            )
 
     def get_config(self) -> UserConfig:
         data = self._base_config.model_dump()
