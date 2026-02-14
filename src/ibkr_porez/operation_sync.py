@@ -63,6 +63,13 @@ class SyncOperation:
         return value.strip() if isinstance(value, str) else ""
 
     def _validate_personal_config(self) -> None:
+        if not self._config_text(self.config.ibkr_token) or not self._config_text(
+            self.config.ibkr_query_id,
+        ):
+            raise ValueError(
+                "Missing IBKR configuration. Open Config and set Flex Token and Flex Query ID.",
+            )
+
         missing_fields: list[str] = []
 
         if not self._config_text(self.config.personal_id):

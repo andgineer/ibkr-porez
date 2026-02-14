@@ -187,7 +187,7 @@ def _determine_input_source(file_path: str | None) -> tuple[bool, Path]:
     "-t",
     "--type",
     "import_type",
-    type=click.Choice(["auto", "csv", "flex"], case_sensitive=False),
+    type=click.Choice(tuple(import_type.value for import_type in ImportType), case_sensitive=False),
     default="auto",
     help="Import type: 'auto' (detect from file), 'csv', or 'flex' (XML)",
 )
@@ -195,14 +195,7 @@ def _determine_input_source(file_path: str | None) -> tuple[bool, Path]:
 def import_file(file_path: str | None, import_type: str):
     """Import historical transactions from CSV Activity Statement or Flex Query XML."""
     operation = ImportOperation()
-
-    # Convert string to ImportType enum
-    type_map = {
-        "auto": ImportType.AUTO,
-        "csv": ImportType.CSV,
-        "flex": ImportType.FLEX,
-    }
-    import_type_enum = type_map.get(import_type.lower(), ImportType.AUTO)
+    import_type_enum = ImportType(import_type.lower())
 
     read_from_stdin = False
     input_path = Path()
@@ -329,9 +322,6 @@ def stat(year: int | None, ticker: str | None, month: str | None):
 def sync(output_dir: str | None, forced_lookback_days: int | None):
     """Sync data from IBKR and create all necessary declarations."""
     cfg = config_manager.load_config()
-    if not cfg.ibkr_token or not cfg.ibkr_query_id:
-        console.print("[red]Missing Configuration! Run `ibkr-porez config` first.[/red]")
-        return
 
     output_path = Path(output_dir) if output_dir else None
     operation = SyncOperation(

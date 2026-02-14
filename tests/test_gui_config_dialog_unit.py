@@ -124,7 +124,7 @@ def test_config_dialog_open_data_dir_uses_field_value(
         dialog.data_dir.setText(str(custom_dir))
         dialog._open_data_dir()
         assert custom_dir.exists()
-        assert opened_paths == [str(custom_dir)]
+        assert [Path(path) for path in opened_paths] == [custom_dir]
     finally:
         dialog.close()
 
@@ -153,7 +153,7 @@ def test_config_dialog_open_output_dir_uses_default_when_field_empty(
         dialog.output_folder.setText("")
         dialog._open_output_folder()
         assert default_output.exists()
-        assert opened_paths == [str(default_output)]
+        assert [Path(path) for path in opened_paths] == [default_output]
     finally:
         dialog.close()
 

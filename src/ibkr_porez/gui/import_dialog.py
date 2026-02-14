@@ -60,9 +60,12 @@ class ImportDialog(QDialog):
         self.browse_button.clicked.connect(self._choose_file)
 
         self.import_type_combo = QComboBox()
-        self.import_type_combo.addItem("Auto detect", ImportType.AUTO.value)
-        self.import_type_combo.addItem("CSV", ImportType.CSV.value)
-        self.import_type_combo.addItem("Flex XML", ImportType.FLEX.value)
+        for import_type, label in (
+            (ImportType.AUTO, "Auto detect"),
+            (ImportType.CSV, "CSV"),
+            (ImportType.FLEX, "Flex XML"),
+        ):
+            self.import_type_combo.addItem(label, import_type.value)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 0)
@@ -122,9 +125,6 @@ class ImportDialog(QDialog):
         if selected_file:
             self.file_path_input.setText(selected_file)
 
-    def _selected_import_type(self) -> ImportType:
-        return ImportType(self.import_type_combo.currentData())
-
     def _is_running(self) -> bool:
         return self.import_thread is not None and self.import_thread.isRunning()
 
@@ -161,7 +161,10 @@ class ImportDialog(QDialog):
         self.result_label.setText("")
         self._set_running_state(True)
 
-        self.import_worker = ImportWorker(file_path, self._selected_import_type())
+        self.import_worker = ImportWorker(
+            file_path,
+            ImportType(self.import_type_combo.currentData()),
+        )
         self.import_thread = QThread(self)
         self.import_worker.moveToThread(self.import_thread)
 
