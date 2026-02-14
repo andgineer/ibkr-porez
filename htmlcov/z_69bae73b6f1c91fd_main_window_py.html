@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for src/ibkr_porez/gui/main_window.py: 60%</title>
+    <title>Coverage for src/ibkr_porez/gui/main_window.py: 61%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_9ff733b0.css" type="text/css">
     <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
@@ -12,7 +12,7 @@
     <div class="content">
         <h1>
             <span class="text">Coverage for </span><b>src&#8201;/&#8201;ibkr_porez&#8201;/&#8201;gui&#8201;/&#8201;main_window.py</b>:
-            <span class="pc_cov">60%</span>
+            <span class="pc_cov">61%</span>
         </h1>
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">514 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">308<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">206<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">314<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">200<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_69bae73b6f1c91fd_styles_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-14 05:37 +0000
+            created at 2026-02-14 05:42 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -615,15 +615,15 @@
     <p class="pln"><span class="n"><a id="t533" href="#t533">533</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t534" href="#t534">534</a></span><span class="t">    <span class="op">@</span><span class="nam">Slot</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t535" href="#t535">535</a></span><span class="t">    <span class="key">def</span> <span class="nam">open_declaration_details_for_selected_row</span><span class="op">(</span><span class="nam">self</span><span class="op">)</span> <span class="op">-></span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t536" href="#t536">536</a></span><span class="t">        <span class="nam">model</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">table</span><span class="op">.</span><span class="nam">selectionModel</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t537" href="#t537">537</a></span><span class="t">        <span class="key">if</span> <span class="nam">model</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t536" href="#t536">536</a></span><span class="t">        <span class="nam">model</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">table</span><span class="op">.</span><span class="nam">selectionModel</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t537" href="#t537">537</a></span><span class="t">        <span class="key">if</span> <span class="nam">model</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t538" href="#t538">538</a></span><span class="t">            <span class="key">return</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t539" href="#t539">539</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t540" href="#t540">540</a></span><span class="t">        <span class="nam">selected_rows</span> <span class="op">=</span> <span class="op">[</span><span class="nam">index</span><span class="op">.</span><span class="nam">row</span><span class="op">(</span><span class="op">)</span> <span class="key">for</span> <span class="nam">index</span> <span class="key">in</span> <span class="nam">model</span><span class="op">.</span><span class="nam">selectedRows</span><span class="op">(</span><span class="op">)</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t541" href="#t541">541</a></span><span class="t">        <span class="nam">current_row</span> <span class="op">=</span> <span class="nam">min</span><span class="op">(</span><span class="nam">selected_rows</span><span class="op">)</span> <span class="key">if</span> <span class="nam">selected_rows</span> <span class="key">else</span> <span class="nam">self</span><span class="op">.</span><span class="nam">table</span><span class="op">.</span><span class="nam">currentRow</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t542" href="#t542">542</a></span><span class="t">        <span class="key">if</span> <span class="nam">current_row</span> <span class="op">&lt;</span> <span class="num">0</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t540" href="#t540">540</a></span><span class="t">        <span class="nam">selected_rows</span> <span class="op">=</span> <span class="op">[</span><span class="nam">index</span><span class="op">.</span><span class="nam">row</span><span class="op">(</span><span class="op">)</span> <span class="key">for</span> <span class="nam">index</span> <span class="key">in</span> <span class="nam">model</span><span class="op">.</span><span class="nam">selectedRows</span><span class="op">(</span><span class="op">)</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t541" href="#t541">541</a></span><span class="t">        <span class="nam">current_row</span> <span class="op">=</span> <span class="nam">min</span><span class="op">(</span><span class="nam">selected_rows</span><span class="op">)</span> <span class="key">if</span> <span class="nam">selected_rows</span> <span class="key">else</span> <span class="nam">self</span><span class="op">.</span><span class="nam">table</span><span class="op">.</span><span class="nam">currentRow</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t542" href="#t542">542</a></span><span class="t">        <span class="key">if</span> <span class="nam">current_row</span> <span class="op">&lt;</span> <span class="num">0</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis show_mis"><span class="n"><a id="t543" href="#t543">543</a></span><span class="t">            <span class="key">return</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t544" href="#t544">544</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">open_declaration_details_by_view_row</span><span class="op">(</span><span class="nam">current_row</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t544" href="#t544">544</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">open_declaration_details_by_view_row</span><span class="op">(</span><span class="nam">current_row</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t545" href="#t545">545</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t546" href="#t546">546</a></span><span class="t">    <span class="key">def</span> <span class="nam">open_declaration_details_by_view_row</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">view_row</span><span class="op">:</span> <span class="nam">int</span><span class="op">)</span> <span class="op">-></span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t547" href="#t547">547</a></span><span class="t">        <span class="key">if</span> <span class="nam">view_row</span> <span class="op">&lt;</span> <span class="num">0</span> <span class="key">or</span> <span class="nam">view_row</span> <span class="op">>=</span> <span class="nam">len</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">visible_indices</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -864,7 +864,7 @@
             <a class="nav" href="z_69bae73b6f1c91fd_styles_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.13.1">coverage.py v7.13.1</a>,
-            created at 2026-02-14 05:37 +0000
+            created at 2026-02-14 05:42 +0000
         </p>
     </div>
 </footer>
