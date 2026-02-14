@@ -593,7 +593,7 @@ def submit(declaration_id: str):
     manager = DeclarationManager()
 
     try:
-        manager.submit([declaration_id])
+        manager.apply_status([declaration_id], DeclarationStatus.SUBMITTED)
         updated = manager.storage.get_declaration(declaration_id)
         if updated is not None and updated.status == DeclarationStatus.FINALIZED:
             console.print(f"[green]Finalized: {declaration_id} (no tax to pay)[/green]")
@@ -629,7 +629,7 @@ def pay(declaration_id: str, tax_str: str | None):
 
     try:
         if tax_str is None:
-            manager.pay([declaration_id])
+            manager.apply_status([declaration_id], DeclarationStatus.FINALIZED)
             console.print(f"[green]Paid: {declaration_id}[/green]")
         else:
             tax_due_rsd = _parse_non_negative_decimal(tax_str, "--tax")
@@ -740,7 +740,7 @@ def revert(declaration_id: str, to: str):
 
     try:
         target_status = DeclarationStatus(to.lower())
-        manager.revert([declaration_id], target_status)
+        manager.apply_status([declaration_id], target_status)
         console.print(f"[green]Reverted {declaration_id} to {to}[/green]")
     except ValueError as e:
         console.print(f"[red]{e}[/red]")

@@ -2,7 +2,7 @@
 
 from rich.table import Table
 
-from ibkr_porez.models import DeclarationStatus
+from ibkr_porez.models import DECLARATION_STATUS_SCOPES, DeclarationStatus
 from ibkr_porez.storage import Storage
 
 
@@ -35,17 +35,10 @@ class ListDeclarations:
         elif status:
             declarations = self.storage.get_declarations(status=status)
         else:
-            # Default: show active declarations (DRAFT + SUBMITTED + PENDING)
+            # Default: show active declarations
             declarations = self.storage.get_declarations()
             declarations = [
-                d
-                for d in declarations
-                if d.status
-                in (
-                    DeclarationStatus.DRAFT,
-                    DeclarationStatus.SUBMITTED,
-                    DeclarationStatus.PENDING,
-                )
+                d for d in declarations if d.status in DECLARATION_STATUS_SCOPES["Active"]
             ]
 
         # Sort by created_at descending

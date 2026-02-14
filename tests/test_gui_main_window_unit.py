@@ -42,21 +42,21 @@ class TestGuiMainWindowUnit:
         assert window._visible_declaration_indices() == [1, 3]
 
     @pytest.mark.parametrize(
-        ("declaration_status", "target_status", "expected_method"),
+        ("declaration_status", "target_status", "expected_target_status"),
         [
-            (DeclarationStatus.DRAFT, "Submitted", "submit"),
-            (DeclarationStatus.DRAFT, "Finalized", "pay"),
-            (DeclarationStatus.PENDING, "Finalized", "pay"),
-            (DeclarationStatus.SUBMITTED, "Draft", "revert"),
+            (DeclarationStatus.DRAFT, "Submitted", DeclarationStatus.SUBMITTED),
+            (DeclarationStatus.DRAFT, "Finalized", DeclarationStatus.FINALIZED),
+            (DeclarationStatus.PENDING, "Finalized", DeclarationStatus.FINALIZED),
+            (DeclarationStatus.SUBMITTED, "Draft", DeclarationStatus.DRAFT),
         ],
     )
     def test_apply_status_to_ids_dispatches_to_declaration_manager(
         self,
         declaration_status: DeclarationStatus,
         target_status: str,
-        expected_method: str,
+        expected_target_status: DeclarationStatus,
     ) -> None:
-        called: list[tuple[str, list[str]]] = []
+        called: list[tuple[list[str], DeclarationStatus]] = []
 
         class FakeManager:
             @staticmethod
@@ -67,14 +67,12 @@ class TestGuiMainWindowUnit:
             def has_assessed_tax(_declaration: Declaration) -> bool:
                 return True
 
-            def submit(self, ids: list[str]) -> None:
-                called.append(("submit", ids))
-
-            def pay(self, ids: list[str]) -> None:
-                called.append(("pay", ids))
-
-            def revert(self, ids: list[str], _target: DeclarationStatus) -> None:
-                called.append(("revert", ids))
+            def apply_status(
+                self,
+                ids: list[str],
+                target: DeclarationStatus,
+            ) -> None:
+                called.append((ids, target))
 
         window = MainWindow.__new__(MainWindow)
         window.declarations = [_declaration("d1", declaration_status)]
@@ -82,17 +80,15 @@ class TestGuiMainWindowUnit:
 
         window.apply_status_to_ids(["d1"], target_status)
 
-        assert called == [(expected_method, ["d1"])]
+        assert called == [(["d1"], expected_target_status)]
 
     def test_apply_status_to_ids_raises_for_missing_declaration_id(self) -> None:
         class FakeManager:
-            def submit(self, ids: list[str]) -> None:  # noqa: ARG002
-                raise AssertionError("should not be called")
-
-            def pay(self, ids: list[str]) -> None:  # noqa: ARG002
-                raise AssertionError("should not be called")
-
-            def revert(self, ids: list[str], _target: DeclarationStatus) -> None:  # noqa: ARG002
+            def apply_status(
+                self,
+                ids: list[str],  # noqa: ARG002
+                target: DeclarationStatus,  # noqa: ARG002
+            ) -> None:
                 raise AssertionError("should not be called")
 
         window = MainWindow.__new__(MainWindow)
@@ -104,13 +100,11 @@ class TestGuiMainWindowUnit:
 
     def test_apply_status_to_ids_raises_for_invalid_transition(self) -> None:
         class FakeManager:
-            def submit(self, ids: list[str]) -> None:  # noqa: ARG002
-                raise AssertionError("should not be called")
-
-            def pay(self, ids: list[str]) -> None:  # noqa: ARG002
-                raise AssertionError("should not be called")
-
-            def revert(self, ids: list[str], _target: DeclarationStatus) -> None:  # noqa: ARG002
+            def apply_status(
+                self,
+                ids: list[str],  # noqa: ARG002
+                target: DeclarationStatus,  # noqa: ARG002
+            ) -> None:
                 raise AssertionError("should not be called")
 
         window = MainWindow.__new__(MainWindow)
@@ -126,13 +120,11 @@ class TestGuiMainWindowUnit:
             def has_tax_to_pay(_declaration: Declaration) -> bool:
                 return False
 
-            def submit(self, ids: list[str]) -> None:  # noqa: ARG002
-                raise AssertionError("should not be called")
-
-            def pay(self, ids: list[str]) -> None:  # noqa: ARG002
-                raise AssertionError("should not be called")
-
-            def revert(self, ids: list[str], _target: DeclarationStatus) -> None:  # noqa: ARG002
+            def apply_status(
+                self,
+                ids: list[str],  # noqa: ARG002
+                target: DeclarationStatus,  # noqa: ARG002
+            ) -> None:
                 raise AssertionError("should not be called")
 
         window = MainWindow.__new__(MainWindow)

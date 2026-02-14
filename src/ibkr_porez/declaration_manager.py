@@ -119,6 +119,21 @@ class DeclarationManager:
 
         return submitted_ids
 
+    def apply_status(
+        self,
+        declaration_ids: list[str],
+        target_status: DeclarationStatus,
+    ) -> list[str]:
+        """Apply target status using the canonical status-operation mapping."""
+        if target_status == DeclarationStatus.DRAFT:
+            self.revert(declaration_ids, DeclarationStatus.DRAFT)
+            return declaration_ids
+        if target_status == DeclarationStatus.SUBMITTED:
+            return self.submit(declaration_ids)
+        if target_status == DeclarationStatus.FINALIZED:
+            return self.pay(declaration_ids)
+        raise ValueError(f"Unsupported status: {target_status}")
+
     def pay(
         self,
         declaration_ids: list[str],

@@ -39,7 +39,7 @@ from ibkr_porez.gui.export_worker import ExportWorker
 from ibkr_porez.gui.import_dialog import ImportDialog
 from ibkr_porez.gui.styles import APP_STYLESHEET
 from ibkr_porez.gui.sync_worker import SyncWorker
-from ibkr_porez.models import Declaration, DeclarationStatus
+from ibkr_porez.models import DECLARATION_STATUS_SCOPES, Declaration, DeclarationStatus
 from ibkr_porez.storage import Storage
 
 EMPTY_TRANSACTIONS_WARNING = (
@@ -243,19 +243,8 @@ class MainWindow(QMainWindow):
         if self.status_filter == "All":
             return list(range(len(self.declarations)))
 
-        scoped_filters = {
-            "Active": {
-                DeclarationStatus.DRAFT,
-                DeclarationStatus.SUBMITTED,
-                DeclarationStatus.PENDING,
-            },
-            "Pending payment": {
-                DeclarationStatus.SUBMITTED,
-                DeclarationStatus.PENDING,
-            },
-        }
-        allowed_statuses = scoped_filters.get(self.status_filter)
-        if allowed_statuses:
+        allowed_statuses = DECLARATION_STATUS_SCOPES.get(self.status_filter)
+        if allowed_statuses is not None:
             return [
                 index
                 for index, declaration in enumerate(self.declarations)
@@ -601,16 +590,7 @@ class MainWindow(QMainWindow):
                 f"Status change to {status} is not allowed for: {invalid_sample}{suffix}",
             )
 
-        if target_status == DeclarationStatus.DRAFT:
-            self.declaration_manager.revert(declaration_ids, DeclarationStatus.DRAFT)
-            return
-        update_status_operation = {
-            DeclarationStatus.SUBMITTED: self.declaration_manager.submit,
-            DeclarationStatus.FINALIZED: self.declaration_manager.pay,
-        }.get(target_status)
-        if update_status_operation is None:
-            raise ValueError(f"Unsupported status: {status}")
-        update_status_operation(declaration_ids)
+        self.declaration_manager.apply_status(declaration_ids, target_status)
 
     def apply_status_to_selected(self, status: str) -> None:
         declaration_ids = self.selected_declaration_ids()

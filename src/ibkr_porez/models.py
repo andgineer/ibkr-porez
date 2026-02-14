@@ -130,6 +130,19 @@ class DeclarationStatus(StrEnum):
     FINALIZED = "finalized"  # Finalized
 
 
+DECLARATION_STATUS_SCOPES: dict[str, tuple[DeclarationStatus, ...]] = {
+    "Active": (
+        DeclarationStatus.DRAFT,
+        DeclarationStatus.SUBMITTED,
+        DeclarationStatus.PENDING,
+    ),
+    "Pending payment": (
+        DeclarationStatus.SUBMITTED,
+        DeclarationStatus.PENDING,
+    ),
+}
+
+
 class Declaration(BaseModel):
     """Tax declaration with lifecycle management."""
 
