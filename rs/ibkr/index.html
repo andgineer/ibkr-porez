@@ -1,0 +1,681 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Andrey Sorokin">
+      
+      
+        <link rel="canonical" href="https://andgineer.github.io/ibkr-porez/ibkr/">
+      
+      
+        <link rel="prev" href="../usage/">
+      
+      
+      
+        
+          <link rel="alternate" href="/ibkr-porez/" hreflang="en">
+        
+          <link rel="alternate" href="/ibkr-porez/ru/" hreflang="ru">
+        
+          <link rel="alternate" href="/ibkr-porez/uk/" hreflang="uk">
+        
+          <link rel="alternate" href="/ibkr-porez/rs/" hreflang="rs">
+        
+          <link rel="alternate" href="/ibkr-porez/rs-cyr/" hreflang="rs-cyr">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Interactive Brokers (IBKR) - ibkr_porez</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#interactive-brokers-ibkr" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="ibkr_porez" class="md-header__button md-logo" aria-label="ibkr_porez" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ibkr_porez
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Interactive Brokers (IBKR)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/ru/" hreflang="ru" class="md-select__link">
+              Русский
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/uk/" hreflang="uk" class="md-select__link">
+              Українська
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/rs/" hreflang="rs" class="md-select__link">
+              Srpski (Latinica)
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/rs-cyr/" hreflang="rs-cyr" class="md-select__link">
+              Српски (Ћирилица)
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/andgineer/ibkr-porez" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ibkr_porez
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="ibkr_porez" class="md-nav__button md-logo" aria-label="ibkr_porez" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    ibkr_porez
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/andgineer/ibkr-porez" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ibkr_porez
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Brzi start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instalacija
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upotreba
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interactive Brokers (IBKR)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interactive Brokers (IBKR)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#flex-web-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flex Web Service
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#flex-query" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flex Query
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Flex Query">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sekcije-za-ukljucivanje-sections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sekcije za uključivanje (Sections):
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trades-transakcije" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trades - Transakcije
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cash-transactions-novcane-transakcije" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cash Transactions - Novčane transakcije
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sacuvajte-i-preuzmite-query-id" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sačuvajte i preuzmite Query ID
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dokument-potvrde" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dokument potvrde
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#izvoz-pune-istorije-za-import-komandu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Izvoz pune istorije (za import komandu)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="interactive-brokers-ibkr">Interactive Brokers (IBKR)</h1>
+<h2 id="flex-web-service">Flex Web Service</h2>
+<ol>
+<li><strong>Performance &amp; Reports</strong> &gt; <strong>Flex Queries</strong>.</li>
+<li>Kliknite na ikonu <strong>Settings</strong> (zupčanik) u "Flex Web Service Configuration".</li>
+<li>Omogućite <strong>Flex Web Service</strong>.</li>
+<li>Generišite <strong>Token</strong> (Generate Token).<ul>
+<li><strong>Važno</strong>: Odmah kopirajte ovaj token. Nećete moći ponovo da ga vidite u celosti.</li>
+<li>Postavite rok trajanja (preporučeno max - 1 godina).</li>
+</ul>
+</li>
+</ol>
+<h2 id="flex-query">Flex Query</h2>
+<ol>
+<li><strong>Performance &amp; Reports</strong> &gt; <strong>Flex Queries</strong>.</li>
+<li>Kliknite <strong>+</strong> da kreirate novi <strong>Activity Flex Query</strong>.</li>
+<li><strong>Name</strong>: npr. <code>ibkr-porez-data</code>.</li>
+<li><strong>Delivery Configuration</strong> (na dnu stranice):<ul>
+<li><strong>Period</strong>: Izaberite <strong>Last 365 Calendar Days</strong>.</li>
+</ul>
+</li>
+<li><strong>Format</strong>: <strong>XML</strong>.</li>
+</ol>
+<h3 id="sekcije-za-ukljucivanje-sections">Sekcije za uključivanje (Sections):</h3>
+<p>Omogućite sledeće sekcije i označite <strong>Select All</strong> (Izaberi sve) za kolone.</p>
+<p>Ako nikome ne verujete 8-) umesto <strong>Select All</strong> izaberite bar polja navedena u <code>Obavezne kolone</code>.</p>
+<h3 id="trades-transakcije">Trades - Transakcije</h3>
+<p>Nalazi se pod Trade Confirmations ili Activity.</p>
+<details class="info">
+<summary>Obavezne kolone</summary>
+<ul>
+<li><code>Symbol</code></li>
+<li><code>Description</code></li>
+<li><code>Currency</code></li>
+<li><code>Quantity</code></li>
+<li><code>TradePrice</code></li>
+<li><code>TradeDate</code></li>
+<li><code>TradeID</code></li>
+<li><code>OrigTradeDate</code></li>
+<li><code>OrigTradePrice</code></li>
+<li><code>AssetClass</code></li>
+<li><code>Buy/Sell</code></li>
+</ul>
+</details>
+<h3 id="cash-transactions-novcane-transakcije">Cash Transactions - Novčane transakcije</h3>
+<details class="info">
+<summary>Obavezne kolone</summary>
+<ul>
+<li><code>Type</code></li>
+<li><code>Amount</code></li>
+<li><code>Currency</code></li>
+<li><code>DateTime</code> / <code>Date</code></li>
+<li><code>Symbol</code></li>
+<li><code>Description</code></li>
+<li><code>TransactionID</code></li>
+</ul>
+</details>
+<h2 id="sacuvajte-i-preuzmite-query-id">Sačuvajte i preuzmite Query ID</h2>
+<p>Zabeležite <strong>Query ID</strong> (broj koji se obično pojavljuje pored imena upita u listi).</p>
+<p>Trebaće vam <strong>Token</strong> i <strong>Query ID</strong> za konfiguraciju <code>ibkr-porez</code>.</p>
+<h2 id="dokument-potvrde">Dokument potvrde</h2>
+<p>Za <strong>Tačku 8 (Dokazi uz prijavu)</strong> poreske prijave PPDG-3R potreban vam je PDF izveštaj od brokera.
+Mora se ručno priložiti na portalu ePorezi nakon uvoza XML-a.</p>
+<p>Kako preuzeti odgovarajući izveštaj:</p>
+<ol>
+<li>U IBKR idite na <strong>Performance &amp; Reports</strong> &gt; <strong>Statements</strong> &gt; <strong>Activity Statement</strong>.</li>
+<li><strong>Period</strong>: Izaberite <strong>Custom Date Range</strong>.</li>
+<li>Navedite datume koji odgovaraju vašem poreskom periodu (npr. <code>01-01-2024</code> do <code>30-06-2024</code> za prvo polugodište).</li>
+<li>Kliknite <strong>Download PDF</strong>.</li>
+<li>Na portalu ePorezi, u sekciji <strong>8. Dokazi uz prijavu</strong>, otpremite ovaj fajl.</li>
+</ol>
+<h2 id="izvoz-pune-istorije-za-import-komandu">Izvoz pune istorije (za import komandu)</h2>
+<p>Ako treba da učitate istoriju transakcija za period duži od 1 godine (nedostupno preko Flex Web Service-a),
+izvezite podatke u CSV:</p>
+<ol>
+<li>U IBKR idite na <strong>Performance &amp; Reports</strong> &gt; <strong>Statements</strong> &gt; <strong>Activity Statement</strong>.</li>
+<li><strong>Period</strong>: Izaberite <strong>Custom Date Range</strong> i navedite ceo period od otvaranja računa.</li>
+<li>Kliknite <strong>Download CSV</strong>.</li>
+<li>Ovaj fajl se može koristiti sa komandom <a href="../usage/#uvoz-istorijskih-podataka-import">import ↗</a>.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["toc.integrate", "navigation.tracking", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
