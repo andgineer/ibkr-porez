@@ -105,6 +105,28 @@ def test_config_dialog_has_human_friendly_flex_help_link(qapp: QApplication) -> 
         dialog.close()
 
 
+def test_config_dialog_shows_app_files_folder_hint(
+    qapp: QApplication,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    app_dir = tmp_path / "app-config"
+
+    class _FakeConfigManager:
+        @property
+        def config_path(self) -> Path:
+            return app_dir / "config.json"
+
+    monkeypatch.setattr(config_dialog_module, "config_manager", _FakeConfigManager())
+
+    dialog = ConfigDialog(UserConfig(full_name="User", address="Address"))
+    try:
+        assert dialog.app_files_dir == app_dir
+        assert dialog.app_files_info.text() == str(app_dir)
+    finally:
+        dialog.close()
+
+
 def test_config_dialog_open_data_dir_uses_field_value(
     qapp: QApplication,  # noqa: ARG001
     monkeypatch: pytest.MonkeyPatch,
@@ -154,6 +176,37 @@ def test_config_dialog_open_output_dir_uses_default_when_field_empty(
         dialog._open_output_folder()
         assert default_output.exists()
         assert [Path(path) for path in opened_paths] == [default_output]
+    finally:
+        dialog.close()
+
+
+def test_config_dialog_open_app_files_dir(
+    qapp: QApplication,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    app_dir = tmp_path / "app-config"
+
+    class _FakeConfigManager:
+        @property
+        def config_path(self) -> Path:
+            return app_dir / "config.json"
+
+    monkeypatch.setattr(config_dialog_module, "config_manager", _FakeConfigManager())
+
+    dialog = ConfigDialog(UserConfig(full_name="User", address="Address"))
+    opened_paths: list[str] = []
+
+    monkeypatch.setattr(
+        config_dialog_module.QDesktopServices,
+        "openUrl",
+        lambda url: opened_paths.append(url.toLocalFile()) or True,
+    )
+
+    try:
+        dialog._open_app_files_dir()
+        assert app_dir.exists()
+        assert [Path(path) for path in opened_paths] == [app_dir]
     finally:
         dialog.close()
 

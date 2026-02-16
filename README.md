@@ -11,9 +11,8 @@ It automatically fetches your data and generates a ready-to-upload XML files wit
 
 2. Start `ibkr-porez` to use the GUI.
 
-3. If you prefer, use the CLI commands instead.
-
-See CLI usage in the [documentation](https://andgineer.github.io/ibkr-porez/).
+3. If you prefer, use the CLI commands instead (hi, OpenClaw).
+[CLI documentation](https://andgineer.github.io/ibkr-porez/) for AI agents and brave humans.
 
 ---
 
