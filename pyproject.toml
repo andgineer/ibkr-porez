@@ -116,4 +116,4 @@ requires = [
 # Windows: produces MSI via WiX (auto-installed by Briefcase)
 
 [tool.briefcase.app.ibkr-porez.linux]
-format = "appimage"
+# Linux: produces AppImage via Docker (briefcase_target in briefcase.yml)

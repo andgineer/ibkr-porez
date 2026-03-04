@@ -16,7 +16,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: macos-latest
+            briefcase_target: ""
+          - os: windows-latest
+            briefcase_target: ""
+          - os: ubuntu-latest
+            briefcase_target: linux appimage
     steps:
       # Pin checkout to the exact SHA that triggered pip_publish, not the current branch HEAD,
       # so tag lookup finds the correct release tag even if the branch moved.
@@ -45,9 +51,9 @@ jobs:
       - name: Build installer
         if: steps.tag.outputs.version_tag != ''
         run: |
-          briefcase create
-          briefcase build
-          briefcase package --no-sign
+          briefcase create ${{ matrix.briefcase_target }}
+          briefcase build ${{ matrix.briefcase_target }}
+          briefcase package ${{ matrix.briefcase_target }} --no-sign
       - name: Attach to Release
         if: steps.tag.outputs.version_tag != ''
         uses: softprops/action-gh-release@v2
