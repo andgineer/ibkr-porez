@@ -21,7 +21,6 @@ dependencies = [
     "tenacity>=9.0.0",
     "pandas>=2.0.0",
     "PySide6>=6.7.0,<6.8.0",
-    "holidays>=0.89",
 ]
 [[project.authors]]
 name = "Andrey Sorokin"
@@ -57,8 +56,6 @@ packages = [
 [tool.uv]
 dev-dependencies = [
     "allure-pytest>=2.14.2",
-    "briefcase>=0.3.26",
-    "chardet<=6",
     "invoke>=2.2.0",
     "mkdocs-awesome-pages-plugin>=2.10.1",
     "mkdocs-material>=9.6.13",
@@ -107,6 +104,26 @@ requires = [
     "tenacity>=9.0.0",
     "pandas>=2.0.0",
     "PySide6>=6.7.0,<6.8.0",
+]
+cleanup_paths = [
+    # QtWebEngineCore (Chromium) — ~480 MB, not used by this app
+    "**/app_packages/PySide6/Qt/lib/QtWebEngine*.framework",
+    "**/app_packages/PySide6/QtWebEngine*.abi3.so",
+    "**/app_packages/PySide6/QtWebEngine*.pyi",
+    # Qt development tools — not needed at runtime
+    "**/app_packages/PySide6/Assistant.app",
+    "**/app_packages/PySide6/Designer.app",
+    "**/app_packages/PySide6/Linguist.app",
+    "**/app_packages/PySide6/lrelease*",
+    "**/app_packages/PySide6/lupdate*",
+    # C++ headers — not needed at runtime
+    "**/app_packages/PySide6/include",
+    # QML — app uses QtWidgets, not QML
+    "**/app_packages/PySide6/Qt/qml",
+    # Translations
+    "**/app_packages/PySide6/Qt/translations",
+    # Static libraries
+    "**/app_packages/**/*.a",
 ]
 
 [tool.briefcase.app.ibkr-porez.macOS]

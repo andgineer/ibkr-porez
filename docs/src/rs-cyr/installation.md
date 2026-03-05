@@ -1,11 +1,38 @@
 # Инсталација
-За инсталацију се препоручује Astral `uv tool` како би се спречили конфликти са системским Python пакетима.
 
-### Инсталација `uv`
-[Инсталација `uv`](https://docs.astral.sh/uv/getting-started/installation/)
+## Графички инсталатер (само GUI, без CLI)
+
+Ако вам је потребна само графичка апликација и не треба вам командна линија, преузмите готов инсталатер са странице издања:
+
+**[https://github.com/andgineer/ibkr-porez/releases](https://github.com/andgineer/ibkr-porez/releases)**
+
+=== "macOS"
+    Преузмите најновији `.dmg` фајл.
+    Пошто апликација није потписана Apple сертификатом, macOS ће при првом покретању приказати поруку:
+
+    > _"IBKR Porez" је оштећен и не може да се отвори. Треба га преместити у смеће._
+
+    **Не премештајте у смеће.** Уместо тога:
+
+    1. Отворите **System Settings -> Privacy & Security**
+    2. При дну одељка Security појавиће се порука о блокираној апликацији — кликните **Open Anyway**
+    3. У следећем дијалогу потврдите отварање
+
+    Након тога апликација ће се покретати без упозорења.
+
+=== "Windows"
+    Преузмите најновији `.msi` фајл.
+
+---
+
+## Инсталација Python package (CLI + GUI)
+
+Ако је CLI ваш матерњи језик (AI агенти и храбри људи), инсталирајте Python package.
+
+Инсталирајте Astral `uv tool`: [Инсталација `uv`](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### Инсталација апликације
 
 ```bash
-uv tool install ibkr-porez
+uv tool install ibkr-porez --python 3.12
 ```

@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QToolButton
 
 import ibkr_porez.gui.main_window as main_window_module
+from ibkr_porez import __version__
 from ibkr_porez.declaration_manager import DeclarationManager as RealDeclarationManager
 from ibkr_porez.gui.main_window import MainWindow
 from ibkr_porez.models import Declaration, DeclarationStatus, DeclarationType, UserConfig
@@ -95,7 +96,7 @@ def test_qtbot_renders_main_window(qtbot, patched_main_window: MainWindow) -> No
     patched_main_window.show()
     qtbot.waitUntil(lambda: patched_main_window.table.rowCount() == 2)
 
-    assert patched_main_window.windowTitle() == "ibkr-porez"
+    assert patched_main_window.windowTitle() == f"ibkr-porez v{__version__}"
     assert patched_main_window.sync_button.text().endswith("Sync")
     assert isinstance(patched_main_window.sync_button, QToolButton)
     assert patched_main_window.filter_combo.currentText() == "Active"

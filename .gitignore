@@ -1,5 +1,6 @@
 site/
 .mypy_cache
+.claude/
 **/api-reference/
 .idea/
 **/__pycache__

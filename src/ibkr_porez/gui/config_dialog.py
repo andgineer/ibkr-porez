@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ibkr_porez import __version__
 from ibkr_porez.config import config_manager, get_default_data_dir_path, get_default_output_dir_path
 from ibkr_porez.models import UserConfig
 
@@ -96,6 +97,7 @@ class ConfigDialog(QDialog):
     def _build_app_group(self) -> QGroupBox:
         group = QGroupBox("App Settings")
         form = QFormLayout(group)
+        form.addRow("Version", QLabel(f"v{__version__}"))
         form.addRow(
             "Data Directory",
             self._build_path_row(

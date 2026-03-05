@@ -7,12 +7,15 @@ It automatically fetches your data and generates a ready-to-upload XML files wit
 
 # Quick Start
 
-1. [Install ibkr-porez](https://andgineer.github.io/ibkr-porez/installation/)
+Graphical installers are available for Windows and macOS.
 
-2. Start `ibkr-porez` to use the GUI.
+[Install ibkr-porez](https://andgineer.github.io/ibkr-porez/installation/)
 
-3. If you prefer, use the CLI commands instead (hi, OpenClaw).
-[CLI documentation](https://andgineer.github.io/ibkr-porez/) for AI agents and brave humans.
+If you use the graphical interface, configure your data (the `Config` button),
+then just use `Sync` to refresh data and create declarations.
+
+If CLI is your native language (AI agents and brave humans), install the Python package (GUI + CLI in one)
+[CLI documentation](https://andgineer.github.io/ibkr-porez/).
 
 ---
 
