@@ -78,7 +78,7 @@ project_name = "IBKR Porez"
 bundle = "engineer.sorokin"
 # version: hardcoded here because Briefcase does not understand [tool.hatch.version] / dynamic.
 # Must be kept in sync with src/ibkr_porez/__about__.py — update in ver scripts (verup.sh / tasks.py).
-version = "3.12.0"
+version = "3.12.1"
 url = "https://andgineer.github.io/ibkr-porez/"
 license.file = "LICENSE.txt"
 author = "Andrey Sorokin"
