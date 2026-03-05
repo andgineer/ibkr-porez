@@ -42,6 +42,7 @@ if [[ ! -d ${VENV_FOLDER} ]] ; then
 
             . ${VENV_FOLDER}/bin/activate
             uv sync --frozen
+            uv pip install -e .
             END_TIME=$(date +%s)
             echo "Environment created in $((END_TIME - $START_TIME)) seconds"
         else
