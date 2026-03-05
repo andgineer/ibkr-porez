@@ -47,7 +47,15 @@ jobs:
         run: |
           briefcase create
           briefcase build
-          briefcase package --adhoc-sign
+      - name: Smoke test — verify GUI imports work in built bundle
+        if: steps.tag.outputs.version_tag != '' && runner.os == 'macOS'
+        shell: bash
+        run: |
+          APP_PACKAGES="build/ibkr-porez/macos/app/IBKR Porez.app/Contents/Resources/app_packages"
+          PYTHONPATH="$APP_PACKAGES" QT_QPA_PLATFORM=offscreen python scripts/smoke_test_gui.py
+      - name: Package installer
+        if: steps.tag.outputs.version_tag != ''
+        run: briefcase package --adhoc-sign
       - name: Attach to Release
         if: steps.tag.outputs.version_tag != ''
         uses: softprops/action-gh-release@v2

@@ -106,24 +106,131 @@ requires = [
     "PySide6>=6.7.0,<6.8.0",
 ]
 cleanup_paths = [
-    # QtWebEngineCore (Chromium) — ~480 MB, not used by this app
-    "**/app_packages/PySide6/Qt/lib/QtWebEngine*.framework",
-    "**/app_packages/PySide6/QtWebEngine*.abi3.so",
-    "**/app_packages/PySide6/QtWebEngine*.pyi",
-    # Qt development tools — not needed at runtime
+    # ── Qt development tools ──────────────────────────────────────────────────
     "**/app_packages/PySide6/Assistant.app",
     "**/app_packages/PySide6/Designer.app",
     "**/app_packages/PySide6/Linguist.app",
     "**/app_packages/PySide6/lrelease*",
     "**/app_packages/PySide6/lupdate*",
-    # C++ headers — not needed at runtime
+    "**/app_packages/PySide6/balsam*",
+    "**/app_packages/PySide6/balsamui*",
+    "**/app_packages/PySide6/qmlformat*",
+    "**/app_packages/PySide6/qmllint*",
     "**/app_packages/PySide6/include",
-    # QML — app uses QtWidgets, not QML
+    # ── Type stubs — IDE support only, not needed at runtime ──────────────────
+    "**/app_packages/PySide6/*.pyi",
+    # ── Android deploy scripts ────────────────────────────────────────────────
+    "**/app_packages/PySide6/scripts",
+    # ── QML runtime — app uses QtWidgets only ─────────────────────────────────
     "**/app_packages/PySide6/Qt/qml",
-    # Translations
+    "**/app_packages/PySide6/Qt/plugins/qmltooling",
+    # ── Translations ──────────────────────────────────────────────────────────
     "**/app_packages/PySide6/Qt/translations",
-    # Static libraries
+    # ── Static libraries ──────────────────────────────────────────────────────
     "**/app_packages/**/*.a",
+    # ── FFmpeg — bundled for QtMultimedia, not used by this app (~36 MB) ──────
+    "**/app_packages/PySide6/Qt/lib/libav*.dylib",
+    "**/app_packages/PySide6/Qt/lib/libsw*.dylib",
+    # ── Unused Qt plugin directories ──────────────────────────────────────────
+    "**/app_packages/PySide6/Qt/plugins/assetimporters",
+    "**/app_packages/PySide6/Qt/plugins/sceneparsers",
+    "**/app_packages/PySide6/Qt/plugins/sqldrivers",
+    "**/app_packages/PySide6/Qt/plugins/multimedia",
+    "**/app_packages/PySide6/Qt/plugins/geoservices",
+    "**/app_packages/PySide6/Qt/plugins/renderers",
+    # ── Unused Qt frameworks + Python bindings ────────────────────────────────
+    # QtWebEngine (Chromium) ~480 MB
+    "**/app_packages/PySide6/Qt/lib/QtWebEngine*.framework",
+    "**/app_packages/PySide6/QtWebEngine*.abi3.so",
+    # QtPdf
+    "**/app_packages/PySide6/Qt/lib/QtPdf*.framework",
+    "**/app_packages/PySide6/QtPdf*.abi3.so",
+    # Qt Quick / QML
+    "**/app_packages/PySide6/Qt/lib/QtQuick*.framework",
+    "**/app_packages/PySide6/QtQuick*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtQml*.framework",
+    "**/app_packages/PySide6/QtQml*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtShaderTools.framework",
+    "**/app_packages/PySide6/QtShaderTools*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/Qt5Compat*.framework",
+    "**/app_packages/PySide6/Qt5Compat*.abi3.so",
+    # Qt3D
+    "**/app_packages/PySide6/Qt/lib/Qt3D*.framework",
+    "**/app_packages/PySide6/Qt3D*.abi3.so",
+    # QtDesigner / UiTools
+    "**/app_packages/PySide6/Qt/lib/QtDesigner*.framework",
+    "**/app_packages/PySide6/QtDesigner*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtUiTools.framework",
+    "**/app_packages/PySide6/QtUiTools*.abi3.so",
+    # QtCharts / Graphs / DataVisualization
+    "**/app_packages/PySide6/Qt/lib/QtCharts*.framework",
+    "**/app_packages/PySide6/QtCharts*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtGraphs*.framework",
+    "**/app_packages/PySide6/QtGraphs*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtDataVisualization*.framework",
+    "**/app_packages/PySide6/QtDataVisualization*.abi3.so",
+    # QtMultimedia / SpatialAudio
+    "**/app_packages/PySide6/Qt/lib/QtMultimedia*.framework",
+    "**/app_packages/PySide6/QtMultimedia*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtSpatialAudio.framework",
+    "**/app_packages/PySide6/QtSpatialAudio*.abi3.so",
+    # Connectivity / Location
+    "**/app_packages/PySide6/Qt/lib/QtBluetooth.framework",
+    "**/app_packages/PySide6/QtBluetooth*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtNfc.framework",
+    "**/app_packages/PySide6/QtNfc*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtSensors*.framework",
+    "**/app_packages/PySide6/QtSensors*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtPositioning*.framework",
+    "**/app_packages/PySide6/QtPositioning*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtLocation.framework",
+    "**/app_packages/PySide6/QtLocation*.abi3.so",
+    # Network extras (app uses Python requests, not Qt networking)
+    "**/app_packages/PySide6/Qt/lib/QtNetwork.framework",
+    "**/app_packages/PySide6/QtNetwork*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtNetworkAuth.framework",
+    "**/app_packages/PySide6/QtNetworkAuth*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtHttpServer.framework",
+    "**/app_packages/PySide6/QtHttpServer*.abi3.so",
+    # WebChannel / WebSockets / WebView
+    "**/app_packages/PySide6/Qt/lib/QtWebChannel*.framework",
+    "**/app_packages/PySide6/QtWebChannel*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtWebSockets.framework",
+    "**/app_packages/PySide6/QtWebSockets*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtWebView.framework",
+    "**/app_packages/PySide6/QtWebView*.abi3.so",
+    # Serial / Bus
+    "**/app_packages/PySide6/Qt/lib/QtSerialBus*.framework",
+    "**/app_packages/PySide6/QtSerialBus*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtSerialPort.framework",
+    "**/app_packages/PySide6/QtSerialPort*.abi3.so",
+    # Misc unused
+    "**/app_packages/PySide6/Qt/lib/QtSql.framework",
+    "**/app_packages/PySide6/QtSql*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtHelp.framework",
+    "**/app_packages/PySide6/QtHelp*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtRemoteObjects*.framework",
+    "**/app_packages/PySide6/QtRemoteObjects*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtScxml*.framework",
+    "**/app_packages/PySide6/QtScxml*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtStateMachine*.framework",
+    "**/app_packages/PySide6/QtStateMachine*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtTextToSpeech.framework",
+    "**/app_packages/PySide6/QtTextToSpeech*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtVirtualKeyboard*.framework",
+    "**/app_packages/PySide6/QtVirtualKeyboard*.abi3.so",
+    # QtDBus: hard dylib dependency of QtGui.framework on macOS — must keep
+    "**/app_packages/PySide6/Qt/lib/QtTest.framework",
+    "**/app_packages/PySide6/QtTest*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtConcurrent.framework",
+    "**/app_packages/PySide6/QtConcurrent*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtLanguageServer.framework",
+    "**/app_packages/PySide6/Qt/lib/QtXml.framework",
+    "**/app_packages/PySide6/QtXml*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtSvg*.framework",
+    "**/app_packages/PySide6/QtSvg*.abi3.so",
+    "**/app_packages/PySide6/QtExampleIcons*.abi3.so",
+    "**/app_packages/PySide6/Qt/lib/QtJsonRpc.framework",
 ]
 
 [tool.briefcase.app.ibkr-porez.macOS]
