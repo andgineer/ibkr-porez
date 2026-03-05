@@ -1,0 +1,899 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Andrey Sorokin">
+      
+      
+        <link rel="canonical" href="https://andgineer.github.io/ibkr-porez/usage/">
+      
+      
+        <link rel="prev" href="../installation/">
+      
+      
+        <link rel="next" href="../ibkr/">
+      
+      
+        
+          <link rel="alternate" href="/ibkr-porez/" hreflang="en">
+        
+          <link rel="alternate" href="/ibkr-porez/ru/" hreflang="ru">
+        
+          <link rel="alternate" href="/ibkr-porez/uk/" hreflang="uk">
+        
+          <link rel="alternate" href="/ibkr-porez/rs/" hreflang="rs">
+        
+          <link rel="alternate" href="/ibkr-porez/rs-cyr/" hreflang="rs-cyr">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Употреба - ibkr_porez</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#_1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="ibkr_porez" class="md-header__button md-logo" aria-label="ibkr_porez" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ibkr_porez
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Употреба
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/ru/" hreflang="ru" class="md-select__link">
+              Русский
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/uk/" hreflang="uk" class="md-select__link">
+              Українська
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/rs/" hreflang="rs" class="md-select__link">
+              Srpski (Latinica)
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/ibkr-porez/rs-cyr/" hreflang="rs-cyr" class="md-select__link">
+              Српски (Ћирилица)
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/andgineer/ibkr-porez" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ibkr_porez
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="ibkr_porez" class="md-nav__button md-logo" aria-label="ibkr_porez" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    ibkr_porez
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/andgineer/ibkr-porez" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ibkr_porez
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Брзи старт
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Инсталација
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Употреба
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Употреба
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Конфигурација (config)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fetch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Преузимање података (fetch)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Увоз историјских података (import)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Увоз историјских података (import)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#import-fetch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Логика синхронизације (import + fetch)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Синхронизација података и креирање пријава (sync)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Приказ статистике (stat)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Генерисање пореског извештаја (report)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Управљање пријавама
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Управљање пријавама">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Списак пријава (list)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Преглед детаља пријаве (show)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#submit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Подношење пријаве (submit)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Плаћање пријаве (pay)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#assess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Евиденција износа по решењу пореске (assess)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Извоз пријаве (export)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#revert" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Повратак статуса пријаве (revert)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Приложавање фајла уз пријаву (attach)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#flex-query-export-flex" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Извоз Flex Query (export-flex)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ibkr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interactive Brokers (IBKR)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="_1">Употреба</h1>
+<h2 id="config">Конфигурација (config)</h2>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>config
+</code></pre></div>
+<p>Креирање или измена личних података и подешавања приступа IBKR-у.</p>
+<p>Биће вам затражено:</p>
+<ul>
+<li><strong>IBKR Flex Token</strong>: <a href="../ibkr/#flex-web-service">Преузимање токена ↗</a></li>
+<li><strong>IBKR Query ID</strong>: <a href="../ibkr/#flex-query">Креирање Flex Query-а ↗</a></li>
+<li><strong>Personal ID</strong>: ЈМБГ / ЕБС</li>
+<li><strong>Full Name</strong>: Име и Презиме</li>
+<li><strong>Address</strong>: Адреса пребивалишта</li>
+<li><strong>City Code</strong>: Троцифрени код општине. Пример: <code>223</code> (Нови Сад). Код можете наћи у <a href="https://www.apml.gov.rs/uploads/useruploads/Documents/1533_1_pravilnik-javni_prihodi_prilog-3.pdf">шифарнику</a> (видети колону "Шифра"). Такође доступан у падајућем менију на порталу еПорези.</li>
+<li><strong>Phone</strong>: Телефон</li>
+<li><strong>Email</strong>: Email</li>
+<li><strong>Data Directory</strong>: Апсолутна путања до фолдера са фајловима података (<code>transactions.json</code>, <code>declarations.json</code>, <code>rates.json</code>, итд.). Подразумевано: <code>ibkr-porez-data</code> у фолдеру апликације.</li>
+<li><strong>Output Folder</strong>: Апсолутна путања до фолдера за чување фајлова из команди <code>sync</code>, <code>export</code>, <code>export-flex</code>, <code>report</code>. Подразумевано: фолдер Downloads вашег система.</li>
+</ul>
+<h2 id="fetch">Преузимање података (<code>fetch</code>)</h2>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>fetch
+</code></pre></div>
+<p>Преузима најновије податке са IBKR и синхронизује курсеве са НБС (Народна банка Србије).</p>
+<p>Чува их у локално складиште.</p>
+<h2 id="import">Увоз историјских података (<code>import</code>)</h2>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>import<span class="w"> </span>/path/to/activity_statement.csv
+</code></pre></div>
+<p>Учитавање историје трансакција старије од 365 дана, која се не може преузети путем Flex Query-а (<code>fetch</code>).</p>
+<p>Да бисте креирали фајл са трансакцијама на порталу Interactive Brokers погледајте <a href="../ibkr/#import">Извоз пуне историје ↗</a></p>
+<blockquote>
+<p>⚠️ Не заборавите да покренете <code>fetch</code> након <code>import</code> како би апликација додала максимум детаља бар за последњу годину
+у мање детаљне податке учитане из CSV-а.</p>
+</blockquote>
+<h3 id="import-fetch">Логика синхронизације (<code>import</code> + <code>fetch</code>)</h3>
+<p>При учитавању података из CSV-а (<code>import</code>) и Flex Query-а (<code>fetch</code>), систем даје приоритет потпунијим Flex Query подацима:</p>
+<ul>
+<li>Подаци Flex Query-а (<code>fetch</code>) су извор истине. Они преписују CSV податке за било које подударне датуме.</li>
+<li>Ако се запис Flex Query-а семантички поклапа са CSV записом (Датум, Тикер, Цена, Количина), то се рачуна као ажурирање (замена званичним ID-ем).</li>
+<li>Ако се структура података разликује (нпр. сплит налози у Flex Query-у против "спојеног" записа у CSV-у), стари CSV запис се уклања, а нови Flex Query записи се додају.</li>
+<li>Потпуно идентични записи се прескачу.</li>
+</ul>
+<h2 id="sync">Синхронизација података и креирање пријава (<code>sync</code>)</h2>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>sync
+</code></pre></div>
+<p>Ради све исто што и <a href="#fetch">fetch</a>:</p>
+<ul>
+<li>Преузима најновије трансакције са IBKR путем Flex Query-а</li>
+<li>Синхронизује курсеве валута са НБС</li>
+</ul>
+<p>Након тога креира све потребне пријаве за последњих 45 дана (ако већ нису креиране).</p>
+<p>Затим можете <a href="#_2">Управљати креираним пријавама</a>.</p>
+<blockquote>
+<p>💡 Ако сте покренули <code>sync</code> први пут и она је креирала пријаве које сте већ подали пре почетка коришћења апликације,
+можете брзо да их све означите као плаћене и уклоните из излаза <a href="#list">list</a>:
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>submitted<span class="w"> </span>-1<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-I<span class="w"> </span><span class="o">{}</span><span class="w"> </span>ibkr-porez<span class="w"> </span>pay<span class="w"> </span><span class="o">{}</span>
+</code></pre></div></p>
+</blockquote>
+<h2 id="stat">Приказ статистике (<code>stat</code>)</h2>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>stat<span class="w"> </span>--year<span class="w"> </span><span class="m">2025</span>
+ibkr-porez<span class="w"> </span>stat<span class="w"> </span>--ticker<span class="w"> </span>AAPL
+ibkr-porez<span class="w"> </span>stat<span class="w"> </span>--month<span class="w"> </span><span class="m">2025</span>-01
+</code></pre></div>
+<p>Приказује:</p>
+<ul>
+<li>Примљене дивиденде (у РСД)</li>
+<li>Број продаја (порески догађаји)</li>
+<li>Процену реализованог P/L (Капитална добит) (у РСД)</li>
+<li>Детаљну поделу по тикерима или месецима (при коришћењу филтера)</li>
+</ul>
+<h2 id="report">Генерисање пореског извештаја (<code>report</code>)</h2>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>report
+</code></pre></div>
+<p>Ако не наведете тип извештаја и период, подразумевано се генерише ППДГ-3Р за последње пуно полугодиште</p>
+<ul>
+<li>Креира <code>ppdg3r_XXXX_HY.xml</code> у <a href="#config">Output Folder</a></li>
+<li>Увезите овај фајл на портал Пореске управе Србије (еПорези)</li>
+<li>Ручно отпремите фајл из <a href="../ibkr/#_1">Документ потврде</a> у Тачку 8</li>
+</ul>
+<p>Да бисте изабрали други тип пријаве или временски период погледајте документацију</p>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>report<span class="w"> </span>--help
+</code></pre></div>
+<h2 id="_2">Управљање пријавама</h2>
+<p>Након креирања пријава путем команде <a href="#sync">sync</a> можете их прегледати, мењати статус и извозити за отпремање на порески портал.</p>
+<h3 id="list">Списак пријава (<code>list</code>)</h3>
+<p>Приказује списак свих пријава са могућношћу филтрирања по статусу.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Прикажи активне пријаве (подразумевано):</span>
+<span class="c1"># draft + submitted + pending</span>
+ibkr-porez<span class="w"> </span>list
+
+<span class="c1"># Прикажи све пријаве</span>
+ibkr-porez<span class="w"> </span>list<span class="w"> </span>--all
+
+<span class="c1"># Филтер по статусу</span>
+ibkr-porez<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>draft
+ibkr-porez<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>submitted
+ibkr-porez<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>pending
+ibkr-porez<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>finalized
+
+<span class="c1"># Само ID пријава (за коришћење у цевима)</span>
+ibkr-porez<span class="w"> </span>list<span class="w"> </span>--ids-only
+ibkr-porez<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>draft<span class="w"> </span>-1
+</code></pre></div>
+<p>Пример коришћења у linux-стилу:
+<div class="highlight"><pre><span></span><code><span class="c1"># Поднети све нацрте</span>
+ibkr-porez<span class="w"> </span>list<span class="w"> </span>--status<span class="w"> </span>draft<span class="w"> </span>-1<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-I<span class="w"> </span><span class="o">{}</span><span class="w"> </span>ibkr-porez<span class="w"> </span>submit<span class="w"> </span><span class="o">{}</span>
+</code></pre></div></p>
+<h3 id="show">Преглед детаља пријаве (<code>show</code>)</h3>
+<p>Приказује детаљне информације о одређеној пријави.</p>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>show<span class="w"> </span>&lt;declaration_id&gt;
+</code></pre></div>
+<p>Приказује:</p>
+<ul>
+<li>Тип пријаве (ППДГ-3Р или ПП ОПО)</li>
+<li>Период пријаве</li>
+<li>Статус (нацрт, поднета, на чекању, завршена)</li>
+<li>Детаље трансакција и прорачуна</li>
+<li>Приложене фајлове</li>
+</ul>
+<h3 id="submit">Подношење пријаве (<code>submit</code>)</h3>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>submit<span class="w"> </span>&lt;declaration_id&gt;
+</code></pre></div>
+<p>Означава пријаву као поднету (увезену на порески портал).</p>
+<p>Понашање зависи од типа пријаве:</p>
+<ul>
+<li><code>PPDG-3R</code> након <code>submit</code> прелази у статус <code>pending</code> (чека решење пореске управе о износу пореза).</li>
+<li><code>PP OPO</code> након <code>submit</code>:<ul>
+<li>прелази у <code>submitted</code> ако постоји порез за плаћање;</li>
+<li>прелази директно у <code>finalized</code> ако је порез <code>0</code>.</li>
+</ul>
+</li>
+</ul>
+<h3 id="pay">Плаћање пријаве (<code>pay</code>)</h3>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>pay<span class="w"> </span>&lt;declaration_id&gt;
+ibkr-porez<span class="w"> </span>pay<span class="w"> </span>&lt;declaration_id&gt;<span class="w"> </span>--tax<span class="w"> </span><span class="m">1234</span>.56
+</code></pre></div>
+<p>Означава пријаву као завршену (<code>finalized</code>) и чува датум плаћања.</p>
+<p>Опција <code>--tax</code> омогућава да одмах забележите износ пореза током плаћања, без посебног корака <code>assess</code>.</p>
+<p>Након тога ће нестати са списка приказаног <a href="#list">list</a> (без <code>--all</code>)</p>
+<h3 id="assess">Евиденција износа по решењу пореске (<code>assess</code>)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Забележи званичан износ пореза из решења</span>
+ibkr-porez<span class="w"> </span>assess<span class="w"> </span>&lt;declaration_id&gt;<span class="w"> </span>--tax-due<span class="w"> </span><span class="m">1234</span>.56
+
+<span class="c1"># Забележи износ и одмах означи као већ плаћено</span>
+ibkr-porez<span class="w"> </span>assess<span class="w"> </span>&lt;declaration_id&gt;<span class="w"> </span>--tax-due<span class="w"> </span><span class="m">1234</span>.56<span class="w"> </span>--paid
+</code></pre></div>
+<p>Команда је најважнија за <code>PPDG-3R</code>, где износ пореза одређује пореска управа након подношења пријаве.</p>
+<p>Шта команда ради:</p>
+<ul>
+<li>уписује званичан износ пореза у метаподатке пријаве;</li>
+<li>са <code>--paid</code> одмах пребацује пријаву у <code>finalized</code>;</li>
+<li>без <code>--paid</code>:<ul>
+<li>ако је износ већи од нуле, пријава остаје активна (<code>submitted</code>) за накнадно плаћање;</li>
+<li>ако је износ нула, пријава прелази у <code>finalized</code>.</li>
+</ul>
+</li>
+</ul>
+<h3 id="export">Извоз пријаве (<code>export</code>)</h3>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span><span class="nb">export</span><span class="w"> </span>&lt;declaration_id&gt;
+ibkr-porez<span class="w"> </span><span class="nb">export</span><span class="w"> </span>&lt;declaration_id&gt;<span class="w"> </span>-o<span class="w"> </span>/path/to/output
+</code></pre></div>
+<p>Копира XML и све приложене фајлове (<a href="#attach">attach</a>) у <a href="#config">Output Folder</a> или у каталог наведен у параметрима.</p>
+<h3 id="revert">Повратак статуса пријаве (<code>revert</code>)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Вратити на нацрт (подразумевано)</span>
+ibkr-porez<span class="w"> </span>revert<span class="w"> </span>&lt;declaration_id&gt;
+
+<span class="c1"># Вратити на поднету</span>
+ibkr-porez<span class="w"> </span>revert<span class="w"> </span>&lt;declaration_id&gt;<span class="w"> </span>--to<span class="w"> </span>submitted
+</code></pre></div>
+<p>Враћа статус пријаве.</p>
+<h3 id="attach">Приложавање фајла уз пријаву (<code>attach</code>)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Приложити фајл</span>
+ibkr-porez<span class="w"> </span>attach<span class="w"> </span>&lt;declaration_id&gt;<span class="w"> </span>/path/to/file.pdf
+
+<span class="c1"># Обрисати приложени фајл</span>
+ibkr-porez<span class="w"> </span>attach<span class="w"> </span>&lt;declaration_id&gt;<span class="w"> </span>&lt;file_id&gt;<span class="w"> </span>--delete
+ibkr-porez<span class="w"> </span>attach<span class="w"> </span>&lt;declaration_id&gt;<span class="w"> </span>--delete<span class="w"> </span>--file-id<span class="w"> </span>&lt;file_id&gt;
+</code></pre></div>
+<p>Приложава фајл уз пријаву или уклања приложени фајл из складишта пријава.</p>
+<p>За чување у складишту пријава користи се само име фајла (путања се одбацује), тако да имена морају
+бити јединствена - иначе ће фајл са истим именом преписати раније учитан фајл са истим именом чак и из друге путање</p>
+<blockquote>
+<p>💡 Приложени фајлови се копирају заједно са XML пријаве током <a href="#export">извоза (export)</a></p>
+</blockquote>
+<h2 id="flex-query-export-flex">Извоз Flex Query (<code>export-flex</code>)</h2>
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>export-flex<span class="w"> </span><span class="m">2025</span>-01-15
+ibkr-porez<span class="w"> </span>export-flex<span class="w"> </span><span class="m">2025</span>-01-15<span class="w"> </span>-o<span class="w"> </span>/path/to/output.xml
+ibkr-porez<span class="w"> </span>export-flex<span class="w"> </span><span class="m">2025</span>-01-15<span class="w"> </span>-o<span class="w"> </span>-<span class="w">  </span><span class="c1"># Излаз у stdout (за цеви)</span>
+</code></pre></div>
+<p>Извоз XML фајла Flex Query добијеног током <a href="#fetch">fetch</a> или <a href="#sync">sync</a> на наведени датум.</p>
+<p>Пример коришћења у linux-стилу:
+<div class="highlight"><pre><span></span><code>ibkr-porez<span class="w"> </span>export-flex<span class="w"> </span><span class="m">2025</span>-01-15<span class="w"> </span><span class="p">|</span><span class="w"> </span>ibkr-porez<span class="w"> </span>import
+</code></pre></div></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["toc.integrate", "navigation.tracking", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
