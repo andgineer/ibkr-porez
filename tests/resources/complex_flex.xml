@@ -1,0 +1,49 @@
+<FlexQueryResponse>
+    <FlexStatements>
+        <FlexStatement>
+            <Trades>
+                <!-- Simple Long Stock -->
+                <Trade symbol="AAPL" currency="USD" quantity="10" tradePrice="150.0" 
+                       tradeDate="20230101" tradeID="XML_AAPL_BUY_1" 
+                       subCategory="Stock" 
+                       origTradeDate="20220601" origTradePrice="120.0"
+                       fifoPnlRealized="300.0" description="Apple Inc." />
+                
+                <!-- Short Sale Cover -->
+                <Trade symbol="TSLA" currency="USD" quantity="-5" tradePrice="200.0" 
+                       tradeDate="20230105" tradeID="XML_TSLA_SELL_1" 
+                       subCategory="Stock" 
+                       origTradeDate="20230102" origTradePrice="180.0"
+                       fifoPnlRealized="-100.0" description="Tesla Inc." />
+
+                <!-- Split Order Part 1 (Same ID structure usually, but distinct lines) -->
+                <!-- IBKR sometimes gives distinct tradeIDs for split fills. Let's assume unique IDs. -->
+                <Trade symbol="GOOG" currency="USD" quantity="50" tradePrice="100.0" 
+                       tradeDate="20230201" tradeID="XML_GOOG_SPLIT_1" 
+                       subCategory="Stock" fifoPnlRealized="0" />
+                
+                <!-- Split Order Part 2 -->
+                <Trade symbol="GOOG" currency="USD" quantity="50" tradePrice="100.1" 
+                       tradeDate="20230201" tradeID="XML_GOOG_SPLIT_2" 
+                       subCategory="Stock" fifoPnlRealized="5" />
+            </Trades>
+            
+            <CashTransactions>
+                <!-- Dividend -->
+                <CashTransaction type="Dividends" symbol="KO" currency="USD" amount="50.0" 
+                                 dateTime="20230315;10:00:00" transactionID="XML_DIV_KO" 
+                                 description="Coca Cola Div" />
+                
+                <!-- Withholding Tax -->
+                <CashTransaction type="Withholding Tax" symbol="KO" currency="USD" amount="-7.5" 
+                                 dateTime="20230315;10:00:00" transactionID="XML_TAX_KO" 
+                                 description="US Tax" />
+                                 
+                <!-- Interest (Should be ignored by tax calculator usually, but stored) -->
+                <CashTransaction type="Broker Interest Paid" symbol="" currency="USD" amount="-2.5" 
+                                 dateTime="20230331" transactionID="XML_INTEREST_MAR" 
+                                 description="Margin Interest" />
+            </CashTransactions>
+        </FlexStatement>
+    </FlexStatements>
+</FlexQueryResponse>

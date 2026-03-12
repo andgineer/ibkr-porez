@@ -1,0 +1,35 @@
+<FlexQueryResponse>
+    <FlexStatements>
+        <FlexStatement>
+            <Trades>
+                <!-- Scenario 1: Multi-Buy, Single Sell (FIFO) -->
+                <!-- Buy 1 -->
+                <Trade symbol="AAPL" currency="USD" quantity="10" tradePrice="100.0" 
+                       tradeDate="20221201" tradeID="BUY_AAPL_1" 
+                       dateTime="20221201;10:00:00" description="Buy AAPL 1" />
+                <!-- Buy 2 -->
+                <Trade symbol="AAPL" currency="USD" quantity="10" tradePrice="110.0" 
+                       tradeDate="20230105" tradeID="BUY_AAPL_2" 
+                       dateTime="20230105;10:00:00" description="Buy AAPL 2" />
+                <!-- Sell 15 (should consume Buy 1 fully + 5 from Buy 2) -->
+                <Trade symbol="AAPL" currency="USD" quantity="-15" tradePrice="120.0" 
+                       tradeDate="20230201" tradeID="SELL_AAPL_1" 
+                       dateTime="20230201;10:00:00" description="Sell AAPL" />
+
+                <!-- Scenario 2: Single Buy, Multi-Sell -->
+                <!-- Buy 1 -->
+                <Trade symbol="MSFT" currency="USD" quantity="20" tradePrice="200.0" 
+                       tradeDate="20230301" tradeID="BUY_MSFT_1" 
+                       dateTime="20230301;10:00:00" description="Buy MSFT" />
+                <!-- Sell 1 (5 shares) -->
+                <Trade symbol="MSFT" currency="USD" quantity="-5" tradePrice="210.0" 
+                       tradeDate="20230401" tradeID="SELL_MSFT_1" 
+                       dateTime="20230401;10:00:00" description="Sell MSFT 1" />
+                <!-- Sell 2 (10 shares) -->
+                <Trade symbol="MSFT" currency="USD" quantity="-10" tradePrice="220.0" 
+                       tradeDate="20230410" tradeID="SELL_MSFT_2" 
+                       dateTime="20230410;10:00:00" description="Sell MSFT 2" />
+            </Trades>
+        </FlexStatement>
+    </FlexStatements>
+</FlexQueryResponse>
