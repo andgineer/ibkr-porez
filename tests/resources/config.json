@@ -1,0 +1,12 @@
+{
+    "ibkr_token": "fake-token-12345",
+    "ibkr_query_id": "123456",
+    "personal_id": "0101990000000",
+    "full_name": "Test User",
+    "address": "\u0422\u0435\u0441\u0442 \u0410\u0434\u0440\u0435\u0441\u0430 1",
+    "city_code": "223",
+    "phone": "0601234567",
+    "email": "test@example.com",
+    "data_dir": "/tmp/test-data",
+    "output_folder": null
+}

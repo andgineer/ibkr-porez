@@ -26,6 +26,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - uses: astral-sh/setup-uv@v5
+
       - name: Check formatting
         run: cargo fmt --check
 
