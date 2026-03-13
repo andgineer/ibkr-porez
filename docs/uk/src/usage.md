@@ -1,3 +1,5 @@
+> [English](../en/usage.html) | [Русский](../ru/usage.html) | **Українська** | [Srpski](../rs/usage.html) | [Српски](../rs-cyr/usage.html)
+
 # Використання
 
 ## Налаштування (config)

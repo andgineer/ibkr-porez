@@ -1,3 +1,5 @@
+> [English](../en/installation.html) | **Русский** | [Українська](../uk/installation.html) | [Srpski](../rs/installation.html) | [Српски](../rs-cyr/installation.html)
+
 # Установка
 
 ## Графический инсталлятор (только GUI, без CLI)

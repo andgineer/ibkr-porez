@@ -1,3 +1,5 @@
+> [English](../en/) | [Русский](../ru/) | [Українська](../uk/) | **Srpski** | [Српски](../rs-cyr/)
+
 # Brzi start
 
 Automatizovano generisanje poreske prijave PPDG-3R (porez na kapitalnu dobit) i PP OPO (porez na prihode od kapitala) za korisnike Interactive Brokers u Srbiji.

@@ -1,3 +1,5 @@
+> **English** | [Русский](../ru/) | [Українська](../uk/) | [Srpski](../rs/) | [Српски](../rs-cyr/)
+
 # Quick Start
 
 Automated generation of PPDG-3R (Capital Gains Tax) and PP OPO (Capital Income Tax) reports for Interactive Brokers users in Serbia.
