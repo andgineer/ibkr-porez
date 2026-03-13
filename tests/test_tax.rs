@@ -31,6 +31,9 @@ fn make_trade(
     }
 }
 
+/// Unreachable URL so tests never accidentally hit the real NBS API.
+const FAKE_NBS_URL: &str = "http://127.0.0.1:1";
+
 fn setup_with_rates(rates: &[(&str, &str, &str)]) -> (tempfile::TempDir, Storage, HolidayCalendar) {
     let tmp = tempfile::TempDir::new().unwrap();
     let storage = Storage::with_dir(tmp.path());
@@ -48,6 +51,10 @@ fn setup_with_rates(rates: &[(&str, &str, &str)]) -> (tempfile::TempDir, Storage
     (tmp, storage, cal)
 }
 
+fn nbs_offline<'a>(storage: &'a Storage, cal: &'a HolidayCalendar) -> NBSClient<'a> {
+    NBSClient::with_base_url(storage, cal, FAKE_NBS_URL)
+}
+
 #[test]
 fn test_fifo_single_buy_single_sell() {
     let (_tmp, storage, cal) = setup_with_rates(&[
@@ -55,7 +62,7 @@ fn test_fifo_single_buy_single_sell() {
         ("2023-06-15", "USD", "108.0"),
     ]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::new(&nbs);
 
     let txns = vec![
@@ -87,7 +94,7 @@ fn test_fifo_partial_lot_consumption() {
         ("2023-06-01", "USD", "100.0"),
     ]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::new(&nbs);
 
     let txns = vec![
@@ -124,7 +131,7 @@ fn test_fifo_multi_lot_sell() {
         ("2023-06-01", "USD", "100.0"),
     ]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::new(&nbs);
 
     let txns = vec![
@@ -155,7 +162,7 @@ fn test_fifo_multi_lot_sell() {
 fn test_fifo_empty_inventory_zero_cost_basis() {
     let (_tmp, storage, cal) = setup_with_rates(&[("2023-06-01", "USD", "100.0")]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::new(&nbs);
 
     let txns = vec![make_trade(
@@ -179,7 +186,7 @@ fn test_ten_year_exemption() {
         ("2020-04-01", "USD", "120.0"),
     ]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::new(&nbs);
 
     let txns = vec![
@@ -199,7 +206,7 @@ fn test_ten_year_exemption_not_reached() {
         ("2024-03-14", "USD", "120.0"),
     ]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::new(&nbs);
 
     let txns = vec![
@@ -219,7 +226,7 @@ fn test_ten_year_leap_day_feb29() {
         ("2026-02-28", "USD", "100.0"),
     ]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::new(&nbs);
 
     // Feb 29, 2016 + 10 years = Feb 28, 2026 (non-leap year)
@@ -237,7 +244,7 @@ fn test_ten_year_leap_day_feb29() {
 fn test_force_mode_no_rate_errors_when_cache_empty() {
     let (_tmp, storage, cal) = setup_with_rates(&[]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::with_force(&nbs, true);
 
     let txns = vec![
@@ -259,7 +266,7 @@ fn test_force_mode_uses_nearest_cached_rate() {
         // No rate on 2023-06-15, but there's one from Jan that the force lookback should find
     ]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::with_force(&nbs, true);
 
     let txns = vec![
@@ -277,7 +284,7 @@ fn test_force_mode_uses_nearest_cached_rate() {
 fn test_normal_mode_no_rate_errors() {
     let (_tmp, storage, cal) = setup_with_rates(&[]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::new(&nbs);
 
     let txns = vec![
@@ -293,7 +300,7 @@ fn test_normal_mode_no_rate_errors() {
 fn test_non_trade_transactions_ignored() {
     let (_tmp, storage, cal) = setup_with_rates(&[("2023-03-15", "USD", "100.0")]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::new(&nbs);
 
     let txns = vec![Transaction {
@@ -323,7 +330,7 @@ fn test_rsd_amounts_correctly_computed() {
         ("2023-06-15", "USD", "108.00"),
     ]);
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let calc = TaxCalculator::new(&nbs);
 
     let txns = vec![

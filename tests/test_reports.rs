@@ -56,6 +56,9 @@ fn make_txn(
     }
 }
 
+/// Unreachable URL so tests never accidentally hit the real NBS API.
+const FAKE_NBS_URL: &str = "http://127.0.0.1:1";
+
 fn setup_with_rates(rates: &[(&str, &str, &str)]) -> (tempfile::TempDir, Storage, HolidayCalendar) {
     let tmp = tempfile::TempDir::new().unwrap();
     let storage = Storage::with_dir(tmp.path());
@@ -71,6 +74,10 @@ fn setup_with_rates(rates: &[(&str, &str, &str)]) -> (tempfile::TempDir, Storage
     cal.set_fallback(true);
 
     (tmp, storage, cal)
+}
+
+fn nbs_offline<'a>(storage: &'a Storage, cal: &'a HolidayCalendar) -> NBSClient<'a> {
+    NBSClient::with_base_url(storage, cal, FAKE_NBS_URL)
 }
 
 #[test]
@@ -118,7 +125,7 @@ fn test_gains_report_known_trades() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let period_start = NaiveDate::from_ymd_opt(2023, 1, 1).unwrap();
     let period_end = NaiveDate::from_ymd_opt(2023, 6, 30).unwrap();
 
@@ -158,7 +165,7 @@ fn test_gains_report_empty_period_returns_error() {
     )];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let period_start = NaiveDate::from_ymd_opt(2023, 7, 1).unwrap();
     let period_end = NaiveDate::from_ymd_opt(2023, 12, 31).unwrap();
 
@@ -208,7 +215,7 @@ fn test_gains_report_metadata() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let period_start = NaiveDate::from_ymd_opt(2023, 1, 1).unwrap();
     let period_end = NaiveDate::from_ymd_opt(2023, 6, 30).unwrap();
 
@@ -262,7 +269,7 @@ fn test_income_reports_dividend_grouping() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2023, 7, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2023, 7, 31).unwrap();
 
@@ -332,7 +339,7 @@ fn test_income_reports_coupon_groups_by_currency() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2023, 7, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2023, 7, 31).unwrap();
 
@@ -378,7 +385,7 @@ fn test_income_report_metadata() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2023, 7, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2023, 7, 31).unwrap();
 
@@ -429,7 +436,7 @@ fn test_wht_found_within_7_day_window() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
 
@@ -477,7 +484,7 @@ fn test_wht_not_found_beyond_7_day_window() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
 
@@ -519,7 +526,7 @@ fn test_wht_matched_by_entity_isin_not_symbol() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
 
@@ -563,7 +570,7 @@ fn test_wht_fallback_to_symbol_match() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
 
@@ -607,7 +614,7 @@ fn test_wht_interest_matched_by_currency() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
 
@@ -665,7 +672,7 @@ fn test_wht_multiple_taxes_summed() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
 
@@ -697,7 +704,7 @@ fn test_zero_wht_force_false_errors() {
     )];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
 
@@ -750,7 +757,7 @@ fn test_interest_grouped_by_currency_not_symbol() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
 
@@ -815,7 +822,7 @@ fn test_income_tax_calculation_matches_python() {
     ];
     storage.save_transactions(&txns).unwrap();
 
-    let nbs = NBSClient::new(&storage, &cal);
+    let nbs = nbs_offline(&storage, &cal);
     let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
 

@@ -20,7 +20,7 @@ fn test_rsd_returns_one() {
     let tmp = tempfile::TempDir::new().unwrap();
     let storage = Storage::with_dir(tmp.path());
     let cal = calendar();
-    let client = NBSClient::new(&storage, &cal);
+    let client = NBSClient::with_base_url(&storage, &cal, "http://127.0.0.1:1");
 
     let rate = client
         .get_rate(
