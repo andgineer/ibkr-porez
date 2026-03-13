@@ -56,6 +56,16 @@ impl Currency {
     }
 
     #[must_use]
+    pub fn as_code(&self) -> &str {
+        match self {
+            Self::USD => "USD",
+            Self::EUR => "EUR",
+            Self::GBP => "GBP",
+            Self::RSD => "RSD",
+        }
+    }
+
+    #[must_use]
     pub fn as_lowercase(&self) -> &str {
         match self {
             Self::USD => "usd",

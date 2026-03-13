@@ -1,0 +1,54 @@
+<?xml version="1.0" ?>
+<ns1:PodaciPoreskeDeklaracije xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ns1="http://pid.purs.gov.rs">
+  <ns1:PodaciOPrijavi>
+    <ns1:VrstaPrijave>1</ns1:VrstaPrijave>
+    <ns1:ObracunskiPeriod>2025-12</ns1:ObracunskiPeriod>
+    <ns1:DatumOstvarivanjaPrihoda>2025-12-24</ns1:DatumOstvarivanjaPrihoda>
+    <ns1:Rok>1</ns1:Rok>
+    <ns1:DatumDospelostiObaveze>2026-01-23</ns1:DatumDospelostiObaveze>
+  </ns1:PodaciOPrijavi>
+  <ns1:PodaciOPoreskomObvezniku>
+    <ns1:PoreskiIdentifikacioniBroj>1234567890123</ns1:PoreskiIdentifikacioniBroj>
+    <ns1:ImePrezimeObveznika><![CDATA[Test User]]></ns1:ImePrezimeObveznika>
+    <ns1:UlicaBrojPoreskogObveznika><![CDATA[Test City Test Street 001]]></ns1:UlicaBrojPoreskogObveznika>
+    <ns1:PrebivalisteOpstina>223</ns1:PrebivalisteOpstina>
+    <ns1:JMBGPodnosiocaPrijave>1234567890123</ns1:JMBGPodnosiocaPrijave>
+    <ns1:TelefonKontaktOsobe>0601234567</ns1:TelefonKontaktOsobe>
+    <ns1:ElektronskaPosta><![CDATA[test@example.com]]></ns1:ElektronskaPosta>
+  </ns1:PodaciOPoreskomObvezniku>
+  <ns1:PodaciONacinuOstvarivanjaPrihoda>
+    <ns1:NacinIsplate>3</ns1:NacinIsplate>
+    <ns1:Ostalo>Isplata na brokerski racun</ns1:Ostalo>
+  </ns1:PodaciONacinuOstvarivanjaPrihoda>
+  <ns1:DeklarisaniPodaciOVrstamaPrihoda>
+    <ns1:PodaciOVrstamaPrihoda>
+      <ns1:RedniBroj>1</ns1:RedniBroj>
+      <ns1:SifraVrstePrihoda>111402000</ns1:SifraVrstePrihoda>
+      <ns1:BrutoPrihod>8706.70</ns1:BrutoPrihod>
+      <ns1:OsnovicaZaPorez>8706.70</ns1:OsnovicaZaPorez>
+      <ns1:ObracunatiPorez>1306.01</ns1:ObracunatiPorez>
+      <ns1:PorezPlacenDrugojDrzavi>5225.01</ns1:PorezPlacenDrugojDrzavi>
+      <ns1:PorezZaUplatu>0.00</ns1:PorezZaUplatu>
+    </ns1:PodaciOVrstamaPrihoda>
+  </ns1:DeklarisaniPodaciOVrstamaPrihoda>
+  <ns1:Ukupno>
+    <ns1:FondSati>0.00</ns1:FondSati>
+    <ns1:BrutoPrihod>8706.70</ns1:BrutoPrihod>
+    <ns1:OsnovicaZaPorez>8706.70</ns1:OsnovicaZaPorez>
+    <ns1:ObracunatiPorez>1306.01</ns1:ObracunatiPorez>
+    <ns1:PorezPlacenDrugojDrzavi>5225.01</ns1:PorezPlacenDrugojDrzavi>
+    <ns1:PorezZaUplatu>0.00</ns1:PorezZaUplatu>
+    <ns1:OsnovicaZaDoprinose>0.00</ns1:OsnovicaZaDoprinose>
+    <ns1:PIO>0.00</ns1:PIO>
+    <ns1:ZDRAVSTVO>0.00</ns1:ZDRAVSTVO>
+    <ns1:NEZAPOSLENOST>0.00</ns1:NEZAPOSLENOST>
+  </ns1:Ukupno>
+  <ns1:Kamata>
+    <ns1:PorezZaUplatu>0</ns1:PorezZaUplatu>
+    <ns1:OsnovicaZaDoprinose>0</ns1:OsnovicaZaDoprinose>
+    <ns1:PIO>0</ns1:PIO>
+    <ns1:ZDRAVSTVO>0</ns1:ZDRAVSTVO>
+    <ns1:NEZAPOSLENOST>0</ns1:NEZAPOSLENOST>
+  </ns1:Kamata>
+  <ns1:PodaciODodatnojKamati/>
+</ns1:PodaciPoreskeDeklaracije>

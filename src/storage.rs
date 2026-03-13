@@ -215,6 +215,39 @@ impl Storage {
         })
     }
 
+    /// Find the nearest cached rate for a currency on or before `date`,
+    /// scanning up to `max_lookback` days back through the cache.
+    /// Loads the rates file once and probes the in-memory map.
+    #[must_use]
+    pub fn find_nearest_cached_rate(
+        &self,
+        date: NaiveDate,
+        currency: &Currency,
+        max_lookback: u32,
+    ) -> Option<ExchangeRate> {
+        let rates = self.load_rates();
+        let cur_str = serde_json::to_value(currency)
+            .ok()?
+            .as_str()
+            .map(String::from)?;
+
+        let mut target = date;
+        for _ in 0..max_lookback {
+            let key = format!("{}_{cur_str}", target.format("%Y-%m-%d"));
+            if let Some(val) = rates.get(&key)
+                && let Ok(rate) = val.parse::<Decimal>()
+            {
+                return Some(ExchangeRate {
+                    date: target,
+                    currency: currency.clone(),
+                    rate,
+                });
+            }
+            target -= chrono::Duration::days(1);
+        }
+        None
+    }
+
     // =======================================================================
     // Declarations
     // =======================================================================

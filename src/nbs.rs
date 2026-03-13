@@ -46,6 +46,11 @@ impl<'a> NBSClient<'a> {
         }
     }
 
+    #[must_use]
+    pub fn storage(&self) -> &Storage {
+        self.storage
+    }
+
     /// Get the NBS middle exchange rate for a currency on a given date.
     ///
     /// Returns `Ok(None)` if no rate could be found within the 10-day lookback window.
