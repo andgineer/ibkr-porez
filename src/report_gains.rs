@@ -41,11 +41,11 @@ impl GainsReport {
         m.insert("entry_count".into(), self.entries.len().into());
         m.insert("period_start".into(), fmt_date(self.period_start).into());
         m.insert("period_end".into(), fmt_date(self.period_end).into());
-        m.insert("total_gain_rsd".into(), total_gain.to_string().into());
-        m.insert("gross_income_rsd".into(), gross.to_string().into());
-        m.insert("tax_base_rsd".into(), tax_base.to_string().into());
-        m.insert("calculated_tax_rsd".into(), tax.to_string().into());
-        m.insert("estimated_tax_rsd".into(), tax.to_string().into());
+        m.insert("total_gain_rsd".into(), format!("{total_gain:.2}").into());
+        m.insert("gross_income_rsd".into(), format!("{gross:.2}").into());
+        m.insert("tax_base_rsd".into(), format!("{tax_base:.2}").into());
+        m.insert("calculated_tax_rsd".into(), format!("{tax:.2}").into());
+        m.insert("estimated_tax_rsd".into(), format!("{tax:.2}").into());
         m.insert("foreign_tax_paid_rsd".into(), "0.00".into());
         m
     }

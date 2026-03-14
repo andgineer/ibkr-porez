@@ -1,12 +1,12 @@
 use std::path::Path;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use tracing::{debug, info, warn};
 
 use crate::config;
+use crate::fetch;
 use crate::holidays::HolidayCalendar;
-use crate::ibkr_flex::{IBKRClient, parse_flex_report};
 use crate::models::{Declaration, DeclarationStatus, DeclarationType, UserConfig};
 use crate::nbs::NBSClient;
 use crate::report_gains::generate_gains_report;
@@ -22,9 +22,10 @@ pub struct SyncOptions {
 }
 
 pub struct SyncResult {
-    pub declarations_created: usize,
+    pub created_declarations: Vec<Declaration>,
     pub gains_skipped: bool,
     pub income_skipped: bool,
+    pub income_error: Option<String>,
     pub end_period: NaiveDate,
 }
 
@@ -37,27 +38,23 @@ pub fn run_sync(
 ) -> Result<SyncResult> {
     validate_config(config)?;
 
-    info!("fetching IBKR data…");
-    let client = IBKRClient::new(&config.ibkr_token, &config.ibkr_query_id);
-    let xml = client
-        .fetch_latest_report()
-        .context("failed to fetch IBKR Flex Query report")?;
-
-    let report_date = Local::now().date_naive();
-    storage.save_raw_report(&xml, report_date)?;
-
-    let transactions = parse_flex_report(&xml)?;
-    let (inserted, updated) = storage.save_transactions(&transactions)?;
-    info!(inserted, updated, "saved transactions");
+    let fetch_result = fetch::fetch_and_import(storage, nbs, config)?;
+    info!(
+        inserted = fetch_result.inserted,
+        updated = fetch_result.updated,
+        total = fetch_result.transactions.len(),
+        "fetch complete"
+    );
 
     let end_period = Local::now().date_naive() - Duration::days(1);
 
     let output_dir = config::get_effective_output_dir_path(config);
     std::fs::create_dir_all(&output_dir)?;
 
-    let mut created = 0;
+    let mut created_declarations = Vec::new();
     let mut gains_skipped = false;
     let mut income_skipped = false;
+    let mut income_error = None;
 
     match generate_and_save_gains(
         storage,
@@ -68,7 +65,7 @@ pub fn run_sync(
         &output_dir,
         options,
     ) {
-        Ok(n) => created += n,
+        Ok(decls) => created_declarations.extend(decls),
         Err(e) => {
             let msg = e.to_string();
             if msg.contains("no taxable sales") {
@@ -89,7 +86,7 @@ pub fn run_sync(
         &output_dir,
         options,
     ) {
-        Ok(IncomeOutcome::Created(n)) => created += n,
+        Ok(IncomeOutcome::Created(decls)) => created_declarations.extend(decls),
         Ok(IncomeOutcome::NoIncome) => {
             debug!("no income in period, skipping");
             income_skipped = true;
@@ -97,8 +94,8 @@ pub fn run_sync(
         Err(e) => {
             let msg = e.to_string();
             if msg.contains("no NBS exchange rate") {
-                debug!(error = %e, "income report skipped");
-                income_skipped = true;
+                debug!(error = %e, "income report NBS error collected");
+                income_error = Some(msg);
             } else if msg.contains("withholding tax") && !options.force {
                 warn!(error = %e, "missing withholding tax; use --force to override");
                 return Err(e);
@@ -115,9 +112,10 @@ pub fn run_sync(
     }
 
     Ok(SyncResult {
-        declarations_created: created,
+        created_declarations,
         gains_skipped,
         income_skipped,
+        income_error,
         end_period,
     })
 }
@@ -198,7 +196,7 @@ fn generate_and_save_gains(
     end_period: NaiveDate,
     output_dir: &Path,
     options: &SyncOptions,
-) -> Result<usize> {
+) -> Result<Vec<Declaration>> {
     let (period_start, period_end) = determine_gains_period(end_period);
 
     let report = generate_gains_report(
@@ -213,10 +211,10 @@ fn generate_and_save_gains(
 
     if is_duplicate(storage, &report.filename, &DeclarationType::Ppdg3r) {
         debug!(filename = %report.filename, "gains declaration already exists, skipping");
-        return Ok(0);
+        return Ok(Vec::new());
     }
 
-    save_declaration(
+    let decl = save_declaration(
         storage,
         &report.filename,
         &report.xml_content,
@@ -229,11 +227,11 @@ fn generate_and_save_gains(
     )?;
 
     info!(filename = %report.filename, "created PPDG-3R declaration");
-    Ok(1)
+    Ok(vec![decl])
 }
 
 enum IncomeOutcome {
-    Created(usize),
+    Created(Vec<Declaration>),
     NoIncome,
 }
 
@@ -266,7 +264,7 @@ fn generate_and_save_income(
         return Ok(IncomeOutcome::NoIncome);
     }
 
-    let mut created = 0;
+    let mut created = Vec::new();
     for report in &reports {
         if is_duplicate(storage, &report.filename, &DeclarationType::Ppo) {
             debug!(filename = %report.filename, "income declaration already exists, skipping");
@@ -276,7 +274,7 @@ fn generate_and_save_income(
         let period_start = report.declaration_date;
         let period_end = report.declaration_date;
 
-        save_declaration(
+        let decl = save_declaration(
             storage,
             &report.filename,
             &report.xml_content,
@@ -289,7 +287,7 @@ fn generate_and_save_income(
         )?;
 
         info!(filename = %report.filename, "created PP-OPO declaration");
-        created += 1;
+        created.push(decl);
     }
 
     Ok(IncomeOutcome::Created(created))
@@ -324,7 +322,7 @@ fn save_declaration<T: serde::Serialize>(
     entries: &[T],
     metadata: &indexmap::IndexMap<String, serde_json::Value>,
     output_dir: &Path,
-) -> Result<()> {
+) -> Result<Declaration> {
     let existing = storage.get_declarations(None, None);
     let next_id = existing.len() + 1;
     let id_str = next_id.to_string();
@@ -358,7 +356,7 @@ fn save_declaration<T: serde::Serialize>(
     };
 
     storage.save_declaration(&decl)?;
-    Ok(())
+    Ok(decl)
 }
 
 #[cfg(test)]

@@ -18,7 +18,8 @@ rust_decimal = { version = "1", features = ["serde-str"] }
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 quick-xml = { version = "0.37", features = ["serialize"] }
 csv = "1"
-comfy-table = "7"
+comfy-table = { version = "7", features = ["tty"] }
+console = "0.16"
 dialoguer = "0.11"
 indicatif = "0.17"
 tracing = "0.1"

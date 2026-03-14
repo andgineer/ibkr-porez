@@ -8,6 +8,11 @@ use std::str::FromStr;
 use crate::models::{Declaration, DeclarationStatus, DeclarationType};
 use crate::storage::Storage;
 
+pub struct ExportResult {
+    pub xml_path: Option<String>,
+    pub attachment_paths: Vec<String>,
+}
+
 pub struct DeclarationManager<'a> {
     storage: &'a Storage,
 }
@@ -74,24 +79,36 @@ impl<'a> DeclarationManager<'a> {
             bail!("cannot set assessed tax on a Draft declaration");
         }
 
+        decl.metadata.insert(
+            "assessed_tax_due_rsd".into(),
+            format!("{tax_due:.2}").into(),
+        );
         decl.metadata
-            .insert("assessed_tax_due_rsd".into(), tax_due.to_string().into());
-        decl.metadata
-            .insert("tax_due_rsd".into(), tax_due.to_string().into());
+            .insert("tax_due_rsd".into(), format!("{tax_due:.2}").into());
 
-        if mark_paid {
-            let now = Local::now().naive_local();
+        let now = Local::now().naive_local();
+        if decl.submitted_at.is_none() {
+            decl.submitted_at = Some(now);
+        }
+
+        if tax_due == Decimal::ZERO || mark_paid {
             decl.status = DeclarationStatus::Finalized;
             decl.paid_at = Some(now);
+        } else {
+            decl.status = DeclarationStatus::Submitted;
         }
+
         self.storage.save_declaration(&decl)?;
         Ok(())
     }
 
-    pub fn export(&self, id: &str, output_dir: &Path) -> Result<Vec<String>> {
+    pub fn export(&self, id: &str, output_dir: &Path) -> Result<ExportResult> {
         let decl = self.get_or_err(id)?;
         std::fs::create_dir_all(output_dir)?;
-        let mut exported = Vec::new();
+        let mut result = ExportResult {
+            xml_path: None,
+            attachment_paths: Vec::new(),
+        };
 
         let default_name = format!("declaration-{id}.xml");
         if let Some(ref xml) = decl.xml_content {
@@ -103,7 +120,7 @@ impl<'a> DeclarationManager<'a> {
                 .unwrap_or(&default_name);
             let dest = output_dir.join(filename);
             std::fs::write(&dest, xml)?;
-            exported.push(dest.display().to_string());
+            result.xml_path = Some(dest.display().to_string());
         } else if let Some(ref fp) = decl.file_path {
             let src = Path::new(fp);
             if src.exists() {
@@ -113,22 +130,23 @@ impl<'a> DeclarationManager<'a> {
                     .unwrap_or(&default_name);
                 let dest = output_dir.join(filename);
                 std::fs::copy(src, &dest)?;
-                exported.push(dest.display().to_string());
+                result.xml_path = Some(dest.display().to_string());
             }
         }
 
+        let decl_dir = self.storage.declarations_dir();
         for (_, attachment_path) in &decl.attached_files {
-            let src = Path::new(attachment_path);
+            let src = decl_dir.join(attachment_path);
             if src.exists()
                 && let Some(name) = src.file_name()
             {
                 let dest = output_dir.join(name);
                 std::fs::copy(src, &dest)?;
-                exported.push(dest.display().to_string());
+                result.attachment_paths.push(dest.display().to_string());
             }
         }
 
-        Ok(exported)
+        Ok(result)
     }
 
     pub fn revert(&self, ids: &[&str]) -> Result<()> {
@@ -157,8 +175,9 @@ impl<'a> DeclarationManager<'a> {
         let dest = attachments_dir.join(&file_name);
         std::fs::copy(path, &dest)?;
 
+        let relative_path = Path::new(id).join("attachments").join(&file_name);
         decl.attached_files
-            .insert(file_name.clone(), dest.display().to_string());
+            .insert(file_name.clone(), relative_path.display().to_string());
         self.storage.save_declaration(&decl)?;
 
         Ok(file_name)
@@ -167,9 +186,12 @@ impl<'a> DeclarationManager<'a> {
     pub fn detach_file(&self, id: &str, file_id: &str) -> Result<()> {
         let mut decl = self.get_or_err(id)?;
 
-        if let Some(path) = decl.attached_files.shift_remove(file_id) {
-            let _ = std::fs::remove_file(&path);
-        }
+        let Some(rel_path) = decl.attached_files.shift_remove(file_id) else {
+            bail!("file '{file_id}' not found in attachments for declaration {id}");
+        };
+
+        let full_path = self.storage.declarations_dir().join(&rel_path);
+        let _ = std::fs::remove_file(&full_path);
 
         self.storage.save_declaration(&decl)?;
         Ok(())
@@ -192,6 +214,22 @@ impl<'a> DeclarationManager<'a> {
             return d;
         }
         Decimal::ONE
+    }
+
+    #[must_use]
+    pub fn assessment_message(
+        id: &str,
+        tax_due: Decimal,
+        status: DeclarationStatus,
+        mark_paid: bool,
+    ) -> String {
+        if mark_paid {
+            format!("Assessment saved and paid: {id} ({tax_due} RSD)")
+        } else if status == DeclarationStatus::Finalized {
+            format!("Assessment saved: {id} (no tax to pay)")
+        } else {
+            format!("Assessment saved: {id} ({tax_due} RSD to pay)")
+        }
     }
 
     fn get_or_err(&self, id: &str) -> Result<Declaration> {

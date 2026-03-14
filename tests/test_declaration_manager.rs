@@ -265,8 +265,8 @@ fn test_export_creates_file() {
     let mgr = DeclarationManager::new(&storage);
     let files = mgr.export("1", &output_dir).unwrap();
 
-    assert_eq!(files.len(), 1);
-    let content = std::fs::read_to_string(&files[0]).unwrap();
+    assert!(files.xml_path.is_some());
+    let content = std::fs::read_to_string(files.xml_path.unwrap()).unwrap();
     assert_eq!(content, "<xml>test</xml>");
 }
 

@@ -291,6 +291,64 @@ pub struct Declaration {
     pub attached_files: IndexMap<String, String>,
 }
 
+impl Declaration {
+    #[must_use]
+    pub fn display_type(&self) -> &str {
+        match self.r#type {
+            DeclarationType::Ppdg3r => "PPDG-3R",
+            DeclarationType::Ppo => "PP OPO",
+        }
+    }
+
+    #[must_use]
+    pub fn display_period(&self) -> String {
+        if self.period_start == self.period_end {
+            self.period_start.format("%Y-%m-%d").to_string()
+        } else {
+            format!(
+                "{} to {}",
+                self.period_start.format("%Y-%m-%d"),
+                self.period_end.format("%Y-%m-%d")
+            )
+        }
+    }
+
+    #[must_use]
+    pub fn display_tax(&self) -> String {
+        if let Some(v) = self.metadata.get("assessed_tax_due_rsd")
+            && let Some(s) = v.as_str()
+        {
+            return format!("{s} RSD (assessed)");
+        }
+        if let Some(v) = self.metadata.get("tax_due_rsd")
+            && let Some(s) = v.as_str()
+        {
+            return format!("{s} RSD");
+        }
+        String::new()
+    }
+}
+
+impl std::fmt::Display for DeclarationStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Draft => write!(f, "draft"),
+            Self::Submitted => write!(f, "submitted"),
+            Self::Pending => write!(f, "pending"),
+            Self::Finalized => write!(f, "finalized"),
+        }
+    }
+}
+
+impl std::fmt::Display for DeclarationType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ppdg3r => write!(f, "PPDG-3R"),
+            Self::Ppo => write!(f, "PP OPO"),
+        }
+    }
+}
+
 /// Top-level structure of `declarations.json`.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct DeclarationsFile {

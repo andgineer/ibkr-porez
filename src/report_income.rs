@@ -70,11 +70,14 @@ impl IncomeReport {
             .sum();
         let due: Decimal = self.entries.iter().map(|e| e.porez_za_uplatu).sum();
 
-        m.insert("gross_income_rsd".into(), gross.to_string().into());
-        m.insert("tax_base_rsd".into(), tax_base.to_string().into());
-        m.insert("calculated_tax_rsd".into(), calc_tax.to_string().into());
-        m.insert("foreign_tax_paid_rsd".into(), foreign.to_string().into());
-        m.insert("tax_due_rsd".into(), due.to_string().into());
+        m.insert("gross_income_rsd".into(), format!("{gross:.2}").into());
+        m.insert("tax_base_rsd".into(), format!("{tax_base:.2}").into());
+        m.insert("calculated_tax_rsd".into(), format!("{calc_tax:.2}").into());
+        m.insert(
+            "foreign_tax_paid_rsd".into(),
+            format!("{foreign:.2}").into(),
+        );
+        m.insert("tax_due_rsd".into(), format!("{due:.2}").into());
         m
     }
 }
