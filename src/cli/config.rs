@@ -25,7 +25,11 @@ pub fn run() -> Result<()> {
     let config_path = app_config::config_file_path();
 
     output::info("Configuration");
-    println!("Config file: {}\n", style(config_path.display()).dim());
+    println!("Config file: {}", style(config_path.display()).dim());
+    println!(
+        "Docs: {}\n",
+        style("https://andgineer.github.io/ibkr-porez-rs/en/usage.html").cyan()
+    );
 
     if is_config_empty(&old_cfg) {
         println!("{}", style("Initial Configuration Setup").bold());
@@ -36,11 +40,6 @@ pub fn run() -> Result<()> {
     }
 
     display_current_values(&old_cfg);
-
-    println!();
-    for (i, name) in FIELD_NAMES.iter().enumerate() {
-        println!("  {:>2}. {name}", i + 1);
-    }
     println!("   A. Update all fields");
     println!("   Q. Done (save & exit)");
     println!();
@@ -96,22 +95,28 @@ fn display_current_values(cfg: &UserConfig) {
     println!("{}", style("Current Configuration:").bold());
     let values = field_values(cfg);
     for (i, (name, val)) in FIELD_NAMES.iter().zip(values.iter()).enumerate() {
-        println!(
-            "  {:>2}. {}: {}",
-            i + 1,
-            style(name).cyan(),
-            if val.is_empty() {
-                style("(not set)").dim().to_string()
-            } else {
-                val.clone()
-            }
-        );
+        let hint = field_hint(i);
+        let val_display = if val.is_empty() {
+            style("(not set)").dim().to_string()
+        } else {
+            val.clone()
+        };
+        if hint.is_empty() {
+            println!("  {:>2}. {}: {val_display}", i + 1, style(name).cyan());
+        } else {
+            println!(
+                "  {:>2}. {}: {val_display}  {}",
+                i + 1,
+                style(name).cyan(),
+                style(hint).dim(),
+            );
+        }
     }
 }
 
 fn field_values(cfg: &UserConfig) -> Vec<String> {
     vec![
-        mask(&cfg.ibkr_token),
+        cfg.ibkr_token.clone(),
         cfg.ibkr_query_id.clone(),
         cfg.personal_id.clone(),
         cfg.full_name.clone(),
@@ -125,13 +130,13 @@ fn field_values(cfg: &UserConfig) -> Vec<String> {
 }
 
 fn prompt_all_fields(old: &UserConfig) -> Result<UserConfig> {
-    let ibkr_token = prompt_token(
-        "IBKR Flex Token (see https://www.interactivebrokers.com/en/software/am3/am/manageaccount/deliverflexquerybyweb.htm)",
+    let ibkr_token = prompt_text(
+        "IBKR Flex Token (see https://andgineer.github.io/ibkr-porez-rs/en/ibkr.html)",
         &old.ibkr_token,
     )?;
 
     let ibkr_query_id = prompt_text(
-        "IBKR Flex Query ID (see https://www.interactivebrokers.com/en/software/am3/am/manageaccount/deliverflexquerybyweb.htm)",
+        "IBKR Flex Query ID (see https://andgineer.github.io/ibkr-porez-rs/en/ibkr.html)",
         &old.ibkr_query_id,
     )?;
 
@@ -139,7 +144,7 @@ fn prompt_all_fields(old: &UserConfig) -> Result<UserConfig> {
     let full_name = prompt_text("Full Name (as registered)", &old.full_name)?;
     let address = prompt_text("Address", &old.address)?;
     let city_code = prompt_text(
-        "City/Municipality Code (Sifra opstine, e.g. 223 Novi Sad, 013 Novi Beograd. See portal)",
+        "City/Municipality Code (see https://andgineer.github.io/ibkr-porez-rs/en/usage.html)",
         &old.city_code,
     )?;
     let phone = prompt_text("Phone", &old.phone)?;
@@ -169,12 +174,27 @@ fn prompt_all_fields(old: &UserConfig) -> Result<UserConfig> {
 
 fn prompt_single_field(cfg: &mut UserConfig, idx: usize) -> Result<()> {
     match idx {
-        0 => cfg.ibkr_token = prompt_token("IBKR Flex Token", &cfg.ibkr_token)?,
-        1 => cfg.ibkr_query_id = prompt_text("IBKR Flex Query ID", &cfg.ibkr_query_id)?,
+        0 => {
+            cfg.ibkr_token = prompt_text(
+                "IBKR Flex Token (see https://andgineer.github.io/ibkr-porez-rs/en/ibkr.html)",
+                &cfg.ibkr_token,
+            )?;
+        }
+        1 => {
+            cfg.ibkr_query_id = prompt_text(
+                "IBKR Flex Query ID (see https://andgineer.github.io/ibkr-porez-rs/en/ibkr.html)",
+                &cfg.ibkr_query_id,
+            )?;
+        }
         2 => cfg.personal_id = prompt_text("Personal ID (JMBG)", &cfg.personal_id)?,
         3 => cfg.full_name = prompt_text("Full Name", &cfg.full_name)?,
         4 => cfg.address = prompt_text("Address", &cfg.address)?,
-        5 => cfg.city_code = prompt_text("City/Municipality Code", &cfg.city_code)?,
+        5 => {
+            cfg.city_code = prompt_text(
+                "City/Municipality Code (see https://andgineer.github.io/ibkr-porez-rs/en/usage.html)",
+                &cfg.city_code,
+            )?;
+        }
         6 => cfg.phone = prompt_text("Phone", &cfg.phone)?,
         7 => cfg.email = prompt_text("Email", &cfg.email)?,
         8 => cfg.data_dir = prompt_optional("Data Directory", cfg.data_dir.as_ref())?,
@@ -182,6 +202,14 @@ fn prompt_single_field(cfg: &mut UserConfig, idx: usize) -> Result<()> {
         _ => {}
     }
     Ok(())
+}
+
+fn field_hint(idx: usize) -> &'static str {
+    match idx {
+        0 | 1 => "(see https://andgineer.github.io/ibkr-porez-rs/en/ibkr.html)",
+        5 => "(see https://andgineer.github.io/ibkr-porez-rs/en/usage.html)",
+        _ => "",
+    }
 }
 
 fn save_and_report(old_cfg: &UserConfig, new_cfg: &UserConfig) -> Result<()> {
@@ -202,20 +230,6 @@ fn prompt_text(prompt: &str, default: &str) -> Result<String> {
     Ok(val)
 }
 
-fn prompt_token(prompt: &str, current: &str) -> Result<String> {
-    let hint = mask(current);
-    let val: String = Input::new()
-        .with_prompt(format!("{prompt} [{hint}] (Enter to keep)"))
-        .default(String::new())
-        .allow_empty(true)
-        .interact_text()?;
-    if val.is_empty() {
-        Ok(current.to_string())
-    } else {
-        Ok(val)
-    }
-}
-
 fn prompt_optional(prompt: &str, current: Option<&String>) -> Result<Option<String>> {
     let val: String = Input::new()
         .with_prompt(prompt)
@@ -227,14 +241,4 @@ fn prompt_optional(prompt: &str, current: Option<&String>) -> Result<Option<Stri
     } else {
         Ok(Some(val))
     }
-}
-
-fn mask(s: &str) -> String {
-    if s.is_empty() {
-        return "(not set)".into();
-    }
-    if s.len() <= 4 {
-        return "****".into();
-    }
-    format!("{}…{}", &s[..2], &s[s.len() - 2..])
 }
