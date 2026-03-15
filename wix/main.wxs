@@ -11,24 +11,24 @@
       DowngradeErrorMessage="A newer version of IBKR Porez is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
-    <Icon Id="AppIcon.ico" SourceFile="..\icon\ibkr_porez.ico" />
+    <Icon Id="AppIcon.ico" SourceFile="icon\ibkr_porez.ico" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
 
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLDIR" />
-    <WixVariable Id="WixUILicenseRtf" Value="..\LICENSE.rtf" />
+    <WixVariable Id="WixUILicenseRtf" Value="LICENSE.rtf" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLDIR" Name="IBKR Porez">
         <Component Id="CliBinary" Guid="*">
-          <File Id="CliExe" Source="..\staging\ibkr-porez.exe" KeyPath="yes" />
+          <File Id="CliExe" Source="staging\ibkr-porez.exe" KeyPath="yes" />
           <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]"
                        Permanent="no" Part="last" Action="set" System="no" />
         </Component>
         <Component Id="GuiBinary" Guid="*">
-          <File Id="GuiExe" Source="..\staging\gui.exe" KeyPath="yes" />
+          <File Id="GuiExe" Source="staging\gui.exe" KeyPath="yes" />
         </Component>
         <Component Id="License" Guid="*">
-          <File Id="LicenseFile" Source="..\staging\LICENSE.txt" KeyPath="yes" />
+          <File Id="LicenseFile" Source="staging\LICENSE.txt" KeyPath="yes" />
         </Component>
       </Directory>
     </StandardDirectory>
