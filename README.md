@@ -16,9 +16,9 @@ between them without data loss.
 - [x] Tax calculations (FIFO, 10-year exemption)
 - [x] PPDG-3R report generation (capital gains XML)
 - [x] PP-OPO report generation (capital income XML)
-- [ ] CLI commands
-- [ ] GUI
-- [ ] Packaging and installers
+- [x] CLI commands (clap derive mode)
+- [x] GUI (egui/eframe, glow backend)
+- [x] Packaging and installers (macOS PKG, Windows MSI)
 
 ## Installation
 
@@ -70,25 +70,34 @@ for all commands and options.
 ### Build
 
 ```sh
-cargo build            # debug
-cargo build --release  # optimized, stripped
+cargo build                          # CLI only (debug)
+cargo build --features gui           # CLI + GUI (debug)
+cargo build --release --features gui # optimized, stripped
 ```
 
-Two binaries are produced:
-- `target/release/ibkr-porez` -- CLI
+Two binaries are produced (when built with `--features gui`):
+- `target/release/ibkr-porez` -- CLI (also launches GUI when run without arguments)
 - `target/release/gui` -- GUI
+
+On Linux, building the GUI requires X11/Wayland and GTK development libraries:
+
+```sh
+sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev \
+  libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev
+```
 
 ### Tests
 
 ```sh
-cargo test
+cargo test                 # CLI and library tests
+cargo test --features gui  # all tests including GUI unit tests
 ```
 
 ### Linting and Formatting
 
 ```sh
 cargo fmt --check
-cargo clippy -- -D warnings
+cargo clippy --features gui -- -D warnings
 ```
 
 ### Versioning and Release

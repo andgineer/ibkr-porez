@@ -110,9 +110,113 @@ jobs:
           name: ${{ matrix.target }}
           path: ${{ env.ARCHIVE }}
 
+  installer-macos:
+    name: macOS Installer
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-apple-darwin"
+
+      - name: Create universal PKG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          # Extract into explicitly named directories
+          mkdir -p aarch64 x86_64
+          tar -xzf aarch64-apple-darwin/*.tar.gz -C aarch64
+          tar -xzf x86_64-apple-darwin/*.tar.gz -C x86_64
+
+          # Create universal binaries
+          mkdir -p universal
+          lipo -create -output universal/gui aarch64/gui x86_64/gui
+          lipo -create -output universal/ibkr-porez \
+            aarch64/ibkr-porez x86_64/ibkr-porez
+
+          # Create .app bundle
+          APP="staging/Applications/IBKR Porez.app/Contents"
+          mkdir -p "$APP/MacOS" "$APP/Resources"
+          cp universal/gui universal/ibkr-porez "$APP/MacOS/"
+          cp icon/ibkr_porez.icns "$APP/Resources/AppIcon.icns"
+          sed "s/VERSION/$VERSION/g" scripts/Info.plist.template \
+            > "$APP/Info.plist"
+
+          # Ad-hoc sign
+          codesign --force --deep --sign - \
+            "staging/Applications/IBKR Porez.app"
+
+          # Postinstall script for CLI symlink
+          mkdir -p pkg-scripts
+          printf '#!/bin/bash\nmkdir -p /usr/local/bin\nln -sf "/Applications/IBKR Porez.app/Contents/MacOS/ibkr-porez" /usr/local/bin/ibkr-porez\n' \
+            > pkg-scripts/postinstall
+          chmod +x pkg-scripts/postinstall
+
+          # Build PKG
+          pkgbuild --root staging/Applications \
+            --install-location /Applications \
+            --identifier engineer.sorokin.ibkr-porez \
+            --version "$VERSION" \
+            --scripts pkg-scripts \
+            component.pkg
+          INSTALLER="ibkr-porez-${VERSION}-macos-universal.pkg"
+          productbuild --package component.pkg "$INSTALLER"
+          echo "INSTALLER=$INSTALLER" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: ${{ env.INSTALLER }}
+
+  installer-windows:
+    name: Windows Installer
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: x86_64-pc-windows-msvc
+
+      - name: Extract binaries
+        shell: bash
+        run: |
+          ARCHIVE=$(ls *.zip)
+          mkdir -p staging && cd staging && 7z x "../$ARCHIVE" && cd ..
+
+      - name: Install WiX and UI extension
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix
+          $env:PATH = "$env:USERPROFILE\.dotnet\tools;$env:PATH"
+          wix extension add WixToolset.UI.wixext
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:USERPROFILE\.dotnet\tools;$env:PATH"
+          $VERSION = "$env:GITHUB_REF_NAME" -replace '^v',''
+          wix build wix/main.wxs `
+            -ext WixToolset.UI.wixext `
+            -arch x64 `
+            -d ProductVersion=$VERSION `
+            -o "ibkr-porez-${VERSION}-windows-x86_64.msi"
+          "INSTALLER=ibkr-porez-${VERSION}-windows-x86_64.msi" |
+            Out-File -Append $env:GITHUB_ENV
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: ${{ env.INSTALLER }}
+
   release:
     name: Create GitHub Release
-    needs: build
+    needs: [build, installer-macos, installer-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -126,3 +230,5 @@ jobs:
           files: |
             *.tar.gz
             *.zip
+            *.pkg
+            *.msi
