@@ -131,14 +131,15 @@ jobs:
           tar -xzf aarch64-apple-darwin/*.tar.gz -C aarch64
           tar -xzf x86_64-apple-darwin/*.tar.gz -C x86_64
 
-          # Create universal binaries
+          # Create universal binaries (lipo does not preserve +x)
           mkdir -p universal
           lipo -create -output universal/gui aarch64/gui x86_64/gui
           lipo -create -output universal/ibkr-porez \
             aarch64/ibkr-porez x86_64/ibkr-porez
+          chmod +x universal/gui universal/ibkr-porez
 
           # Create .app bundle
-          APP="staging/Applications/IBKR Porez.app/Contents"
+          APP="staging/IBKR Porez.app/Contents"
           mkdir -p "$APP/MacOS" "$APP/Resources"
           cp universal/gui universal/ibkr-porez "$APP/MacOS/"
           cp icon/ibkr_porez.icns "$APP/Resources/AppIcon.icns"
@@ -147,7 +148,7 @@ jobs:
 
           # Ad-hoc sign
           codesign --force --deep --sign - \
-            "staging/Applications/IBKR Porez.app"
+            "staging/IBKR Porez.app"
 
           # Postinstall script for CLI symlink
           mkdir -p pkg-scripts
@@ -155,15 +156,32 @@ jobs:
             > pkg-scripts/postinstall
           chmod +x pkg-scripts/postinstall
 
-          # Build PKG
-          pkgbuild --root staging/Applications \
+          # Build PKG using --component for proper .app bundle handling
+          pkgbuild --component "staging/IBKR Porez.app" \
             --install-location /Applications \
             --identifier engineer.sorokin.ibkr-porez \
             --version "$VERSION" \
             --scripts pkg-scripts \
             component.pkg
+          # Distribution XML for branded installer
+          cat > distribution.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <installer-gui-script minSpecVersion="1">
+              <title>IBKR Porez</title>
+              <options customize="never" require-scripts="false"/>
+              <choices-outline>
+                  <line choice="default"/>
+              </choices-outline>
+              <choice id="default" title="IBKR Porez">
+                  <pkg-ref id="engineer.sorokin.ibkr-porez"/>
+              </choice>
+              <pkg-ref id="engineer.sorokin.ibkr-porez"
+                       version="${VERSION}" onConclusion="none">component.pkg</pkg-ref>
+          </installer-gui-script>
+          EOF
           INSTALLER="ibkr-porez-${VERSION}-macos-universal.pkg"
-          productbuild --package component.pkg "$INSTALLER"
+          productbuild --distribution distribution.xml \
+            --package-path . "$INSTALLER"
           echo "INSTALLER=$INSTALLER" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
