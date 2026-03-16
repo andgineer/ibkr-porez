@@ -28,7 +28,7 @@ dialoguer = "0.11"
 indicatif = "0.17"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-eframe = { version = "0.31", default-features = false, features = ["default_fonts", "wgpu", "glow", "x11", "wayland"], optional = true }
+eframe = { version = "0.31", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"], optional = true }
 egui_extras = { version = "0.31", optional = true }
 open = { version = "5", optional = true }
 rfd = { version = "0.15", optional = true }

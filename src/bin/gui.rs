@@ -44,6 +44,35 @@ fn make_viewport() -> egui::ViewportBuilder {
     viewport
 }
 
+fn wgpu_adapter_selector() -> eframe::egui_wgpu::NativeAdapterSelectorMethod {
+    use eframe::wgpu;
+    std::sync::Arc::new(
+        |adapters: &[wgpu::Adapter], surface: Option<&wgpu::Surface<'_>>| {
+            let compatible: Vec<&wgpu::Adapter> = if let Some(surface) = surface {
+                adapters
+                    .iter()
+                    .filter(|a| a.is_surface_supported(surface))
+                    .collect()
+            } else {
+                adapters.iter().collect()
+            };
+
+            if compatible.is_empty() {
+                return Err("no compatible adapters found".into());
+            }
+
+            // Prefer hardware, accept software (WARP) as fallback
+            let pick = compatible
+                .iter()
+                .find(|a| !matches!(a.get_info().device_type, wgpu::DeviceType::Cpu))
+                .or(compatible.first())
+                .unwrap();
+
+            Ok((*pick).clone())
+        },
+    )
+}
+
 fn main() {
     if std::env::var("IBKR_POREZ_DRY_RUN").is_ok() {
         eprintln!("GUI launched (dry run)");
@@ -54,26 +83,29 @@ fn main() {
 
     let title = format!("IBKR Porez v{VERSION}");
 
-    // Try wgpu (DirectX/Metal/Vulkan) first, fall back to glow (OpenGL)
-    for renderer in [eframe::Renderer::Wgpu, eframe::Renderer::Glow] {
-        let options = eframe::NativeOptions {
-            viewport: make_viewport().with_title(&title),
-            renderer,
-            ..Default::default()
-        };
+    let wgpu_options = eframe::egui_wgpu::WgpuConfiguration {
+        wgpu_setup: eframe::egui_wgpu::WgpuSetup::CreateNew(
+            eframe::egui_wgpu::WgpuSetupCreateNew {
+                native_adapter_selector: Some(wgpu_adapter_selector()),
+                ..Default::default()
+            },
+        ),
+        ..Default::default()
+    };
 
-        match eframe::run_native(
-            &title,
-            options,
-            Box::new(|_cc| Ok(Box::new(ibkr_porez::gui::app::App::new()))),
-        ) {
-            Ok(()) => return,
-            Err(e) => {
-                log_error(&format!("{renderer:?} renderer failed: {e}, trying next…"));
-            }
-        }
+    let options = eframe::NativeOptions {
+        viewport: make_viewport().with_title(&title),
+        renderer: eframe::Renderer::Wgpu,
+        wgpu_options,
+        ..Default::default()
+    };
+
+    if let Err(e) = eframe::run_native(
+        &title,
+        options,
+        Box::new(|_cc| Ok(Box::new(ibkr_porez::gui::app::App::new()))),
+    ) {
+        log_error(&format!("GUI failed to start: {e}"));
+        std::process::exit(1);
     }
-
-    log_error("GUI failed to start: no working renderer found");
-    std::process::exit(1);
 }

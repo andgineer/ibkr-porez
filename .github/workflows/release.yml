@@ -156,9 +156,12 @@ jobs:
             > pkg-scripts/postinstall
           chmod +x pkg-scripts/postinstall
 
-          # Build PKG (--root avoids --component's relocation behavior
-          # which silently redirects to an existing bundle location)
+          # Generate component plist and disable relocation
+          pkgbuild --analyze --root staging component.plist
+          /usr/libexec/PlistBuddy -c "Set :0:BundleIsRelocatable false" component.plist
+
           pkgbuild --root staging \
+            --component-plist component.plist \
             --install-location /Applications \
             --identifier engineer.sorokin.ibkr-porez \
             --version "$VERSION" \
