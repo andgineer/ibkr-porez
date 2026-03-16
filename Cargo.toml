@@ -9,7 +9,7 @@ license = "MIT"
 
 [features]
 default = []
-gui = ["dep:eframe", "dep:egui_extras", "dep:open", "dep:rfd"]
+gui = ["dep:eframe", "dep:egui_extras", "dep:open", "dep:rfd", "dep:wgpu"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
@@ -42,6 +42,9 @@ regex = "1"
 name = "ibkr-porez-gui"
 path = "src/bin/gui.rs"
 required-features = ["gui"]
+
+[target.'cfg(windows)'.dependencies]
+wgpu = { version = "24", features = ["dx12"], optional = true }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
