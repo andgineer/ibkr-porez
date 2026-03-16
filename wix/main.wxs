@@ -5,7 +5,8 @@
     Name="IBKR Porez"
     Manufacturer="Andrei Sorokin"
     Version="$(var.ProductVersion)"
-    UpgradeCode="b8f5c2e1-7a3d-4e9f-b6c8-1d2e3f4a5b6c">
+    UpgradeCode="b8f5c2e1-7a3d-4e9f-b6c8-1d2e3f4a5b6c"
+    Scope="perUser">
 
     <MajorUpgrade
       DowngradeErrorMessage="A newer version of IBKR Porez is already installed." />
@@ -17,7 +18,7 @@
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLDIR" />
     <WixVariable Id="WixUILicenseRtf" Value="LICENSE.rtf" />
 
-    <StandardDirectory Id="ProgramFiles64Folder">
+    <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="INSTALLDIR" Name="IBKR Porez">
         <Component Id="CliBinary" Guid="*">
           <File Id="CliExe" Source="staging\ibkr-porez.exe" KeyPath="yes" />
@@ -33,7 +34,7 @@
       </Directory>
     </StandardDirectory>
 
-    <StandardDirectory Id="ProgramMenuFolder">
+    <StandardDirectory Id="StartMenuFolder">
       <Directory Id="ApplicationProgramsFolder" Name="IBKR Porez">
         <Component Id="StartMenuShortcut" Guid="*">
           <Shortcut Id="GuiShortcut" Name="IBKR Porez"
