@@ -33,6 +33,17 @@ fn log_error(msg: &str) {
     let _ = std::fs::write(&log_path, &timestamped);
 }
 
+fn make_viewport() -> egui::ViewportBuilder {
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_inner_size([1100.0, 700.0])
+        .with_min_inner_size([800.0, 500.0]);
+
+    if let Some(icon) = ibkr_porez::gui::icon::load_icon() {
+        viewport = viewport.with_icon(std::sync::Arc::new(icon));
+    }
+    viewport
+}
+
 fn main() {
     if std::env::var("IBKR_POREZ_DRY_RUN").is_ok() {
         eprintln!("GUI launched (dry run)");
@@ -42,26 +53,27 @@ fn main() {
     setup_panic_hook();
 
     let title = format!("IBKR Porez v{VERSION}");
-    let mut viewport = egui::ViewportBuilder::default()
-        .with_inner_size([1100.0, 700.0])
-        .with_min_inner_size([800.0, 500.0])
-        .with_title(&title);
 
-    if let Some(icon) = ibkr_porez::gui::icon::load_icon() {
-        viewport = viewport.with_icon(std::sync::Arc::new(icon));
+    // Try wgpu (DirectX/Metal/Vulkan) first, fall back to glow (OpenGL)
+    for renderer in [eframe::Renderer::Wgpu, eframe::Renderer::Glow] {
+        let options = eframe::NativeOptions {
+            viewport: make_viewport().with_title(&title),
+            renderer,
+            ..Default::default()
+        };
+
+        match eframe::run_native(
+            &title,
+            options,
+            Box::new(|_cc| Ok(Box::new(ibkr_porez::gui::app::App::new()))),
+        ) {
+            Ok(()) => return,
+            Err(e) => {
+                log_error(&format!("{renderer:?} renderer failed: {e}, trying next…"));
+            }
+        }
     }
 
-    let options = eframe::NativeOptions {
-        viewport,
-        ..Default::default()
-    };
-
-    if let Err(e) = eframe::run_native(
-        &title,
-        options,
-        Box::new(|_cc| Ok(Box::new(ibkr_porez::gui::app::App::new()))),
-    ) {
-        log_error(&format!("GUI failed to start: {e}"));
-        std::process::exit(1);
-    }
+    log_error("GUI failed to start: no working renderer found");
+    std::process::exit(1);
 }
