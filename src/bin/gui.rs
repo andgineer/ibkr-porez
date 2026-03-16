@@ -1,3 +1,5 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 use eframe::egui;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
