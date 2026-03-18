@@ -55,7 +55,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
     }
 }
 
-fn format_declaration(decl: &crate::models::Declaration) -> String {
+pub fn format_declaration(decl: &crate::models::Declaration) -> String {
     let mut lines = Vec::new();
     lines.push(format!("ID:       {}", decl.declaration_id));
     lines.push(format!("Type:     {}", decl.display_type()));

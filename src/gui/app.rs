@@ -40,15 +40,17 @@ impl FilterScope {
 pub enum BulkAction {
     Submit,
     Pay,
+    Revert,
 }
 
 impl BulkAction {
-    pub const ALL: &[Self] = &[Self::Submit, Self::Pay];
+    pub const ALL: &[Self] = &[Self::Submit, Self::Pay, Self::Revert];
 
     pub fn label(self) -> &'static str {
         match self {
             Self::Submit => "Submit",
             Self::Pay => "Pay",
+            Self::Revert => "Revert to Draft",
         }
     }
 }
@@ -178,7 +180,7 @@ impl App {
     }
 
     pub fn reload_storage(&mut self) {
-        self.storage = Storage::new();
+        self.storage = Storage::with_dir(self.storage.data_dir());
     }
 
     pub fn refresh_declarations(&mut self) {
@@ -233,28 +235,36 @@ impl App {
     pub fn apply_bulk_action(&mut self) {
         let manager = DeclarationManager::new(&self.storage);
         let ids: Vec<String> = self.selected.iter().cloned().collect();
-        let id_refs: Vec<&str> = ids.iter().map(String::as_str).collect();
 
-        let result = match self.bulk_action {
-            BulkAction::Submit => manager.submit(&id_refs),
-            BulkAction::Pay => manager.pay(&id_refs),
-        };
+        let mut ok_count = 0usize;
+        let mut errors: Vec<String> = Vec::new();
 
-        match result {
-            Ok(()) => {
-                self.status_message = Some((
-                    format!(
-                        "{} applied to {} declaration(s)",
-                        self.bulk_action.label(),
-                        ids.len()
-                    ),
-                    styles::MessageKind::Success,
-                ));
-                self.selected.clear();
+        for id in &ids {
+            let result = match self.bulk_action {
+                BulkAction::Submit => manager.submit(&[id.as_str()]),
+                BulkAction::Pay => manager.pay(&[id.as_str()]),
+                BulkAction::Revert => manager.revert(&[id.as_str()]),
+            };
+            match result {
+                Ok(()) => ok_count += 1,
+                Err(e) => errors.push(format!("{id}: {e}")),
             }
-            Err(e) => {
-                self.error_dialog = Some(e.to_string());
-            }
+        }
+
+        if ok_count > 0 {
+            self.status_message = Some((
+                format!(
+                    "{} applied to {ok_count} declaration(s)",
+                    self.bulk_action.label(),
+                ),
+                styles::MessageKind::Success,
+            ));
+        }
+        if !errors.is_empty() {
+            self.error_dialog = Some(errors.join("\n"));
+        }
+        if errors.is_empty() {
+            self.selected.clear();
         }
         self.refresh_declarations();
     }
@@ -522,7 +532,7 @@ impl eframe::App for App {
     }
 }
 
-fn load_filtered(storage: &Storage, scope: FilterScope) -> Vec<Declaration> {
+pub fn load_filtered(storage: &Storage, scope: FilterScope) -> Vec<Declaration> {
     match scope {
         FilterScope::All => list_declarations(
             storage,
@@ -567,176 +577,5 @@ fn check_holiday_warning(config: &UserConfig) -> Option<String> {
              Exchange rate lookback near holidays may be inaccurate. \
              Click Sync or update the app."
         ))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::models::{Declaration, DeclarationStatus, DeclarationType};
-    use chrono::NaiveDate;
-
-    fn make_decl(id: &str, status: DeclarationStatus) -> Declaration {
-        Declaration {
-            declaration_id: id.to_string(),
-            r#type: DeclarationType::Ppo,
-            status,
-            period_start: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-            period_end: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-            created_at: chrono::NaiveDateTime::new(
-                NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
-                chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
-            ),
-            submitted_at: None,
-            paid_at: None,
-            file_path: None,
-            xml_content: None,
-            report_data: None,
-            metadata: indexmap::IndexMap::new(),
-            attached_files: indexmap::IndexMap::new(),
-        }
-    }
-
-    fn app_with_decls(decls: Vec<Declaration>) -> App {
-        let config = UserConfig::default();
-        let storage = Storage::new();
-        App {
-            config,
-            storage,
-            declarations: decls,
-            selected: std::collections::HashSet::new(),
-            filter: FilterScope::Active,
-            bulk_action: BulkAction::Submit,
-            sort_column: SortColumn::Created,
-            sort_ascending: false,
-            status_message: None,
-            warning_banner: None,
-            bg_receiver: None,
-            bg_busy: false,
-            export_channel: None,
-            exporting_ids: std::collections::HashSet::new(),
-            progress_text: None,
-            confirm_force_sync: false,
-            config_dialog: None,
-            import_dialog: None,
-            details_dialog: None,
-            assessment_dialog: None,
-            error_dialog: None,
-        }
-    }
-
-    #[test]
-    fn sort_toggle_ascending_descending() {
-        let mut app = app_with_decls(vec![
-            make_decl("a-001", DeclarationStatus::Draft),
-            make_decl("b-002", DeclarationStatus::Draft),
-        ]);
-
-        app.set_sort(SortColumn::Id);
-        assert!(app.sort_ascending);
-        assert_eq!(app.declarations[0].declaration_id, "a-001");
-
-        app.set_sort(SortColumn::Id);
-        assert!(!app.sort_ascending);
-        assert_eq!(app.declarations[0].declaration_id, "b-002");
-    }
-
-    #[test]
-    fn sort_change_column_resets_ascending() {
-        let mut app = app_with_decls(vec![make_decl("x", DeclarationStatus::Draft)]);
-        app.set_sort(SortColumn::Id);
-        app.set_sort(SortColumn::Id);
-        assert!(!app.sort_ascending);
-
-        app.set_sort(SortColumn::Status);
-        assert!(app.sort_ascending);
-    }
-
-    #[test]
-    fn select_all_and_unselect() {
-        let mut app = app_with_decls(vec![
-            make_decl("d-1", DeclarationStatus::Draft),
-            make_decl("d-2", DeclarationStatus::Submitted),
-        ]);
-
-        app.select_all();
-        assert_eq!(app.selected.len(), 2);
-        assert!(app.selected.contains("d-1"));
-        assert!(app.selected.contains("d-2"));
-
-        app.unselect_all();
-        assert!(app.selected.is_empty());
-    }
-
-    #[test]
-    fn filter_scope_labels() {
-        assert_eq!(FilterScope::Active.label(), "Active");
-        assert_eq!(FilterScope::All.label(), "All");
-        assert_eq!(FilterScope::PendingPayment.label(), "Pending payment");
-    }
-
-    #[test]
-    fn bulk_action_labels() {
-        assert_eq!(BulkAction::Submit.label(), "Submit");
-        assert_eq!(BulkAction::Pay.label(), "Pay");
-    }
-
-    #[test]
-    fn sort_column_labels() {
-        assert_eq!(SortColumn::Id.label(), "ID");
-        assert_eq!(SortColumn::Type.label(), "Type");
-        assert_eq!(SortColumn::Period.label(), "Period");
-        assert_eq!(SortColumn::Tax.label(), "Tax");
-        assert_eq!(SortColumn::Status.label(), "Status");
-        assert_eq!(SortColumn::Created.label(), "Created");
-    }
-
-    #[test]
-    fn set_filter_updates_state() {
-        let mut app = app_with_decls(Vec::new());
-        assert_eq!(app.filter, FilterScope::Active);
-
-        app.filter = FilterScope::PendingPayment;
-        assert_eq!(app.filter, FilterScope::PendingPayment);
-
-        app.filter = FilterScope::All;
-        assert_eq!(app.filter, FilterScope::All);
-    }
-
-    #[test]
-    fn selected_pruned_on_declaration_change() {
-        let mut app = app_with_decls(vec![
-            make_decl("keep", DeclarationStatus::Draft),
-            make_decl("remove", DeclarationStatus::Draft),
-        ]);
-        app.select_all();
-        assert_eq!(app.selected.len(), 2);
-
-        app.declarations = vec![make_decl("keep", DeclarationStatus::Draft)];
-        app.selected
-            .retain(|id| app.declarations.iter().any(|d| &d.declaration_id == id));
-
-        assert_eq!(app.selected.len(), 1);
-        assert!(app.selected.contains("keep"));
-        assert!(!app.selected.contains("remove"));
-    }
-
-    #[test]
-    fn pending_payment_filter_includes_both_statuses() {
-        let decls = vec![
-            make_decl("draft", DeclarationStatus::Draft),
-            make_decl("submitted", DeclarationStatus::Submitted),
-            make_decl("pending", DeclarationStatus::Pending),
-            make_decl("finalized", DeclarationStatus::Finalized),
-        ];
-
-        let mut filtered = decls;
-        filtered.retain(|d| {
-            d.status == DeclarationStatus::Submitted || d.status == DeclarationStatus::Pending
-        });
-
-        assert_eq!(filtered.len(), 2);
-        assert_eq!(filtered[0].declaration_id, "submitted");
-        assert_eq!(filtered[1].declaration_id, "pending");
     }
 }
