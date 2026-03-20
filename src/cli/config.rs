@@ -7,17 +7,63 @@ use ibkr_porez::models::UserConfig;
 
 use super::output;
 
-const FIELD_NAMES: &[&str] = &[
-    "IBKR Flex Token",
-    "IBKR Flex Query ID",
-    "Personal ID (JMBG)",
-    "Full Name",
-    "Address",
-    "City/Municipality Code",
-    "Phone",
-    "Email",
-    "Data Directory",
-    "Output Folder",
+struct FieldDef {
+    label: &'static str,
+    struct_field: &'static str,
+    hint: &'static str,
+}
+
+const FIELDS: &[FieldDef] = &[
+    FieldDef {
+        label: "IBKR Flex Token",
+        struct_field: "ibkr_token",
+        hint: "(see https://andgineer.github.io/ibkr-porez/en/ibkr.html)",
+    },
+    FieldDef {
+        label: "IBKR Flex Query ID",
+        struct_field: "ibkr_query_id",
+        hint: "(see https://andgineer.github.io/ibkr-porez/en/ibkr.html)",
+    },
+    FieldDef {
+        label: "Personal ID (JMBG)",
+        struct_field: "personal_id",
+        hint: "",
+    },
+    FieldDef {
+        label: "Full Name",
+        struct_field: "full_name",
+        hint: "",
+    },
+    FieldDef {
+        label: "Address",
+        struct_field: "address",
+        hint: "",
+    },
+    FieldDef {
+        label: "City/Municipality Code",
+        struct_field: "city_code",
+        hint: "(see https://andgineer.github.io/ibkr-porez/en/usage.html)",
+    },
+    FieldDef {
+        label: "Phone",
+        struct_field: "phone",
+        hint: "",
+    },
+    FieldDef {
+        label: "Email",
+        struct_field: "email",
+        hint: "",
+    },
+    FieldDef {
+        label: "Data Directory",
+        struct_field: "",
+        hint: "",
+    },
+    FieldDef {
+        label: "Output Folder",
+        struct_field: "",
+        hint: "",
+    },
 ];
 
 pub fn run() -> Result<()> {
@@ -75,7 +121,7 @@ fn parse_field_indices(input: &str) -> Vec<usize> {
     for part in input.split(',') {
         if let Ok(n) = part.trim().parse::<usize>()
             && n >= 1
-            && n <= FIELD_NAMES.len()
+            && n <= FIELDS.len()
             && !indices.contains(&(n - 1))
         {
             indices.push(n - 1);
@@ -94,21 +140,37 @@ fn is_config_empty(cfg: &UserConfig) -> bool {
 fn display_current_values(cfg: &UserConfig) {
     println!("{}", style("Current Configuration:").bold());
     let values = field_values(cfg);
-    for (i, (name, val)) in FIELD_NAMES.iter().zip(values.iter()).enumerate() {
-        let hint = field_hint(i);
+    let issues = app_config::validate_config(cfg);
+    for (i, (fd, val)) in FIELDS.iter().zip(values.iter()).enumerate() {
         let val_display = if val.is_empty() {
             style("(not set)").dim().to_string()
         } else {
             val.clone()
         };
-        if hint.is_empty() {
-            println!("  {:>2}. {}: {val_display}", i + 1, style(name).cyan());
+        let warning = issues
+            .iter()
+            .find(|issue| !fd.struct_field.is_empty() && issue.field == fd.struct_field)
+            .map(|issue| format!("  {}", style(format!("⚠ {}", issue.message)).yellow()));
+        let suffix = warning
+            .as_deref()
+            .or(if fd.hint.is_empty() {
+                None
+            } else {
+                Some(fd.hint)
+            })
+            .unwrap_or("");
+        if suffix.is_empty() {
+            println!("  {:>2}. {}: {val_display}", i + 1, style(fd.label).cyan());
         } else {
             println!(
                 "  {:>2}. {}: {val_display}  {}",
                 i + 1,
-                style(name).cyan(),
-                style(hint).dim(),
+                style(fd.label).cyan(),
+                if warning.is_some() {
+                    suffix.to_string()
+                } else {
+                    style(suffix).dim().to_string()
+                },
             );
         }
     }
@@ -204,14 +266,6 @@ fn prompt_single_field(cfg: &mut UserConfig, idx: usize) -> Result<()> {
     Ok(())
 }
 
-fn field_hint(idx: usize) -> &'static str {
-    match idx {
-        0 | 1 => "(see https://andgineer.github.io/ibkr-porez/en/ibkr.html)",
-        5 => "(see https://andgineer.github.io/ibkr-porez/en/usage.html)",
-        _ => "",
-    }
-}
-
 fn save_and_report(old_cfg: &UserConfig, new_cfg: &UserConfig) -> Result<()> {
     if let Some(warning) = app_config::get_data_dir_change_warning(old_cfg, new_cfg) {
         output::warning(&format!("Warning: {warning}"));
@@ -219,6 +273,11 @@ fn save_and_report(old_cfg: &UserConfig, new_cfg: &UserConfig) -> Result<()> {
 
     app_config::save_config(new_cfg)?;
     output::success("Configuration saved successfully!");
+
+    let issues = app_config::validate_config(new_cfg);
+    for issue in &issues {
+        output::warning(&format!("Warning: {} — {}", issue.label, issue.message));
+    }
     Ok(())
 }
 

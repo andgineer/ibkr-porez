@@ -112,3 +112,79 @@ pub fn save_config(config: &UserConfig) -> Result<()> {
     std::fs::write(&path, json)?;
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// Config validation
+// ---------------------------------------------------------------------------
+
+#[derive(Debug)]
+pub struct ConfigIssue {
+    pub field: &'static str,
+    pub label: &'static str,
+    pub message: &'static str,
+}
+
+impl ConfigIssue {
+    #[must_use]
+    pub fn is_field(&self, name: &str) -> bool {
+        self.field == name
+    }
+}
+
+#[must_use]
+pub fn validate_config(config: &UserConfig) -> Vec<ConfigIssue> {
+    let mut issues = Vec::new();
+
+    let required: &[(&str, &str, &str)] = &[
+        ("ibkr_token", "Flex Token", config.ibkr_token.as_str()),
+        (
+            "ibkr_query_id",
+            "Flex Query ID",
+            config.ibkr_query_id.as_str(),
+        ),
+        (
+            "personal_id",
+            "Personal ID (JMBG)",
+            config.personal_id.as_str(),
+        ),
+        ("full_name", "Full Name", config.full_name.as_str()),
+        ("address", "Address", config.address.as_str()),
+        ("city_code", "City Code", config.city_code.as_str()),
+    ];
+
+    for &(field, label, value) in required {
+        if value.is_empty() {
+            issues.push(ConfigIssue {
+                field,
+                label,
+                message: "required",
+            });
+        }
+    }
+
+    if config.phone == "0600000000" {
+        issues.push(ConfigIssue {
+            field: "phone",
+            label: "Phone",
+            message: "still the default placeholder",
+        });
+    }
+    if config.email == "email@example.com" {
+        issues.push(ConfigIssue {
+            field: "email",
+            label: "Email",
+            message: "still the default placeholder",
+        });
+    }
+
+    issues
+}
+
+#[must_use]
+pub fn format_config_issues(issues: &[ConfigIssue]) -> String {
+    let mut lines = vec!["Configuration errors:".to_string()];
+    for issue in issues {
+        lines.push(format!("  - {}: {}", issue.label, issue.message));
+    }
+    lines.join("\n")
+}

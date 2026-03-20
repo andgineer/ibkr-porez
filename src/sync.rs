@@ -36,7 +36,7 @@ pub fn run_sync(
     holidays: &HolidayCalendar,
     options: &SyncOptions,
 ) -> Result<SyncResult> {
-    validate_config(config)?;
+    validate_config_or_bail(config)?;
 
     let fetch_result = fetch::fetch_and_import(storage, nbs, config)?;
     info!(
@@ -120,31 +120,10 @@ pub fn run_sync(
     })
 }
 
-fn validate_config(config: &UserConfig) -> Result<()> {
-    let empty_fields: Vec<&str> = [
-        ("ibkr_token", config.ibkr_token.as_str()),
-        ("ibkr_query_id", config.ibkr_query_id.as_str()),
-        ("personal_id", config.personal_id.as_str()),
-        ("full_name", config.full_name.as_str()),
-        ("address", config.address.as_str()),
-        ("city_code", config.city_code.as_str()),
-    ]
-    .iter()
-    .filter(|(_, v)| v.is_empty())
-    .map(|(k, _)| *k)
-    .collect();
-
-    if !empty_fields.is_empty() {
-        bail!(
-            "missing required config fields: {}",
-            empty_fields.join(", ")
-        );
-    }
-    if config.phone == "0600000000" {
-        bail!("phone is still the default placeholder — update your config");
-    }
-    if config.email == "email@example.com" {
-        bail!("email is still the default placeholder — update your config");
+fn validate_config_or_bail(config: &UserConfig) -> Result<()> {
+    let issues = config::validate_config(config);
+    if !issues.is_empty() {
+        bail!("{}", config::format_config_issues(&issues));
     }
     Ok(())
 }
@@ -377,67 +356,6 @@ mod tests {
         let (start, end) = determine_gains_period(date);
         assert_eq!(start, NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
         assert_eq!(end, NaiveDate::from_ymd_opt(2025, 6, 30).unwrap());
-    }
-
-    #[test]
-    fn test_validate_config_missing_fields() {
-        let cfg = UserConfig::default();
-        let result = validate_config(&cfg);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_validate_config_placeholder_phone() {
-        let cfg = UserConfig {
-            ibkr_token: "tok".into(),
-            ibkr_query_id: "qid".into(),
-            personal_id: "123".into(),
-            full_name: "Test".into(),
-            address: "Addr".into(),
-            city_code: "223".into(),
-            phone: "0600000000".into(),
-            email: "test@test.com".into(),
-            data_dir: None,
-            output_folder: None,
-        };
-        let result = validate_config(&cfg);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("phone"));
-    }
-
-    #[test]
-    fn test_validate_config_ok() {
-        let cfg = UserConfig {
-            ibkr_token: "tok".into(),
-            ibkr_query_id: "qid".into(),
-            personal_id: "123".into(),
-            full_name: "Test".into(),
-            address: "Addr".into(),
-            city_code: "223".into(),
-            phone: "0641234567".into(),
-            email: "test@test.com".into(),
-            data_dir: None,
-            output_folder: None,
-        };
-        assert!(validate_config(&cfg).is_ok());
-    }
-
-    #[test]
-    fn test_validate_config_placeholder_email() {
-        let cfg = UserConfig {
-            ibkr_token: "tok".into(),
-            ibkr_query_id: "qid".into(),
-            personal_id: "123".into(),
-            full_name: "Test".into(),
-            address: "Addr".into(),
-            city_code: "223".into(),
-            phone: "0641234567".into(),
-            email: "email@example.com".into(),
-            data_dir: None,
-            output_folder: None,
-        };
-        let err = validate_config(&cfg).unwrap_err();
-        assert!(err.to_string().contains("email"));
     }
 
     #[test]

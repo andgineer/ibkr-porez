@@ -325,6 +325,13 @@ impl App {
         if self.bg_busy {
             return;
         }
+
+        let issues = app_config::validate_config(&self.config);
+        if !issues.is_empty() {
+            self.error_dialog = Some(app_config::format_config_issues(&issues));
+            return;
+        }
+
         self.bg_busy = true;
         self.status_message = None;
         self.progress_text = Some("Syncing…".into());
