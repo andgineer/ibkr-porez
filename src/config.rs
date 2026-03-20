@@ -92,15 +92,19 @@ pub fn get_data_dir_change_warning(old: &UserConfig, new: &UserConfig) -> Option
 // ---------------------------------------------------------------------------
 
 #[must_use]
-pub fn load_config() -> UserConfig {
-    let path = config_file_path();
+pub fn load_config_from(path: &std::path::Path) -> UserConfig {
     if !path.exists() {
         return UserConfig::default();
     }
-    match std::fs::read_to_string(&path) {
+    match std::fs::read_to_string(path) {
         Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
         Err(_) => UserConfig::default(),
     }
+}
+
+#[must_use]
+pub fn load_config() -> UserConfig {
+    load_config_from(&config_file_path())
 }
 
 pub fn save_config(config: &UserConfig) -> Result<()> {

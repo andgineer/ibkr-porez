@@ -9,6 +9,9 @@ pub struct ConfigDialog {
     pub config: UserConfig,
     pub data_dir_str: String,
     pub output_folder_str: String,
+    original: UserConfig,
+    original_data_dir: String,
+    original_output_folder: String,
 }
 
 impl ConfigDialog {
@@ -17,7 +20,16 @@ impl ConfigDialog {
             config: current.clone(),
             data_dir_str: current.data_dir.clone().unwrap_or_default(),
             output_folder_str: current.output_folder.clone().unwrap_or_default(),
+            original: current.clone(),
+            original_data_dir: current.data_dir.clone().unwrap_or_default(),
+            original_output_folder: current.output_folder.clone().unwrap_or_default(),
         }
+    }
+
+    pub fn has_changes(&self) -> bool {
+        self.config != self.original
+            || self.data_dir_str != self.original_data_dir
+            || self.output_folder_str != self.original_output_folder
     }
 }
 
@@ -26,7 +38,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         return;
     }
 
-    let mut dismiss = false;
+    let mut cancel = false;
     let mut save = false;
 
     let dialog = app.config_dialog.as_mut().unwrap();
@@ -37,7 +49,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
         .default_width(500.0)
         .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
         .show(ctx, |ui| {
-            render_form(ui, dialog, &mut save, &mut dismiss);
+            render_form(ui, dialog, &mut save, &mut cancel);
         });
 
     if save {
@@ -59,12 +71,20 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
             app.config = cfg;
             app.refresh_declarations();
         }
-    } else if dismiss {
-        app.config_dialog = None;
+    } else if cancel {
+        if app
+            .config_dialog
+            .as_ref()
+            .is_some_and(ConfigDialog::has_changes)
+        {
+            app.confirm_discard_config = true;
+        } else {
+            app.config_dialog = None;
+        }
     }
 }
 
-fn render_form(ui: &mut egui::Ui, dialog: &mut ConfigDialog, save: &mut bool, dismiss: &mut bool) {
+fn render_form(ui: &mut egui::Ui, dialog: &mut ConfigDialog, save: &mut bool, cancel: &mut bool) {
     let issues = app_config::validate_config(&dialog.config);
     let err_for = |field_name: &str| -> Option<&str> {
         issues
@@ -148,7 +168,7 @@ fn render_form(ui: &mut egui::Ui, dialog: &mut ConfigDialog, save: &mut bool, di
             *save = true;
         }
         if ui.button("Cancel").clicked() {
-            *dismiss = true;
+            *cancel = true;
         }
     });
 }

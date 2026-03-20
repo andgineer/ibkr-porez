@@ -48,6 +48,25 @@ pub fn show(ui: &mut egui::Ui, app: &mut App) {
         ui.add_space(4.0);
     }
 
+    if app.show_import_hint {
+        egui::Frame::new()
+            .fill(ui.visuals().faint_bg_color)
+            .inner_margin(4.0)
+            .show(ui, |ui| {
+                let warn = ui.visuals().warn_fg_color;
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    ui.colored_label(warn, "Transaction history is empty. If your trading history is over one year, use ");
+                    if ui.link("Import").clicked() {
+                        app.import_dialog =
+                            Some(super::import_dialog::ImportDialog::new());
+                    }
+                    ui.colored_label(warn, " to load it. This is important for correct stock sale tax calculation.");
+                });
+            });
+        ui.add_space(4.0);
+    }
+
     filter_bar(ui, app);
     ui.add_space(4.0);
     declaration_table(ui, app);
@@ -75,25 +94,40 @@ fn toolbar(ui: &mut egui::Ui, app: &mut App) {
         });
 
         ui.add_enabled_ui(!busy, |ui| {
-            if ui
-                .add(egui::Button::new("Force").min_size(egui::vec2(0.0, 32.0)))
-                .on_hover_text("Force re-fetch all data from IBKR and NBS")
-                .clicked()
-            {
-                app.confirm_force_sync = true;
-            }
+            ui.style_mut().spacing.button_padding = egui::vec2(8.0, 6.0);
+            ui.menu_button(egui::RichText::new("\u{2630}").size(16.0), |ui| {
+                if ui.button("Force full sync\u{2026}").clicked() {
+                    app.confirm_force_sync = true;
+                    ui.close_menu();
+                }
+                ui.separator();
+                if ui
+                    .button("Import historical transactions\u{2026}")
+                    .clicked()
+                {
+                    app.import_dialog = Some(super::import_dialog::ImportDialog::new());
+                    ui.close_menu();
+                }
+                if ui.button("Refresh table from disk").clicked() {
+                    app.refresh_declarations();
+                    ui.close_menu();
+                }
+            });
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.button("Config").clicked() {
+            if ui
+                .add(
+                    egui::Button::new(egui::RichText::new("\u{2699} Config").size(16.0))
+                        .min_size(egui::vec2(0.0, 32.0)),
+                )
+                .clicked()
+            {
                 app.config_dialog = Some(super::config_dialog::ConfigDialog::new(&app.config));
-            }
-            if ui.button("Import").clicked() {
-                app.import_dialog = Some(super::import_dialog::ImportDialog::new());
             }
         });
     });
-    ui.add_space(4.0);
+    ui.add_space(24.0);
 }
 
 fn filter_bar(ui: &mut egui::Ui, app: &mut App) {

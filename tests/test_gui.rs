@@ -61,12 +61,8 @@ fn sync_result(created: Vec<Declaration>, income_error: Option<String>) -> SyncR
     }
 }
 
-fn app_in_dir(decls: Vec<Declaration>, tmp: &tempfile::TempDir) -> App {
-    let storage = Storage::with_dir(tmp.path());
-    for d in &decls {
-        storage.save_declaration(d).unwrap();
-    }
-    let config = UserConfig {
+fn valid_test_config(tmp: &tempfile::TempDir) -> UserConfig {
+    UserConfig {
         ibkr_token: "test-token".into(),
         ibkr_query_id: "test-query".into(),
         personal_id: "1234567890123".into(),
@@ -77,9 +73,21 @@ fn app_in_dir(decls: Vec<Declaration>, tmp: &tempfile::TempDir) -> App {
         email: "test@test.com".into(),
         data_dir: Some(tmp.path().to_string_lossy().into_owned()),
         output_folder: None,
-    };
+    }
+}
+
+fn app_in_dir(decls: Vec<Declaration>, tmp: &tempfile::TempDir) -> App {
+    let storage = Storage::with_dir(tmp.path());
+    for d in &decls {
+        storage.save_declaration(d).unwrap();
+    }
+    let config = valid_test_config(tmp);
+    let config_file = tmp.path().join("config.json");
+    let json = serde_json::to_string_pretty(&config).unwrap();
+    std::fs::write(&config_file, json).unwrap();
     App {
         config,
+        config_file,
         storage,
         declarations: decls,
         selected: HashSet::new(),
@@ -100,6 +108,8 @@ fn app_in_dir(decls: Vec<Declaration>, tmp: &tempfile::TempDir) -> App {
         details_dialog: None,
         assessment_dialog: None,
         error_dialog: None,
+        show_import_hint: false,
+        confirm_discard_config: false,
     }
 }
 
@@ -532,7 +542,11 @@ fn refresh_after_config_change_sees_new_data() {
         .save_declaration(&make_decl("new-2", DeclarationStatus::Draft))
         .unwrap();
 
-    app.config.data_dir = Some(tmp_new.path().to_string_lossy().into_owned());
+    let mut updated_config = valid_test_config(&tmp_new);
+    updated_config.data_dir = Some(tmp_new.path().to_string_lossy().into_owned());
+    let json = serde_json::to_string_pretty(&updated_config).unwrap();
+    std::fs::write(&app.config_file, json).unwrap();
+
     app.refresh_declarations();
 
     assert_eq!(
@@ -937,4 +951,35 @@ fn assessment_dialog_new() {
     assert_eq!(dialog.declaration_id, "DECL-123");
     assert!(dialog.tax_input.is_empty());
     assert!(!dialog.mark_paid);
+}
+
+// ── Config reload from disk ─────────────────────────────────
+
+#[test]
+fn refresh_picks_up_config_change_from_disk() {
+    let (mut app, tmp) = app_with_decls(Vec::new());
+    assert_eq!(app.config.full_name, "Test User");
+
+    let mut modified = valid_test_config(&tmp);
+    modified.full_name = "Changed Name".into();
+    let json = serde_json::to_string_pretty(&modified).unwrap();
+    std::fs::write(&app.config_file, json).unwrap();
+
+    app.refresh_declarations();
+
+    assert_eq!(app.config.full_name, "Changed Name");
+}
+
+#[test]
+fn start_sync_reloads_config_from_disk() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    app.config.ibkr_token = String::new();
+
+    app.start_sync(false);
+
+    assert!(
+        app.bg_busy,
+        "start_sync should reload valid config from disk and proceed"
+    );
+    assert!(app.error_dialog.is_none());
 }

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::mpsc;
 
 use chrono::Datelike;
@@ -96,8 +97,10 @@ pub enum BackgroundResult {
     },
 }
 
+#[allow(clippy::struct_excessive_bools)]
 pub struct App {
     pub config: UserConfig,
+    pub config_file: PathBuf,
     pub storage: Storage,
     pub declarations: Vec<Declaration>,
     pub selected: std::collections::HashSet<String>,
@@ -127,6 +130,8 @@ pub struct App {
     pub details_dialog: Option<DetailsDialog>,
     pub assessment_dialog: Option<AssessmentDialog>,
     pub error_dialog: Option<String>,
+    pub show_import_hint: bool,
+    pub confirm_discard_config: bool,
 }
 
 impl Default for App {
@@ -137,25 +142,17 @@ impl Default for App {
 
 impl App {
     pub fn new() -> Self {
-        let config = app_config::load_config();
+        let config_file = app_config::config_file_path();
+        let config = app_config::load_config_from(&config_file);
         let storage = Storage::with_config(&config);
         let declarations = load_filtered(&storage, FilterScope::Active);
 
         let warning_banner = check_holiday_warning(&config);
-
-        let status_message = if storage.get_last_transaction_date().is_none() {
-            Some((
-                "Transaction history is empty. If your trading history is over one year, \
-                 import it via Import. This is important for correct stock sale tax calculation."
-                    .to_string(),
-                styles::MessageKind::Warning,
-            ))
-        } else {
-            None
-        };
+        let show_import_hint = storage.get_last_transaction_date().is_none();
 
         Self {
             config,
+            config_file,
             storage,
             declarations,
             selected: std::collections::HashSet::new(),
@@ -163,7 +160,7 @@ impl App {
             bulk_action: BulkAction::Submit,
             sort_column: SortColumn::Created,
             sort_ascending: false,
-            status_message,
+            status_message: None,
             warning_banner,
             bg_receiver: None,
             bg_busy: false,
@@ -176,7 +173,13 @@ impl App {
             details_dialog: None,
             assessment_dialog: None,
             error_dialog: None,
+            show_import_hint,
+            confirm_discard_config: false,
         }
+    }
+
+    pub fn reload_config(&mut self) {
+        self.config = app_config::load_config_from(&self.config_file);
     }
 
     pub fn reload_storage(&mut self) {
@@ -184,11 +187,13 @@ impl App {
     }
 
     pub fn refresh_declarations(&mut self) {
+        self.reload_config();
         self.reload_storage();
         self.declarations = load_filtered(&self.storage, self.filter);
         self.sort_declarations();
         self.selected
             .retain(|id| self.declarations.iter().any(|d| &d.declaration_id == id));
+        self.show_import_hint = self.storage.get_last_transaction_date().is_none();
     }
 
     pub fn sort_declarations(&mut self) {
@@ -325,6 +330,7 @@ impl App {
         if self.bg_busy {
             return;
         }
+        self.reload_config();
 
         let issues = app_config::validate_config(&self.config);
         if !issues.is_empty() {
@@ -443,39 +449,8 @@ impl App {
     }
 }
 
-impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.poll_background();
-
-        let modal_open = self.config_dialog.is_some()
-            || self.import_dialog.is_some()
-            || self.details_dialog.is_some()
-            || self.assessment_dialog.is_some()
-            || self.error_dialog.is_some()
-            || self.confirm_force_sync;
-
-        egui::TopBottomPanel::bottom("status_bar")
-            .exact_height(22.0)
-            .show(ctx, |ui| {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.colored_label(
-                        ui.visuals().widgets.noninteractive.fg_stroke.color,
-                        "Double-click a row to open details",
-                    );
-                });
-            });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.add_enabled_ui(!modal_open, |ui| {
-                main_window::show(ui, self);
-            });
-        });
-
-        super::config_dialog::show(ctx, self);
-        super::import_dialog::show(ctx, self);
-        super::details_dialog::show(ctx, self);
-        super::assessment_dialog::show(ctx, self);
-
+impl App {
+    fn show_modal_dialogs(&mut self, ctx: &egui::Context) {
         if self.confirm_force_sync {
             let mut confirm = false;
             let mut cancel = false;
@@ -507,6 +482,36 @@ impl eframe::App for App {
             }
         }
 
+        if self.confirm_discard_config {
+            let mut discard = false;
+            let mut stay = false;
+            egui::Window::new("Unsaved Changes")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ctx, |ui| {
+                    ui.label(
+                        "You have unsaved changes in the configuration.\n\
+                         Discard them?",
+                    );
+                    ui.add_space(8.0);
+                    ui.horizontal(|ui| {
+                        if ui.button("Discard").clicked() {
+                            discard = true;
+                        }
+                        if ui.button("Keep editing").clicked() {
+                            stay = true;
+                        }
+                    });
+                });
+            if discard {
+                self.confirm_discard_config = false;
+                self.config_dialog = None;
+            } else if stay {
+                self.confirm_discard_config = false;
+            }
+        }
+
         if let Some(msg) = self.error_dialog.clone() {
             let mut dismiss = false;
             egui::Window::new("Error")
@@ -526,6 +531,66 @@ impl eframe::App for App {
                 self.error_dialog = None;
             }
         }
+    }
+}
+
+impl eframe::App for App {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.poll_background();
+
+        let modal_open = self.config_dialog.is_some()
+            || self.import_dialog.is_some()
+            || self.details_dialog.is_some()
+            || self.assessment_dialog.is_some()
+            || self.error_dialog.is_some()
+            || self.confirm_force_sync
+            || self.confirm_discard_config;
+
+        egui::TopBottomPanel::bottom("status_bar")
+            .exact_height(22.0)
+            .show(ctx, |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.colored_label(
+                        ui.visuals().widgets.noninteractive.fg_stroke.color,
+                        "Double-click a row to open details",
+                    );
+                });
+            });
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.add_enabled_ui(!modal_open, |ui| {
+                main_window::show(ui, self);
+            });
+        });
+
+        if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+            if self.error_dialog.is_some() {
+                self.error_dialog = None;
+            } else if self.confirm_discard_config {
+                self.confirm_discard_config = false;
+            } else if self.confirm_force_sync {
+                self.confirm_force_sync = false;
+            } else if self.assessment_dialog.is_some() {
+                self.assessment_dialog = None;
+            } else if self.details_dialog.is_some() {
+                self.details_dialog = None;
+            } else if self.import_dialog.is_some() && !self.bg_busy {
+                self.import_dialog = None;
+            } else if let Some(ref dialog) = self.config_dialog {
+                if dialog.has_changes() {
+                    self.confirm_discard_config = true;
+                } else {
+                    self.config_dialog = None;
+                }
+            }
+        }
+
+        super::config_dialog::show(ctx, self);
+        super::import_dialog::show(ctx, self);
+        super::details_dialog::show(ctx, self);
+        super::assessment_dialog::show(ctx, self);
+
+        self.show_modal_dialogs(ctx);
 
         if self.bg_busy || !self.exporting_ids.is_empty() {
             ctx.request_repaint();
