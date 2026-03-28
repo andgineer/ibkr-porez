@@ -552,7 +552,7 @@ impl eframe::App for App {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.colored_label(
                         ui.visuals().widgets.noninteractive.fg_stroke.color,
-                        "Double-click a row to open details",
+                        "Double-click a row to open details, or a column header to sort",
                     );
                 });
             });
