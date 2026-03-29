@@ -1,3 +1,6 @@
+[![CI](https://github.com/andgineer/ibkr-porez/actions/workflows/ci.yml/badge.svg)](https://github.com/andgineer/ibkr-porez/actions/workflows/ci.yml)
+[![Coverage](https://raw.githubusercontent.com/andgineer/ibkr-porez/coverage-data/badge.svg)](https://htmlpreview.github.io/?https://github.com/andgineer/ibkr-porez/blob/coverage-data/htmlcov/index.html)
+
 # ibkr-porez
 
 Automated PPDG-3R and PP-OPO tax reports generation for Interactive Brokers.
