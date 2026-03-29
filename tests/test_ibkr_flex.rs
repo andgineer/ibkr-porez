@@ -235,3 +235,228 @@ fn test_payment_in_lieu_is_dividend() {
     assert_eq!(txns.len(), 1);
     assert_eq!(txns[0].r#type, TransactionType::Dividend);
 }
+
+// ---------------------------------------------------------------------------
+// Multi-currency and EUR handling
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_eur_currency_accepted() {
+    let xml = r#"<FlexQueryResponse>
+        <FlexStatements>
+            <FlexStatement>
+                <Trades>
+                    <Trade symbol="SAP" currency="EUR" quantity="5"
+                           tradePrice="120.50" tradeDate="20230301" tradeID="EUR1"
+                           description="SAP SE" />
+                </Trades>
+                <CashTransactions>
+                    <CashTransaction type="Dividends" symbol="SAP"
+                        currency="EUR" amount="15.00" dateTime="20230315"
+                        transactionID="EURDIV1" description="SAP dividend" />
+                </CashTransactions>
+            </FlexStatement>
+        </FlexStatements>
+    </FlexQueryResponse>"#;
+    let txns = parse_flex_report(xml).unwrap();
+    assert_eq!(txns.len(), 2);
+    assert_eq!(txns[0].currency, ibkr_porez::models::Currency::EUR);
+    assert_eq!(txns[1].currency, ibkr_porez::models::Currency::EUR);
+}
+
+#[test]
+fn test_mixed_currencies_in_single_statement() {
+    let xml = r#"<FlexQueryResponse>
+        <FlexStatements>
+            <FlexStatement>
+                <Trades>
+                    <Trade symbol="AAPL" currency="USD" quantity="10"
+                           tradePrice="150.00" tradeDate="20230101" tradeID="USD1" />
+                    <Trade symbol="SAP" currency="EUR" quantity="5"
+                           tradePrice="120.00" tradeDate="20230101" tradeID="EUR1" />
+                    <Trade symbol="NESN" currency="CHF" quantity="3"
+                           tradePrice="95.00" tradeDate="20230101" tradeID="CHF1" />
+                </Trades>
+            </FlexStatement>
+        </FlexStatements>
+    </FlexQueryResponse>"#;
+    let txns = parse_flex_report(xml).unwrap();
+    assert_eq!(txns.len(), 2, "CHF should be skipped, USD and EUR kept");
+    assert_eq!(txns[0].symbol, "AAPL");
+    assert_eq!(txns[1].symbol, "SAP");
+}
+
+// ---------------------------------------------------------------------------
+// Broker interest
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_broker_interest_received() {
+    let xml = r#"<FlexQueryResponse>
+        <FlexStatements>
+            <FlexStatement>
+                <CashTransactions>
+                    <CashTransaction type="Broker Interest Received" symbol=""
+                        currency="USD" amount="1.23" dateTime="20230401"
+                        transactionID="INT_RX" description="Interest" />
+                </CashTransactions>
+            </FlexStatement>
+        </FlexStatements>
+    </FlexQueryResponse>"#;
+    let txns = parse_flex_report(xml).unwrap();
+    assert_eq!(txns.len(), 1);
+    assert_eq!(txns[0].r#type, TransactionType::Interest);
+    assert_eq!(txns[0].amount, dec!(1.23));
+}
+
+// ---------------------------------------------------------------------------
+// Trade with proceeds (fallback for amount)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_trade_uses_proceeds_when_fifo_pnl_missing() {
+    let xml = r#"<FlexQueryResponse>
+        <FlexStatements>
+            <FlexStatement>
+                <Trades>
+                    <Trade symbol="GOOG" currency="USD" quantity="-10"
+                           tradePrice="2800.00" tradeDate="20230501" tradeID="PROC1"
+                           proceeds="-28000.00" description="Alphabet" />
+                </Trades>
+            </FlexStatement>
+        </FlexStatements>
+    </FlexQueryResponse>"#;
+    let txns = parse_flex_report(xml).unwrap();
+    assert_eq!(txns.len(), 1);
+    assert_eq!(txns[0].amount, dec!(-28000.00));
+}
+
+#[test]
+fn test_trade_prefers_fifo_pnl_over_proceeds() {
+    let xml = r#"<FlexQueryResponse>
+        <FlexStatements>
+            <FlexStatement>
+                <Trades>
+                    <Trade symbol="GOOG" currency="USD" quantity="-10"
+                           tradePrice="2800.00" tradeDate="20230501" tradeID="PREF1"
+                           fifoPnlRealized="500.00" proceeds="-28000.00" />
+                </Trades>
+            </FlexStatement>
+        </FlexStatements>
+    </FlexQueryResponse>"#;
+    let txns = parse_flex_report(xml).unwrap();
+    assert_eq!(txns.len(), 1);
+    assert_eq!(txns[0].amount, dec!(500.00));
+}
+
+// ---------------------------------------------------------------------------
+// Date formats
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_hyphenated_date_format() {
+    let xml = r#"<FlexQueryResponse>
+        <FlexStatements>
+            <FlexStatement>
+                <Trades>
+                    <Trade symbol="MSFT" currency="USD" quantity="1"
+                           tradePrice="300.00" tradeDate="2023-07-15" tradeID="HYPH1" />
+                </Trades>
+            </FlexStatement>
+        </FlexStatements>
+    </FlexQueryResponse>"#;
+    let txns = parse_flex_report(xml).unwrap();
+    assert_eq!(txns.len(), 1);
+    assert_eq!(txns[0].date, NaiveDate::from_ymd_opt(2023, 7, 15).unwrap());
+}
+
+#[test]
+fn test_date_with_semicolon_suffix() {
+    let xml = r#"<FlexQueryResponse>
+        <FlexStatements>
+            <FlexStatement>
+                <CashTransactions>
+                    <CashTransaction type="Dividends" symbol="JNJ"
+                        currency="USD" amount="100" dateTime="20230601;120000"
+                        transactionID="SEMI1" />
+                </CashTransactions>
+            </FlexStatement>
+        </FlexStatements>
+    </FlexQueryResponse>"#;
+    let txns = parse_flex_report(xml).unwrap();
+    assert_eq!(txns.len(), 1);
+    assert_eq!(txns[0].date, NaiveDate::from_ymd_opt(2023, 6, 1).unwrap());
+}
+
+// ---------------------------------------------------------------------------
+// Multiple statements
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_multiple_flex_statements() {
+    let xml = r#"<FlexQueryResponse>
+        <FlexStatements>
+            <FlexStatement>
+                <Trades>
+                    <Trade symbol="AAPL" currency="USD" quantity="10"
+                           tradePrice="150.00" tradeDate="20230101" tradeID="S1T1" />
+                </Trades>
+            </FlexStatement>
+            <FlexStatement>
+                <CashTransactions>
+                    <CashTransaction type="Dividends" symbol="MSFT"
+                        currency="USD" amount="50" dateTime="20230201"
+                        transactionID="S2CT1" />
+                </CashTransactions>
+            </FlexStatement>
+        </FlexStatements>
+    </FlexQueryResponse>"#;
+    let txns = parse_flex_report(xml).unwrap();
+    assert_eq!(txns.len(), 2);
+    assert_eq!(txns[0].symbol, "AAPL");
+    assert_eq!(txns[1].symbol, "MSFT");
+}
+
+// ---------------------------------------------------------------------------
+// Trade with origTradeDate / origTradePrice
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_orig_trade_fields() {
+    let xml = r#"<FlexQueryResponse>
+        <FlexStatements>
+            <FlexStatement>
+                <Trades>
+                    <Trade symbol="TSLA" currency="USD" quantity="-5"
+                           tradePrice="250.00" tradeDate="20230801" tradeID="ORIG1"
+                           origTradeDate="20220115" origTradePrice="180.50" />
+                </Trades>
+            </FlexStatement>
+        </FlexStatements>
+    </FlexQueryResponse>"#;
+    let txns = parse_flex_report(xml).unwrap();
+    assert_eq!(txns.len(), 1);
+    assert_eq!(
+        txns[0].open_date,
+        Some(NaiveDate::from_ymd_opt(2022, 1, 15).unwrap())
+    );
+    assert_eq!(txns[0].open_price, Some(dec!(180.50)));
+}
+
+#[test]
+fn test_missing_orig_fields() {
+    let xml = r#"<FlexQueryResponse>
+        <FlexStatements>
+            <FlexStatement>
+                <Trades>
+                    <Trade symbol="AMZN" currency="USD" quantity="3"
+                           tradePrice="100.00" tradeDate="20230901" tradeID="NORIG1" />
+                </Trades>
+            </FlexStatement>
+        </FlexStatements>
+    </FlexQueryResponse>"#;
+    let txns = parse_flex_report(xml).unwrap();
+    assert_eq!(txns.len(), 1);
+    assert!(txns[0].open_date.is_none());
+    assert!(txns[0].open_price.is_none());
+}

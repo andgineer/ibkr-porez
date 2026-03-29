@@ -370,3 +370,189 @@ fn status_bar_hint_text() {
         "status bar hint should be visible"
     );
 }
+
+// ── Import dialog ────────────────────────────────────────────
+
+#[test]
+fn import_dialog_opens_via_state() {
+    let (app, _tmp) = setup_app(vec![], vec![]);
+    let mut harness = harness_for(app);
+
+    harness.state_mut().import_dialog = Some(ibkr_porez::gui::import_dialog::ImportDialog::new());
+    harness.run();
+
+    assert!(
+        harness.state().import_dialog.is_some(),
+        "import dialog should be open"
+    );
+
+    harness.press_key(egui::Key::Escape);
+    harness.run();
+
+    assert!(
+        harness.state().import_dialog.is_none(),
+        "ESC should close import dialog"
+    );
+}
+
+#[test]
+fn import_dialog_has_file_type_radios() {
+    let (app, _tmp) = setup_app(vec![], vec![]);
+    let mut harness = harness_for(app);
+
+    harness.state_mut().import_dialog = Some(ibkr_porez::gui::import_dialog::ImportDialog::new());
+    harness.run();
+
+    assert!(
+        harness.query_by_label_contains("Auto").is_some(),
+        "Auto radio should be visible"
+    );
+    assert!(
+        harness.query_by_label_contains("CSV").is_some(),
+        "CSV radio should be visible"
+    );
+    assert!(
+        harness.query_by_label_contains("Flex XML").is_some(),
+        "Flex XML radio should be visible"
+    );
+}
+
+// ── Assessment dialog ────────────────────────────────────────
+
+#[test]
+fn assessment_dialog_opens_and_cancels() {
+    let (app, _tmp) = setup_app(
+        vec![make_decl("assess-1", DeclarationStatus::Submitted)],
+        vec![],
+    );
+    let mut harness = harness_for(app);
+
+    harness.state_mut().assessment_dialog = Some(
+        ibkr_porez::gui::assessment_dialog::AssessmentDialog::new("assess-1".into()),
+    );
+    harness.run();
+
+    assert!(
+        harness.query_by_label_contains("Tax due").is_some(),
+        "tax input label should be visible"
+    );
+
+    harness.get_by_label("Cancel").click();
+    harness.run();
+
+    assert!(
+        harness.state().assessment_dialog.is_none(),
+        "Cancel should close assessment dialog"
+    );
+}
+
+// ── Details dialog ───────────────────────────────────────────
+
+#[test]
+fn details_dialog_shows_declaration_info() {
+    let (app, _tmp) = setup_app(
+        vec![make_decl("details-1", DeclarationStatus::Draft)],
+        vec![],
+    );
+    let mut harness = harness_for(app);
+
+    {
+        let state = harness.state_mut();
+        let dialog =
+            ibkr_porez::gui::details_dialog::DetailsDialog::new("details-1", &state.storage);
+        state.details_dialog = Some(dialog);
+    }
+    harness.run();
+
+    assert!(
+        harness
+            .query_by_label_contains("Declaration Details")
+            .is_some(),
+        "details window title should be visible"
+    );
+}
+
+#[test]
+fn details_dialog_closes_on_close_button() {
+    let (app, _tmp) = setup_app(
+        vec![make_decl("details-close", DeclarationStatus::Draft)],
+        vec![],
+    );
+    let mut harness = harness_for(app);
+
+    {
+        let state = harness.state_mut();
+        let dialog =
+            ibkr_porez::gui::details_dialog::DetailsDialog::new("details-close", &state.storage);
+        state.details_dialog = Some(dialog);
+    }
+    harness.run();
+
+    harness.get_by_label("Close").click();
+    harness.run();
+
+    assert!(
+        harness.state().details_dialog.is_none(),
+        "Close button should dismiss details dialog"
+    );
+}
+
+#[test]
+fn details_dialog_esc_closes() {
+    let (app, _tmp) = setup_app(
+        vec![make_decl("details-esc", DeclarationStatus::Draft)],
+        vec![],
+    );
+    let mut harness = harness_for(app);
+
+    {
+        let state = harness.state_mut();
+        let dialog =
+            ibkr_porez::gui::details_dialog::DetailsDialog::new("details-esc", &state.storage);
+        state.details_dialog = Some(dialog);
+    }
+    harness.run();
+
+    harness.press_key(egui::Key::Escape);
+    harness.run();
+
+    assert!(
+        harness.state().details_dialog.is_none(),
+        "ESC should close details dialog"
+    );
+}
+
+// ── Sorting ──────────────────────────────────────────────────
+
+#[test]
+fn sort_column_default_state() {
+    let (app, _tmp) = setup_app(
+        vec![
+            make_decl("sort-a", DeclarationStatus::Draft),
+            make_decl("sort-b", DeclarationStatus::Submitted),
+        ],
+        vec![],
+    );
+    let harness = harness_for(app);
+
+    assert_eq!(harness.state().sort_column, SortColumn::Created);
+    assert!(!harness.state().sort_ascending);
+}
+
+// ── Force sync confirm ──────────────────────────────────────
+
+#[test]
+fn force_sync_confirm_dialog() {
+    let (app, _tmp) = setup_app(vec![], vec![]);
+    let mut harness = harness_for(app);
+
+    harness.state_mut().confirm_force_sync = true;
+    harness.run();
+
+    assert!(
+        harness
+            .query_by_label_contains("Confirm Force Sync")
+            .is_some(),
+        "force sync confirmation window should be visible"
+    );
+}

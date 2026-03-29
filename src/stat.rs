@@ -344,6 +344,8 @@ fn find_latest_year_for_month(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::NaiveDate;
+    use rust_decimal::Decimal;
 
     #[test]
     fn parse_month_yyyy_mm() {
@@ -391,5 +393,102 @@ mod tests {
     fn parse_month_invalid_format() {
         assert!(parse_month(Some("abc")).is_err());
         assert!(parse_month(Some("2025-1-1")).is_err());
+    }
+
+    #[test]
+    fn parse_month_yyyymm_invalid() {
+        assert!(parse_month(Some("202513")).is_err());
+        assert!(parse_month(Some("202500")).is_err());
+    }
+
+    #[test]
+    fn parse_month_bare_zero() {
+        assert!(parse_month(Some("0")).is_err());
+    }
+
+    fn make_entry(ticker: &str, sale_date: NaiveDate) -> TaxReportEntry {
+        TaxReportEntry {
+            ticker: ticker.into(),
+            quantity: Decimal::ONE,
+            sale_date,
+            sale_price: Decimal::ONE,
+            sale_exchange_rate: Decimal::ONE,
+            sale_value_rsd: Decimal::ONE,
+            purchase_date: sale_date,
+            purchase_price: Decimal::ONE,
+            purchase_exchange_rate: Decimal::ONE,
+            purchase_value_rsd: Decimal::ONE,
+            capital_gain_rsd: Decimal::ONE,
+            is_tax_exempt: false,
+        }
+    }
+
+    #[test]
+    fn filter_entries_by_ticker() {
+        let entries = vec![
+            make_entry("AAPL", NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()),
+            make_entry("MSFT", NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()),
+        ];
+        let result = filter_entries(&entries, Some("AAPL"), None, None);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].ticker, "AAPL");
+    }
+
+    #[test]
+    fn filter_entries_by_year_and_month() {
+        let entries = vec![
+            make_entry("AAPL", NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()),
+            make_entry("AAPL", NaiveDate::from_ymd_opt(2025, 6, 1).unwrap()),
+            make_entry("AAPL", NaiveDate::from_ymd_opt(2024, 3, 1).unwrap()),
+        ];
+        let result = filter_entries(&entries, None, Some(2025), Some(3));
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].sale_date.year(), 2025);
+        assert_eq!(result[0].sale_date.month(), 3);
+    }
+
+    #[test]
+    fn filter_entries_empty_on_no_match() {
+        let entries = vec![make_entry(
+            "AAPL",
+            NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+        )];
+        let result = filter_entries(&entries, Some("GOOG"), None, None);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn build_detail_title_ticker_only() {
+        let title = build_detail_title(Some("AAPL"), None, None);
+        assert!(title.contains("AAPL"));
+    }
+
+    #[test]
+    fn build_detail_title_year_month() {
+        let title = build_detail_title(Some("AAPL"), Some(2025), Some(3));
+        assert!(title.contains("AAPL"));
+        assert!(title.contains("2025-03"));
+    }
+
+    #[test]
+    fn build_detail_title_year_only() {
+        let title = build_detail_title(None, Some(2025), None);
+        assert!(title.contains("2025"));
+    }
+
+    #[test]
+    fn find_latest_year_for_month_from_sales() {
+        let entries = vec![
+            make_entry("A", NaiveDate::from_ymd_opt(2024, 3, 1).unwrap()),
+            make_entry("A", NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()),
+        ];
+        let result = find_latest_year_for_month(&entries, &[], 3);
+        assert_eq!(result, Some(2025));
+    }
+
+    #[test]
+    fn find_latest_year_for_month_none() {
+        let result = find_latest_year_for_month(&[], &[], 7);
+        assert_eq!(result, None);
     }
 }

@@ -301,3 +301,83 @@ fn prompt_optional(prompt: &str, current: Option<&String>) -> Result<Option<Stri
         Ok(Some(val))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_field_indices_valid() {
+        let indices = parse_field_indices("1,3,5");
+        assert_eq!(indices, vec![0, 2, 4]);
+    }
+
+    #[test]
+    fn parse_field_indices_deduplicates() {
+        let indices = parse_field_indices("2,2,3");
+        assert_eq!(indices, vec![1, 2]);
+    }
+
+    #[test]
+    fn parse_field_indices_out_of_range() {
+        let indices = parse_field_indices("0,11,999");
+        assert!(indices.is_empty());
+    }
+
+    #[test]
+    fn parse_field_indices_invalid_text() {
+        let indices = parse_field_indices("a,b,c");
+        assert!(indices.is_empty());
+    }
+
+    #[test]
+    fn parse_field_indices_mixed() {
+        let indices = parse_field_indices("1,abc,3");
+        assert_eq!(indices, vec![0, 2]);
+    }
+
+    #[test]
+    fn is_config_empty_default() {
+        assert!(is_config_empty(&UserConfig::default()));
+    }
+
+    #[test]
+    fn is_config_empty_partial() {
+        let mut cfg = UserConfig::default();
+        cfg.ibkr_token = "token".into();
+        assert!(!is_config_empty(&cfg));
+    }
+
+    #[test]
+    fn field_values_mapping() {
+        let cfg = UserConfig {
+            ibkr_token: "tok".into(),
+            ibkr_query_id: "qid".into(),
+            personal_id: "pid".into(),
+            full_name: "name".into(),
+            address: "addr".into(),
+            city_code: "111".into(),
+            phone: "phone".into(),
+            email: "e@m".into(),
+            data_dir: Some("/data".into()),
+            output_folder: Some("/out".into()),
+        };
+        let vals = field_values(&cfg);
+        assert_eq!(vals.len(), FIELDS.len());
+        assert_eq!(vals[0], "tok");
+        assert_eq!(vals[1], "qid");
+        assert_eq!(vals[2], "pid");
+        assert_eq!(vals[3], "name");
+        assert_eq!(vals[4], "addr");
+        assert_eq!(vals[8], "/data");
+        assert_eq!(vals[9], "/out");
+    }
+
+    #[test]
+    fn field_values_empty_optionals() {
+        let cfg = UserConfig::default();
+        let vals = field_values(&cfg);
+        assert_eq!(vals[8], "");
+        assert_eq!(vals[9], "");
+    }
+}

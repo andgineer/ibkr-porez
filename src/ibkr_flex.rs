@@ -337,3 +337,128 @@ struct XmlCashTransaction {
     #[serde(rename = "@description")]
     description: Option<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_ibkr_date_yyyymmdd() {
+        assert_eq!(
+            parse_ibkr_date("20230115"),
+            Some(NaiveDate::from_ymd_opt(2023, 1, 15).unwrap())
+        );
+    }
+
+    #[test]
+    fn parse_ibkr_date_hyphenated() {
+        assert_eq!(
+            parse_ibkr_date("2023-01-15"),
+            Some(NaiveDate::from_ymd_opt(2023, 1, 15).unwrap())
+        );
+    }
+
+    #[test]
+    fn parse_ibkr_date_with_semicolon() {
+        assert_eq!(
+            parse_ibkr_date("20230601;120000"),
+            Some(NaiveDate::from_ymd_opt(2023, 6, 1).unwrap())
+        );
+    }
+
+    #[test]
+    fn parse_ibkr_date_invalid() {
+        assert!(parse_ibkr_date("not-a-date").is_none());
+        assert!(parse_ibkr_date("").is_none());
+    }
+
+    #[test]
+    fn non_empty_filters() {
+        assert_eq!(non_empty(Some(&String::new())), None);
+        assert_eq!(non_empty(None), None);
+        assert_eq!(non_empty(Some(&"hello".to_string())), Some("hello"));
+    }
+
+    #[test]
+    fn convert_trade_minimal() {
+        let trade = XmlTrade {
+            symbol: Some("AAPL".into()),
+            currency: Some("USD".into()),
+            quantity: Some("10".into()),
+            trade_price: Some("150.00".into()),
+            trade_date: Some("20230101".into()),
+            trade_id: Some("T1".into()),
+            fifo_pnl_realized: None,
+            proceeds: None,
+            orig_trade_date: None,
+            orig_trade_price: None,
+            description: Some("Apple".into()),
+        };
+        let tx = convert_trade(&trade).unwrap();
+        assert_eq!(tx.symbol, "AAPL");
+        assert_eq!(tx.amount, Decimal::ZERO);
+    }
+
+    #[test]
+    fn convert_trade_missing_symbol() {
+        let trade = XmlTrade {
+            symbol: None,
+            currency: Some("USD".into()),
+            quantity: Some("10".into()),
+            trade_price: Some("150.00".into()),
+            trade_date: Some("20230101".into()),
+            trade_id: Some("T1".into()),
+            fifo_pnl_realized: None,
+            proceeds: None,
+            orig_trade_date: None,
+            orig_trade_price: None,
+            description: None,
+        };
+        assert!(convert_trade(&trade).is_none());
+    }
+
+    #[test]
+    fn convert_cash_unknown_type() {
+        let ct = XmlCashTransaction {
+            r#type: Some("Fee".into()),
+            symbol: Some("AAPL".into()),
+            currency: Some("USD".into()),
+            amount: Some("10".into()),
+            date_time: Some("20230101".into()),
+            transaction_id: Some("C1".into()),
+            description: None,
+        };
+        assert!(convert_cash_transaction(&ct).is_none());
+    }
+
+    #[test]
+    fn convert_cash_dividend() {
+        let ct = XmlCashTransaction {
+            r#type: Some("Dividends".into()),
+            symbol: Some("AAPL".into()),
+            currency: Some("USD".into()),
+            amount: Some("50.00".into()),
+            date_time: Some("20230315".into()),
+            transaction_id: Some("D1".into()),
+            description: Some("Apple div".into()),
+        };
+        let tx = convert_cash_transaction(&ct).unwrap();
+        assert_eq!(tx.r#type, TransactionType::Dividend);
+        assert_eq!(tx.amount, Decimal::from_str("50.00").unwrap());
+    }
+
+    #[test]
+    fn convert_cash_withholding_tax() {
+        let ct = XmlCashTransaction {
+            r#type: Some("Withholding Tax".into()),
+            symbol: Some("AAPL".into()),
+            currency: Some("USD".into()),
+            amount: Some("-7.50".into()),
+            date_time: Some("20230315".into()),
+            transaction_id: Some("W1".into()),
+            description: None,
+        };
+        let tx = convert_cash_transaction(&ct).unwrap();
+        assert_eq!(tx.r#type, TransactionType::WithholdingTax);
+    }
+}
