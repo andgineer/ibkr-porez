@@ -532,10 +532,8 @@ impl App {
             }
         }
     }
-}
 
-impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    pub fn render(&mut self, ctx: &egui::Context) {
         self.poll_background();
 
         let modal_open = self.config_dialog.is_some()
@@ -595,6 +593,12 @@ impl eframe::App for App {
         if self.bg_busy || !self.exporting_ids.is_empty() {
             ctx.request_repaint();
         }
+    }
+}
+
+impl eframe::App for App {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.render(ctx);
     }
 }
 
