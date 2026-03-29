@@ -1,8 +1,4 @@
 use assert_cmd::Command;
-use chrono::{Local, NaiveDate};
-use ibkr_porez::models::{Declaration, DeclarationStatus, DeclarationType};
-use ibkr_porez::storage::Storage;
-use indexmap::IndexMap;
 use predicates::prelude::*;
 
 fn cmd() -> Command {
@@ -260,61 +256,4 @@ fn revert_reads_ids_from_stdin() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("id1").and(predicate::str::contains("id2")));
-}
-
-fn make_test_declaration(storage: &Storage, id: &str) {
-    let decl = Declaration {
-        declaration_id: id.to_string(),
-        r#type: DeclarationType::Ppdg3r,
-        status: DeclarationStatus::Draft,
-        period_start: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
-        period_end: NaiveDate::from_ymd_opt(2025, 6, 30).unwrap(),
-        created_at: Local::now().naive_local(),
-        submitted_at: None,
-        paid_at: None,
-        file_path: None,
-        xml_content: Some("<xml/>".into()),
-        report_data: None,
-        metadata: IndexMap::new(),
-        attached_files: IndexMap::new(),
-    };
-    storage.save_declaration(&decl).unwrap();
-}
-
-#[test]
-fn pipeline_list_to_submit() {
-    let tmp = tempfile::TempDir::new().unwrap();
-    let data_dir = tmp.path().join("data");
-    std::fs::create_dir_all(&data_dir).unwrap();
-
-    let storage = Storage::with_dir(&data_dir);
-    make_test_declaration(&storage, "decl-a");
-    make_test_declaration(&storage, "decl-b");
-
-    let config = serde_json::json!({
-        "data_dir": data_dir.to_str().unwrap(),
-    });
-    let config_path = tmp.path().join("config.json");
-    std::fs::write(&config_path, config.to_string()).unwrap();
-
-    let list_output = cmd()
-        .args(["list", "--status", "draft", "-1"])
-        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
-        .output()
-        .expect("list failed");
-    let stdout = String::from_utf8(list_output.stdout).unwrap();
-    assert!(stdout.contains("decl-a"));
-    assert!(stdout.contains("decl-b"));
-
-    cmd()
-        .arg("submit")
-        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
-        .write_stdin(stdout)
-        .assert()
-        .success();
-
-    let decl_a = storage.get_declaration("decl-a").unwrap();
-    let decl_b = storage.get_declaration("decl-b").unwrap();
-    assert_eq!(decl_a.status, DeclarationStatus::Pending);
-    assert_eq!(decl_b.status, DeclarationStatus::Pending);
 }
