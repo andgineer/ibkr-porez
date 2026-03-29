@@ -163,6 +163,102 @@ fn pipeline_list_to_submit() {
     assert_eq!(decl_b.status, DeclarationStatus::Pending);
 }
 
+// ── sync ────────────────────────────────────────────────────
+
+#[test]
+fn sync_missing_ibkr_config() {
+    let (tmp, _data_dir) = setup_env();
+
+    cmd()
+        .args(["sync"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Configuration errors"));
+}
+
+#[test]
+fn sync_with_invalid_credentials() {
+    let (tmp, data_dir) = setup_env();
+    let config = serde_json::json!({
+        "data_dir": data_dir.to_str().unwrap(),
+        "ibkr_token": "fake-token",
+        "ibkr_query_id": "fake-query-id",
+        "personal_id": "1234567890123",
+        "full_name": "Test User",
+        "address": "Test St 1",
+        "city_code": "12345",
+        "phone": "0601234567",
+        "email": "test@example.com",
+    });
+    std::fs::write(tmp.path().join("config.json"), config.to_string()).unwrap();
+
+    cmd()
+        .args(["sync"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .success()
+        .stderr(predicate::str::is_empty().not());
+}
+
+#[test]
+fn sync_output_dir_override() {
+    let (tmp, data_dir) = setup_env();
+    let config = serde_json::json!({
+        "data_dir": data_dir.to_str().unwrap(),
+        "ibkr_token": "fake-token",
+        "ibkr_query_id": "fake-query-id",
+        "personal_id": "1234567890123",
+        "full_name": "Test User",
+        "address": "Test St 1",
+        "city_code": "12345",
+        "phone": "0601234567",
+        "email": "test@example.com",
+    });
+    std::fs::write(tmp.path().join("config.json"), config.to_string()).unwrap();
+
+    let custom_output = tmp.path().join("custom-output");
+
+    cmd()
+        .args(["sync", "-o", custom_output.to_str().unwrap()])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .success();
+}
+
+// ── fetch ───────────────────────────────────────────────────
+
+#[test]
+fn fetch_missing_ibkr_config() {
+    let (tmp, _data_dir) = setup_env();
+
+    cmd()
+        .args(["fetch"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("Missing IBKR configuration"));
+}
+
+#[test]
+fn fetch_with_invalid_credentials() {
+    let (tmp, data_dir) = setup_env();
+    let config = serde_json::json!({
+        "data_dir": data_dir.to_str().unwrap(),
+        "ibkr_token": "fake-token",
+        "ibkr_query_id": "fake-query-id",
+    });
+    std::fs::write(tmp.path().join("config.json"), config.to_string()).unwrap();
+
+    cmd()
+        .args(["fetch"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Fetching"))
+        .stderr(predicate::str::is_empty().not());
+}
+
 // ── list ────────────────────────────────────────────────────
 
 #[test]
@@ -734,6 +830,120 @@ fn detach_file_from_declaration() {
         !full_path.exists(),
         "attachment file should be deleted from disk"
     );
+}
+
+#[test]
+fn attach_nonexistent_file_fails() {
+    let (tmp, data_dir) = setup_env();
+    let storage = Storage::with_dir(&data_dir);
+    make_draft(&storage, "att-nf");
+
+    cmd()
+        .args(["attach", "att-nf", "/no/such/file.txt"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("file not found"));
+}
+
+#[test]
+fn attach_delete_without_identifier_fails() {
+    let (tmp, data_dir) = setup_env();
+    let storage = Storage::with_dir(&data_dir);
+    make_draft(&storage, "att-noid");
+
+    cmd()
+        .args(["attach", "att-noid", "--delete"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("file identifier required"));
+}
+
+// ── export edge cases ──────────────────────────────────────
+
+#[test]
+fn export_no_xml_no_attachments() {
+    let (tmp, data_dir) = setup_env();
+    let storage = Storage::with_dir(&data_dir);
+    let decl = Declaration {
+        declaration_id: "exp-empty".into(),
+        r#type: DeclarationType::Ppdg3r,
+        status: DeclarationStatus::Draft,
+        period_start: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+        period_end: NaiveDate::from_ymd_opt(2025, 6, 30).unwrap(),
+        created_at: Local::now().naive_local(),
+        submitted_at: None,
+        paid_at: None,
+        file_path: None,
+        xml_content: None,
+        report_data: None,
+        metadata: IndexMap::new(),
+        attached_files: IndexMap::new(),
+    };
+    storage.save_declaration(&decl).unwrap();
+
+    let export_dir = tmp.path().join("export-empty");
+    std::fs::create_dir_all(&export_dir).unwrap();
+
+    cmd()
+        .args(["export", "exp-empty", "-o", export_dir.to_str().unwrap()])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No files to export"));
+}
+
+// ── report edge cases ──────────────────────────────────────
+
+#[test]
+fn report_gains_no_trades_shows_error() {
+    let (tmp, data_dir) = setup_env();
+    let config = serde_json::json!({
+        "data_dir": data_dir.to_str().unwrap(),
+        "output_folder": tmp.path().join("output").to_str().unwrap(),
+    });
+    std::fs::write(tmp.path().join("config.json"), config.to_string()).unwrap();
+    std::fs::create_dir_all(tmp.path().join("output")).unwrap();
+
+    cmd()
+        .args([
+            "report",
+            "--type",
+            "gains",
+            "--half",
+            "2025-1",
+            "-o",
+            tmp.path().join("output").to_str().unwrap(),
+        ])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("no taxable sales"));
+}
+
+#[test]
+fn report_income_force_flag() {
+    let (tmp, _data_dir) = setup_report_env();
+    let output_dir = tmp.path().join("force-output");
+
+    cmd()
+        .args([
+            "report",
+            "--type",
+            "income",
+            "--half",
+            "2025-1",
+            "--force",
+            "-o",
+            output_dir.to_str().unwrap(),
+        ])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .success()
+        .stdout(
+            predicate::str::contains("WARNING").and(predicate::str::contains("Report written")),
+        );
 }
 
 // ── stat ────────────────────────────────────────────────────

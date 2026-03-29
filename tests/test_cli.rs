@@ -80,6 +80,17 @@ fn export_flex_stdout_flag() {
 }
 
 #[test]
+fn gui_binary_dry_run_exits_cleanly() {
+    if let Ok(mut gui_cmd) = Command::cargo_bin("ibkr-porez-gui") {
+        gui_cmd
+            .env("IBKR_POREZ_DRY_RUN", "1")
+            .assert()
+            .success()
+            .stderr(predicate::str::contains("dry run"));
+    }
+}
+
+#[test]
 fn no_subcommand_dispatches_to_gui() {
     let output = cmd()
         .env("IBKR_POREZ_DRY_RUN", "1")

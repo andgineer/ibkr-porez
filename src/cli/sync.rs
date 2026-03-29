@@ -10,6 +10,7 @@ use ibkr_porez::holidays::HolidayCalendar;
 use ibkr_porez::ibkr_flex::IBKRClient;
 use ibkr_porez::models::{DeclarationType, IncomeDeclarationEntry, TaxReportEntry, UserConfig};
 use ibkr_porez::openholiday::OpenHolidayClient;
+use ibkr_porez::sync::SyncResult;
 use ibkr_porez::sync::{SyncOptions, run_sync};
 
 #[allow(clippy::needless_pass_by_value, clippy::unnecessary_wraps)]
@@ -44,6 +45,11 @@ pub fn run(output_dir: Option<PathBuf>, lookback: Option<i64>) -> Result<()> {
         }
     };
 
+    print_sync_result(&result);
+    Ok(())
+}
+
+fn print_sync_result(result: &SyncResult) {
     if result.created_declarations.is_empty() {
         output::warning("No new declarations created.");
     } else {
@@ -58,7 +64,7 @@ pub fn run(output_dir: Option<PathBuf>, lookback: Option<i64>) -> Result<()> {
                 if decl.r#type == DeclarationType::Ppdg3r {
                     let entries: Vec<TaxReportEntry> = data
                         .iter()
-                        .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                        .filter_map(|v| serde_json::from_value::<TaxReportEntry>(v.clone()).ok())
                         .collect();
                     if !entries.is_empty() {
                         println!("\n  Declaration Data (Part 4)");
@@ -67,7 +73,9 @@ pub fn run(output_dir: Option<PathBuf>, lookback: Option<i64>) -> Result<()> {
                 } else {
                     let entries: Vec<IncomeDeclarationEntry> = data
                         .iter()
-                        .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                        .filter_map(|v| {
+                            serde_json::from_value::<IncomeDeclarationEntry>(v.clone()).ok()
+                        })
                         .collect();
                     for entry in &entries {
                         tables::print_income_entry(entry);
@@ -93,8 +101,6 @@ pub fn run(output_dir: Option<PathBuf>, lookback: Option<i64>) -> Result<()> {
     output::dim("Use `ibkr-porez show <ID>` for details.");
     output::dim("Use `ibkr-porez submit <ID> [<ID> ...]` to mark as submitted.");
     output::dim("Use `ibkr-porez pay <ID> [<ID> ...]` to mark as paid.");
-
-    Ok(())
 }
 
 fn init_calendar_with_sync(cfg: &UserConfig) -> HolidayCalendar {
@@ -175,6 +181,126 @@ mod tests {
             values.len() > 1,
             "threshold should vary across years, got single value"
         );
+    }
+
+    use chrono::NaiveDate;
+    use ibkr_porez::models::{Declaration, DeclarationStatus};
+
+    fn make_sync_result(
+        decls: Vec<Declaration>,
+        gains_skipped: bool,
+        income_skipped: bool,
+        income_error: Option<String>,
+    ) -> SyncResult {
+        SyncResult {
+            created_declarations: decls,
+            gains_skipped,
+            income_skipped,
+            income_error,
+            end_period: NaiveDate::from_ymd_opt(2025, 6, 30).unwrap(),
+        }
+    }
+
+    fn sample_declaration(id: &str, dtype: DeclarationType) -> Declaration {
+        Declaration {
+            declaration_id: id.into(),
+            r#type: dtype,
+            status: DeclarationStatus::Draft,
+            period_start: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            period_end: NaiveDate::from_ymd_opt(2025, 6, 30).unwrap(),
+            created_at: chrono::Local::now().naive_local(),
+            submitted_at: None,
+            paid_at: None,
+            file_path: None,
+            xml_content: Some("<xml/>".into()),
+            report_data: None,
+            metadata: indexmap::IndexMap::new(),
+            attached_files: indexmap::IndexMap::new(),
+        }
+    }
+
+    #[test]
+    fn print_no_declarations() {
+        let result = make_sync_result(vec![], false, false, None);
+        print_sync_result(&result);
+    }
+
+    #[test]
+    fn print_gains_skipped() {
+        let result = make_sync_result(vec![], true, false, None);
+        print_sync_result(&result);
+    }
+
+    #[test]
+    fn print_income_skipped() {
+        let result = make_sync_result(vec![], false, true, None);
+        print_sync_result(&result);
+    }
+
+    #[test]
+    fn print_both_skipped() {
+        let result = make_sync_result(vec![], true, true, None);
+        print_sync_result(&result);
+    }
+
+    #[test]
+    fn print_income_error() {
+        let result = make_sync_result(vec![], false, false, Some("NBS rate missing".into()));
+        print_sync_result(&result);
+    }
+
+    #[test]
+    fn print_created_ppdg3r_declaration() {
+        let decl = sample_declaration("gains-1", DeclarationType::Ppdg3r);
+        let result = make_sync_result(vec![decl], false, false, None);
+        print_sync_result(&result);
+    }
+
+    #[test]
+    fn print_created_ppo_declaration() {
+        let decl = sample_declaration("income-1", DeclarationType::Ppo);
+        let result = make_sync_result(vec![decl], false, false, None);
+        print_sync_result(&result);
+    }
+
+    #[test]
+    fn print_ppdg3r_with_report_data() {
+        let mut decl = sample_declaration("gains-2", DeclarationType::Ppdg3r);
+        let entry = TaxReportEntry {
+            ticker: "AAPL".into(),
+            quantity: rust_decimal::Decimal::new(10, 0),
+            sale_date: NaiveDate::from_ymd_opt(2025, 3, 15).unwrap(),
+            sale_price: rust_decimal::Decimal::new(174, 0),
+            sale_exchange_rate: rust_decimal::Decimal::new(108, 0),
+            sale_value_rsd: rust_decimal::Decimal::new(18792, 0),
+            purchase_date: NaiveDate::from_ymd_opt(2025, 1, 10).unwrap(),
+            purchase_price: rust_decimal::Decimal::new(150, 0),
+            purchase_exchange_rate: rust_decimal::Decimal::new(108, 0),
+            purchase_value_rsd: rust_decimal::Decimal::new(16200, 0),
+            capital_gain_rsd: rust_decimal::Decimal::new(2592, 0),
+            is_tax_exempt: false,
+        };
+        decl.report_data = Some(vec![serde_json::to_value(entry).unwrap()]);
+        let result = make_sync_result(vec![decl], false, false, None);
+        print_sync_result(&result);
+    }
+
+    #[test]
+    fn print_ppo_with_report_data() {
+        let mut decl = sample_declaration("income-2", DeclarationType::Ppo);
+        let entry = IncomeDeclarationEntry {
+            date: NaiveDate::from_ymd_opt(2025, 3, 10).unwrap(),
+            symbol_or_currency: Some("AAPL".into()),
+            sifra_vrste_prihoda: "1070".into(),
+            bruto_prihod: rust_decimal::Decimal::new(10800, 2),
+            osnovica_za_porez: rust_decimal::Decimal::new(10800, 2),
+            obracunati_porez: rust_decimal::Decimal::new(1620, 2),
+            porez_placen_drugoj_drzavi: rust_decimal::Decimal::new(1620, 2),
+            porez_za_uplatu: rust_decimal::Decimal::ZERO,
+        };
+        decl.report_data = Some(vec![serde_json::to_value(entry).unwrap()]);
+        let result = make_sync_result(vec![decl], false, false, None);
+        print_sync_result(&result);
     }
 
     #[test]
