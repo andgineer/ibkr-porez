@@ -76,11 +76,6 @@ fn wgpu_adapter_selector() -> eframe::egui_wgpu::NativeAdapterSelectorMethod {
 }
 
 fn main() {
-    if std::env::var("IBKR_POREZ_DRY_RUN").is_ok() {
-        eprintln!("GUI launched (dry run)");
-        return;
-    }
-
     setup_panic_hook();
 
     let title = format!("IBKR Porez v{VERSION}");

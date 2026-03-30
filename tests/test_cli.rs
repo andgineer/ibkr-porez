@@ -80,27 +80,60 @@ fn export_flex_stdout_flag() {
 }
 
 #[test]
-fn gui_binary_dry_run_exits_cleanly() {
-    if let Ok(mut gui_cmd) = Command::cargo_bin("ibkr-porez-gui") {
-        gui_cmd
-            .env("IBKR_POREZ_DRY_RUN", "1")
-            .assert()
-            .success()
-            .stderr(predicate::str::contains("dry run"));
-    }
-}
-
-#[test]
 fn no_subcommand_dispatches_to_gui() {
-    let output = cmd()
-        .env("IBKR_POREZ_DRY_RUN", "1")
+    // `launch_gui()` looks for a sibling `ibkr-porez-gui` executable next to the
+    // current CLI binary. This test copies the CLI into a temp dir, places a
+    // fake GUI executable beside it, and verifies the fake GUI was launched by
+    // checking that it created a marker file.
+    let tmp = tempfile::TempDir::new().unwrap();
+    let marker = tmp.path().join("gui-launched.marker");
+
+    let cli_src = Command::cargo_bin("ibkr-porez")
+        .unwrap()
+        .get_program()
+        .to_owned();
+    let cli_name = format!("ibkr-porez{}", std::env::consts::EXE_SUFFIX);
+    let cli_copy = tmp.path().join(&cli_name);
+    std::fs::copy(&cli_src, &cli_copy).unwrap();
+
+    let gui_name = format!("ibkr-porez-gui{}", std::env::consts::EXE_SUFFIX);
+    let fake_gui = tmp.path().join(&gui_name);
+    let fake_src = tmp.path().join("fake_gui.rs");
+    std::fs::write(
+        &fake_src,
+        r#"fn main() {
+            if let Ok(p) = std::env::var("_IBKR_TEST_MARKER") {
+                let _ = std::fs::write(p, "ok");
+            }
+        }"#,
+    )
+    .unwrap();
+
+    let rc = std::process::Command::new("rustc")
+        .args([fake_src.to_str().unwrap(), "-o", fake_gui.to_str().unwrap()])
+        .status()
+        .expect("rustc must be available");
+    assert!(rc.success(), "failed to compile fake GUI binary");
+
+    assert!(!marker.exists(), "precondition: marker must not exist yet");
+
+    let output = std::process::Command::new(&cli_copy)
+        .env("_IBKR_TEST_MARKER", &marker)
         .output()
-        .expect("failed to run");
-    let stdout = String::from_utf8_lossy(&output.stdout);
+        .expect("failed to run cli copy");
+
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stdout.contains("GUI") || stderr.contains("GUI") || stderr.contains("GUI binary not found"),
-        "expected GUI dispatch attempt, got stdout={stdout:?} stderr={stderr:?}"
+        stderr.contains("Starting GUI"),
+        "CLI should attempt to launch GUI, stderr: {stderr:?}"
+    );
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while !marker.exists() && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(375));
+    }
+    assert!(
+        marker.exists(),
+        "fake GUI binary should have been spawned and created marker file"
     );
 }
 
