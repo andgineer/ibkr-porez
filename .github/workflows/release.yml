@@ -214,9 +214,10 @@ jobs:
       - name: Install WiX and UI extension
         shell: pwsh
         run: |
-          dotnet tool install --global wix
+          dotnet tool install --global wix --version "7.*"
           $env:PATH = "$env:USERPROFILE\.dotnet\tools;$env:PATH"
-          wix extension add WixToolset.UI.wixext/6.0.2
+          wix eula accept wix7
+          wix extension add WixToolset.UI.wixext
 
       - name: Build MSI
         shell: pwsh
