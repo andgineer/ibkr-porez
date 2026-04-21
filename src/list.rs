@@ -20,6 +20,6 @@ pub fn list_declarations(storage: &Storage, options: &ListOptions) -> Vec<Declar
         decls.retain(|d| d.status != DeclarationStatus::Finalized);
     }
 
-    decls.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    decls.sort_by_key(|d| std::cmp::Reverse(d.created_at));
     decls
 }

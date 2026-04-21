@@ -1,7 +1,8 @@
-/target
-/site
+target/
+site/
 *.swp
 .DS_Store
 /plans
 .vscode/
 .idea/
+.vscode/
