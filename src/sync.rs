@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use chrono::{Datelike, Duration, Local, NaiveDate};
 use tracing::{debug, info, warn};
 
@@ -110,7 +110,9 @@ pub fn run_sync(
 
     let current_last = storage.get_last_declaration_date();
     if current_last.is_none_or(|d| d < end_period) {
-        storage.set_last_declaration_date(end_period)?;
+        storage
+            .set_last_declaration_date(end_period)
+            .with_context(|| storage.io_error_hint())?;
         debug!(%end_period, "updated last_declaration_date");
     }
 
@@ -311,10 +313,15 @@ fn save_declaration<T: serde::Serialize>(
     let proper_filename = format!("{next_id:03}-{generator_filename}");
 
     let decl_path = storage.declarations_dir().join(&proper_filename);
-    std::fs::write(&decl_path, xml_content)?;
+    std::fs::write(&decl_path, xml_content).with_context(|| storage.io_error_hint())?;
 
     let output_path = output_dir.join(&proper_filename);
-    std::fs::write(&output_path, xml_content)?;
+    std::fs::write(&output_path, xml_content).with_context(|| {
+        format!(
+            "Failed to write to output directory: {}",
+            output_dir.display()
+        )
+    })?;
 
     let report_data: Vec<serde_json::Value> = entries
         .iter()
@@ -337,7 +344,9 @@ fn save_declaration<T: serde::Serialize>(
         attached_files: indexmap::IndexMap::new(),
     };
 
-    storage.save_declaration(&decl)?;
+    storage
+        .save_declaration(&decl)
+        .with_context(|| storage.io_error_hint())?;
     Ok(decl)
 }
 

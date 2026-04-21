@@ -29,10 +29,14 @@ pub fn fetch_and_import(
         .context("failed to fetch IBKR Flex Query report")?;
 
     let report_date = Local::now().date_naive();
-    storage.save_raw_report(&xml, report_date)?;
+    storage
+        .save_raw_report(&xml, report_date)
+        .with_context(|| storage.io_error_hint())?;
 
     let transactions = parse_flex_report(&xml)?;
-    let (inserted, updated) = storage.save_transactions(&transactions)?;
+    let (inserted, updated) = storage
+        .save_transactions(&transactions)
+        .with_context(|| storage.io_error_hint())?;
     info!(inserted, updated, "saved transactions");
 
     prefetch_rates(storage, nbs, &transactions);

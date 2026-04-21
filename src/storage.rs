@@ -90,6 +90,19 @@ impl Storage {
         &self.data_dir
     }
 
+    /// Return a diagnostic hint when a storage I/O operation fails.
+    /// Helps the user understand that the error originates from the data
+    /// directory (which may be on a cloud-synced or network filesystem).
+    #[must_use]
+    pub fn io_error_hint(&self) -> String {
+        format!(
+            "Failed to write to data directory: {}\n\
+             If this directory is on a cloud-synced or network filesystem, \
+             check that the sync service is running and responsive.",
+            self.data_dir.display()
+        )
+    }
+
     #[must_use]
     pub fn declarations_dir(&self) -> &Path {
         &self.declarations_dir
