@@ -52,7 +52,7 @@ pub fn run(file_path: Option<PathBuf>, import_type: LibImportType) -> Result<()>
             }
         }
         Err(e) => {
-            output::error(&format!("{e}"));
+            output::error(&format!("{e:#}"));
         }
     }
     Ok(())

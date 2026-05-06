@@ -237,6 +237,12 @@ impl App {
         self.selected.clear();
     }
 
+    pub fn set_error(&mut self, msg: impl Into<String>) {
+        let msg = msg.into();
+        tracing::error!("{msg}");
+        self.error_dialog = Some(msg);
+    }
+
     pub fn apply_bulk_action(&mut self) {
         let manager = DeclarationManager::new(&self.storage);
         let ids: Vec<String> = self.selected.iter().cloned().collect();
@@ -260,7 +266,7 @@ impl App {
             ));
         }
         if result.has_errors() {
-            self.error_dialog = Some(result.error_summary());
+            self.set_error(result.error_summary());
         }
         if !result.has_errors() {
             self.selected.clear();
@@ -271,7 +277,7 @@ impl App {
     pub fn row_submit(&mut self, id: &str) {
         let manager = DeclarationManager::new(&self.storage);
         if let Err(e) = manager.submit(&[id]) {
-            self.error_dialog = Some(e.to_string());
+            self.set_error(format!("{e:#}"));
         }
         self.refresh_declarations();
     }
@@ -279,7 +285,7 @@ impl App {
     pub fn row_pay(&mut self, id: &str) {
         let manager = DeclarationManager::new(&self.storage);
         if let Err(e) = manager.pay(&[id]) {
-            self.error_dialog = Some(e.to_string());
+            self.set_error(format!("{e:#}"));
         }
         self.refresh_declarations();
     }
@@ -287,7 +293,7 @@ impl App {
     pub fn row_revert(&mut self, id: &str) {
         let manager = DeclarationManager::new(&self.storage);
         if let Err(e) = manager.revert(&[id]) {
-            self.error_dialog = Some(e.to_string());
+            self.set_error(format!("{e:#}"));
         }
         self.refresh_declarations();
     }
@@ -334,7 +340,7 @@ impl App {
 
         let issues = app_config::validate_config(&self.config);
         if !issues.is_empty() {
-            self.error_dialog = Some(app_config::format_config_issues(&issues));
+            self.set_error(app_config::format_config_issues(&issues));
             return;
         }
 
@@ -360,7 +366,7 @@ impl App {
                 ..Default::default()
             };
             let result = crate::sync::run_sync(&storage, &nbs, &config, &holidays, &opts, &ibkr)
-                .map_err(|e| e.to_string());
+                .map_err(|e| format!("{e:#}"));
             let _ = tx.send(BackgroundResult::SyncDone(result));
         });
     }
@@ -383,11 +389,11 @@ impl App {
                             self.status_message = Some((msg, styles::MessageKind::Success));
                             self.warning_banner = check_holiday_warning(&self.config);
                             if let Some(err) = r.income_error {
-                                self.error_dialog = Some(err);
+                                self.set_error(err);
                             }
                         }
                         Err(e) => {
-                            self.error_dialog = Some(e);
+                            self.set_error(e);
                             self.status_message = None;
                         }
                     }
@@ -408,7 +414,7 @@ impl App {
                             ));
                         }
                         Err(e) => {
-                            self.error_dialog = Some(e);
+                            self.set_error(e);
                             self.status_message = None;
                         }
                     }
@@ -436,7 +442,7 @@ impl App {
                                 Some((format!("Exported to {path}"), styles::MessageKind::Success));
                         }
                         Err(e) => {
-                            self.error_dialog = Some(e);
+                            self.set_error(e);
                         }
                     }
                 }

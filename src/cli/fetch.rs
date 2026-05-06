@@ -8,7 +8,7 @@ pub fn run() -> Result<()> {
     let cfg = load_config_or_exit();
 
     if let Err(e) = ibkr_porez::fetch::validate_ibkr_config(&cfg) {
-        output::error(&format!("{e}"));
+        output::error(&format!("{e:#}"));
         return Ok(());
     }
 
@@ -27,7 +27,7 @@ pub fn run() -> Result<()> {
         }
         Err(e) => {
             sp.finish_and_clear();
-            output::error(&format!("{e}"));
+            output::error(&format!("{e:#}"));
             return Ok(());
         }
     };

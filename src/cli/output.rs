@@ -7,10 +7,12 @@ pub fn success(msg: &str) {
 }
 
 pub fn warning(msg: &str) {
+    tracing::warn!("{msg}");
     println!("{}", style(msg).yellow());
 }
 
 pub fn error(msg: &str) {
+    tracing::error!("{msg}");
     eprintln!("{}", style(msg).red());
 }
 

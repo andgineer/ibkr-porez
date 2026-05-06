@@ -54,7 +54,7 @@ pub fn run(
             ) {
                 Ok(r) => r,
                 Err(e) => {
-                    output::error(&format!("{e}"));
+                    output::error(&format!("{e:#}"));
                     return Ok(());
                 }
             };
@@ -97,7 +97,7 @@ pub fn run(
             ) {
                 Ok(r) => r,
                 Err(e) => {
-                    output::error(&format!("{e}"));
+                    output::error(&format!("{e:#}"));
                     return Ok(());
                 }
             };

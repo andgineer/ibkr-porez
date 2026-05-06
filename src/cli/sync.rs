@@ -40,7 +40,7 @@ pub fn run(output_dir: Option<PathBuf>, lookback: Option<i64>) -> Result<()> {
         }
         Err(e) => {
             sp.finish_and_clear();
-            output::error(&format!("{e}"));
+            output::error(&format!("{e:#}"));
             return Ok(());
         }
     };

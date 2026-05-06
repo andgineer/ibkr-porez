@@ -12,6 +12,7 @@ pub mod ibkr_csv;
 pub mod ibkr_flex;
 pub mod import;
 pub mod list;
+pub mod logging;
 pub mod models;
 pub mod nbs;
 pub mod openholiday;

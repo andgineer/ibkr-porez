@@ -126,7 +126,7 @@ fn start_import(app: &mut App) {
             &std::path::PathBuf::from(path),
             file_type,
         )
-        .map_err(|e| e.to_string());
+        .map_err(|e| format!("{e:#}"));
         let _ = tx.send(BackgroundResult::ImportDone(result));
     });
 }

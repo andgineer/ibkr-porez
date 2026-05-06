@@ -150,17 +150,7 @@ enum Commands {
 
 fn main() {
     let cli = Cli::parse();
-
-    if cli.verbose {
-        tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::DEBUG)
-            .with_target(false)
-            .init();
-    } else {
-        tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::WARN)
-            .init();
-    }
+    let _log_guard = ibkr_porez::logging::init(cli.verbose);
 
     let result = match cli.command {
         Some(Commands::Config) => cli::config::run(),

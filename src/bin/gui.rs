@@ -8,35 +8,16 @@ fn window_title() -> String {
     format!("IBKR Porez v{VERSION}")
 }
 
-fn log_file_path() -> std::path::PathBuf {
-    dirs::config_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("ibkr-porez")
-        .join("gui.log")
-}
-
 fn setup_panic_hook() {
-    let log_path = log_file_path();
     std::panic::set_hook(Box::new(move |info| {
-        let msg = format!(
-            "{}\n{info}\n",
-            chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
-        );
-        let _ = std::fs::create_dir_all(log_path.parent().unwrap());
-        let _ = std::fs::write(&log_path, &msg);
-        eprintln!("{msg}");
+        tracing::error!("PANIC: {info}");
+        eprintln!("PANIC: {info}");
     }));
 }
 
 fn log_error(msg: &str) {
+    tracing::error!("{msg}");
     eprintln!("{msg}");
-    let log_path = log_file_path();
-    let _ = std::fs::create_dir_all(log_path.parent().unwrap());
-    let timestamped = format!(
-        "{}\n{msg}\n",
-        chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
-    );
-    let _ = std::fs::write(&log_path, &timestamped);
 }
 
 fn make_viewport() -> egui::ViewportBuilder {
@@ -102,6 +83,7 @@ fn make_native_options(title: &str) -> eframe::NativeOptions {
 
 fn main() {
     setup_panic_hook();
+    let _log_guard = ibkr_porez::logging::init(false);
 
     let title = window_title();
     let options = make_native_options(&title);
