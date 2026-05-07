@@ -287,6 +287,7 @@ jobs:
             --method POST -f tag_name="${TAG}" --jq '.body' 2>/dev/null || echo "")
           { echo "$AUTO_NOTES"; echo ""; cat body.md; } > combined_body.md
           gh release create "${TAG}" \
+            --repo "${REPO}" \
             --title "${TAG}" \
             --notes-file combined_body.md \
             *.tar.gz *.zip *.pkg *.msi
