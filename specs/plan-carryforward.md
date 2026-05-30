@@ -1,143 +1,417 @@
 # Capital Loss Carryforward Plan
 
 ## Context
-This is a good-to-have enhancement, not a core correctness blocker for the current app. The existing Python app works without it because taxpayers can still file `PPDG-3R` and the tax authority ultimately issues the official ruling. The value of this feature is convenience and better preliminary calculations, especially for users who already have approved loss rulings from earlier periods.
 
-The feature should be tracked as a separate follow-up from the main tax-report port.
+This is a convenience and completeness feature for `PPDG-3R` capital gains reporting.
 
-## Why It Matters
-Serbian capital losses can be carried forward for up to 5 years, but only once they are recognized by the tax authority. Today the app computes only the current declaration period and ignores prior approved loss balances. That means:
+The application already calculates gains and losses from transaction data. However, Serbian tax law allows capital losses to be carried forward only after they are officially recognized by the Tax Administration.
 
-- current-period `PPDG-3R` previews can overstate tax due
-- users must manually remember and apply prior loss rulings
-- the app has no audit trail for what carryforward was consumed and what remains
+The tax authority may approve amounts that differ from the application's calculations due to CPI adjustments, corrections, or assessment decisions.
 
-Because the tax authority is the source of truth, the implementation should model approved loss carryforward, not just raw transaction losses.
+Therefore the system must distinguish between:
+
+* application-calculated values
+* tax-authority-recognized values
+
+Carryforward calculations must always use recognized values when available.
+
+---
+
+## Goals
+
+Implement support for:
+
+* tax-authority assessments attached to declarations
+* recognized capital loss carryforward
+* 5-year loss expiration
+* automatic application of eligible carryforward losses to future gains
+* complete audit trail of carryforward creation and consumption
+
+---
 
 ## Scope
-Implement carryforward only for `PPDG-3R` capital gains declarations.
 
 In scope:
 
-- persist approved carryforward loss vintages with 5-year expiry
-- let gains reporting consume eligible prior losses in chronological order
-- store per-declaration opening balance, amount used, and closing balance
-- support manual/admin entry of tax-authority-approved loss amounts when a ruling arrives
+* persist tax authority assessment data
+* persist recognized capital loss vintages
+* apply carryforward losses to future gain periods
+* track remaining balances
+* preserve historical snapshots on declarations
+* manual entry of assessment data
 
-Out of scope for this feature:
+Out of scope:
 
-- changing current FIFO trade matching
-- changing CPI/inflation handling done by the tax authority
-- automatic OCR/parsing of official rulings
-- reworking `PP-OPO` income flows
+* FIFO matching changes
+* CPI calculation logic
+* OCR of tax rulings
+* automatic parsing of official documents
+* PP-OPO income declarations
+
+---
 
 ## Design Principles
-- Treat tax-authority-approved loss amounts as canonical. Raw computed losses are not enough.
-- Keep the feature additive: existing declarations and sync flows should still work if no carryforward data exists.
-- Prefer a dedicated typed ledger over ad hoc `Declaration.metadata` keys for the core state.
-- Make recomputation explicit. Do not silently rewrite historical declarations on re-sync.
 
-## Proposed Data Model
-Add a typed carryforward record in `src/models.rs`, for example:
+### Tax Authority Is The Source Of Truth
 
-- `origin_declaration_id`
-- `origin_period_start`
-- `origin_period_end`
-- `recognized_loss_rsd`
-- `remaining_loss_rsd`
-- `used_loss_rsd`
-- `expires_after_year`
-- `assessment_reference` or ruling note fields
+Application calculations are preliminary.
 
-Add a top-level persisted collection in storage, separate from declarations, for example `capital_losses.json`, managed by `src/storage.rs`.
+Whenever assessment data exists:
 
-Keep declaration-level snapshots in `Declaration.metadata` for traceability:
+* recognized values override calculated values
+* carryforward creation uses recognized values only
+* tax reporting screens should display both values
 
-- `opening_carryforward_rsd`
-- `carryforward_used_rsd`
-- `closing_carryforward_rsd`
-- `carryforward_sources` (list of origin declarations or vintages used)
+### Immutable History
 
-## Workflow Integration
-### 1. Assessment Entry
-Extend the future declaration manager flow in `src/declaration_manager.rs` so that when a `PPDG-3R` ruling is recorded, the app can also save:
+Historical declarations must not be silently modified.
 
-- approved loss amount from the ruling
-- whether the ruling created a new carryforward vintage
-- optional attachment or reference to the ruling document
+Carryforward consumption should be recorded as snapshots at declaration creation time.
 
-This should be the point where carryforward becomes available for later periods.
+### Explicit Recalculation
 
-### 2. Gains Report Generation
-Extend the future gains flow in `src/report_gains.rs`:
+Recomputation must be user initiated.
 
-- compute current-period gains and losses as today
-- load all non-expired carryforward vintages from storage
-- apply them only after current-period same-period netting is computed
-- consume oldest eligible vintages first
-- record exactly which vintages were consumed and by how much
+Sync operations must never automatically rewrite historical carryforward usage.
 
-The resulting declaration should preserve both:
+---
 
-- raw same-period result
-- carryforward-adjusted tax base shown to the user
+## Data Model
+
+### Declaration Assessment Data
+
+Extend declaration metadata with optional assessment information.
+
+```text
+assessment_date
+assessment_reference
+assessment_notes
+
+assessed_tax_rsd
+
+recognized_capital_gain_rsd
+recognized_capital_loss_rsd
+```
+
+All three monetary fields (`assessed_tax_rsd`, `recognized_capital_gain_rsd`, `recognized_capital_loss_rsd`) are entered together in a single assessment command and stored atomically.
+
+Purpose:
+
+* preserve official ruling results
+* explain differences between calculated and recognized values
+* support future audits
+
+Example:
+
+```text
+Calculated gain/loss:  -22,575.17 RSD  (loss)
+Recognized gain/loss:  -44,471.30 RSD  (loss)
+Assessed tax:               0.00 RSD
+```
+
+Both the application-calculated values and the authority-recognized values must be retained. The recognized value is the amount used for carryforward and for any display showing the official result. The calculated value is kept for audit comparison only.
+
+---
+
+### Carryforward Vintage
+
+Add a dedicated model:
+
+```text
+id
+
+origin_declaration_id
+
+assessment_reference
+
+origin_period_start
+origin_period_end
+
+recognized_loss_rsd
+
+remaining_loss_rsd
+
+created_at
+expiration_tax_year
+
+notes
+```
+
+Definitions:
+
+* recognized_loss_rsd = loss approved by tax authority
+* remaining_loss_rsd = unused balance
+* expiration_tax_year = last year in which loss may be used
+
+---
+
+### Carryforward Ledger
+
+Persist a separate ledger:
+
+```text
+capital_losses.json
+```
+
+The ledger is the authoritative carryforward store.
+
+Carryforward balances must not be reconstructed from declaration metadata during normal operation.
+
+---
+
+## Declaration Snapshot Fields
+
+Store carryforward usage on every declaration.
+
+```text
+opening_carryforward_rsd
+carryforward_used_rsd
+closing_carryforward_rsd
+
+carryforward_sources
+```
+
+Where:
+
+```text
+carryforward_sources = [
+  {
+    vintage_id,
+    amount_used
+  }
+]
+```
+
+This guarantees historical traceability.
+
+---
+
+## Workflow
+
+### 1. Declaration Creation
+
+Generate declaration normally.
+
+Store:
+
+```text
+calculated_gain_rsd
+calculated_loss_rsd
+```
+
+No carryforward is created yet.
+
+The declaration is still awaiting tax authority assessment.
+
+---
+
+### 2. Assessment Entry
+
+When a ruling is received, the user records all of the following in a single command:
+
+```text
+assessed_tax_rsd           # tax amount as determined by the authority
+recognized_capital_gain_rsd  # gain recognized by the authority (may differ from calculated)
+recognized_capital_loss_rsd  # loss recognized by the authority (may differ from calculated)
+assessment_reference
+assessment_date
+```
+
+All three monetary fields are optional individually, but at least one of `assessed_tax_rsd`, `recognized_capital_gain_rsd`, or `recognized_capital_loss_rsd` must be provided.
+
+The recognized gain/loss amounts may differ from the application's own calculation due to CPI adjustments, corrections, or the authority's own assessment methodology. Both values (calculated and recognized) must be preserved and displayed side by side.
+
+If:
+
+```text
+recognized_capital_loss_rsd > 0
+```
+
+create a new carryforward vintage.
+
+Carryforward must never be created from calculated losses.
+
+Only recognized losses create carryforward.
+
+---
+
+### 3. Future Gain Declaration
+
+When generating a new gain report:
+
+1. Calculate current-period gain/loss.
+2. Perform normal same-period netting.
+3. Load all active carryforward vintages.
+4. Exclude expired vintages.
+5. Apply eligible vintages oldest-first.
+6. Reduce taxable base.
+7. Record consumption snapshot.
+
+Output should show:
+
+```text
+Calculated tax base
+
+Carryforward applied
+
+Adjusted tax base
+
+Estimated tax
+```
+
+---
 
 ## Eligibility Rules
-Model these rules explicitly:
 
-- only approved prior losses are eligible
-- loss carryforward expires after 5 years
-- zero or negative current tax base means no prior carryforward is consumed
-- partially consumed vintages remain available with reduced balance
-- fully consumed or expired vintages remain in history but are no longer active
+### Eligible Losses
 
-Open legal and implementation note:
+A loss is eligible only if:
 
-- within-period chronological loss-offset rules remain separate from this feature and should not be mixed into the carryforward ledger logic
+* it was recognized by the tax authority
+* it has remaining balance
+* it has not expired
 
-## Sync and Recompute Strategy
-Integrate with the future sync flow in `src/sync.rs` conservatively:
+### Expiration
 
-- new declarations should use the current carryforward ledger at creation time
-- existing declarations should not be silently recalculated on re-sync
-- if historical transactions change, require an explicit recompute or backfill flow rather than automatic mutation
+Under Serbian tax law (Zakon o porezu na dohodak građana, Article 79), capital losses may be carried forward for up to **five tax years** following the year in which the loss was recognized.
 
-Add a dedicated maintenance path later if needed:
+Specifically:
 
-- rebuild carryforward ledger from prior declarations and assessment data
-- detect mismatches between declaration snapshots and current ledger balances
+* `expiration_tax_year = origin_tax_year + 5`
+* A vintage created from a loss recognized in tax year Y may be used in declarations for years Y+1 through Y+5 inclusive.
+* If a vintage is partially consumed across multiple declarations, the remaining balance continues to be eligible until the expiration year or until fully consumed.
 
-## Migration and Backfill
-For existing users:
+Expired vintages:
 
-- start with an empty carryforward ledger by default
-- allow manual creation of carryforward vintages from already issued rulings
-- optionally add a later backfill helper that derives candidate loss vintages from historical `PPDG-3R` declarations, but requires user confirmation because raw declaration losses may differ from officially recognized losses
+* remain visible in history
+* cannot be consumed
+
+### Consumption Order
+
+Consumption must always be deterministic.
+
+Rule:
+
+```text
+Oldest eligible vintage first.
+```
+
+No alternative ordering is allowed.
+
+### Negative Or Zero Base
+
+If:
+
+```text
+current taxable base <= 0
+```
+
+then:
+
+```text
+carryforward_used = 0
+```
+
+Existing carryforward balances remain untouched.
+
+### Partial Consumption
+
+A vintage may be partially consumed.
+
+The remaining balance stays available until:
+
+* fully consumed
+* expired
+
+---
+
+## Recompute Strategy
+
+Normal sync operations must not modify:
+
+* historical assessments
+* carryforward balances
+* carryforward consumption snapshots
+
+Provide a future maintenance tool for:
+
+* ledger rebuild
+* validation
+* mismatch detection
+
+This action must be explicit and user initiated.
+
+---
+
+## Migration
+
+Existing users start with:
+
+```text
+empty carryforward ledger
+```
+
+Users may manually enter prior assessments.
+
+Future backfill tooling may suggest carryforward vintages from historical declarations, but user confirmation is required because:
+
+```text
+calculated loss != recognized loss
+```
+
+in many real-world cases.
+
+---
 
 ## Test Plan
-Add tests around:
 
-- creating a new carryforward vintage from an approved ruling
-- applying one prior loss vintage to a later gain period
-- partial consumption across multiple future periods
-- expiry after 5 years
-- multiple vintages consumed oldest-first
-- zero-gain or loss-only periods leaving prior balances untouched
-- re-sync idempotency: same period must not double-consume carryforward
-- migration with no carryforward data present
+Add tests for:
 
-## Main Files To Touch Later
-- `src/models.rs`
-- `src/storage.rs`
-- `src/report_gains.rs`
-- `src/declaration_manager.rs`
-- `src/sync.rs`
-- `plans/plan-rust-4-tax-reports.md`
+* assessment entry creates carryforward vintage
+* recognized loss differs from calculated loss
+* carryforward uses recognized loss amount
+* oldest-first consumption
+* partial consumption
+* multiple active vintages
+* expiration after five years
+* zero-gain periods
+* loss-only periods
+* historical snapshot preservation
+* sync idempotency
+* empty-ledger migration
+
+---
+
+## Files To Modify
+
+```text
+src/models.rs
+src/storage.rs
+src/report_gains.rs
+src/declaration_manager.rs
+src/sync.rs
+
+plans/plan-rust-4-tax-reports.md
+```
+
+---
 
 ## Key Risks
-- official rulings may approve a different loss amount than the app's raw computation
-- silent recomputation could corrupt lifecycle history or double-apply losses
-- storing carryforward only in metadata would make validation and reuse brittle
+
+* recognized amounts differ from calculated amounts
+* accidental historical recomputation
+* double consumption during sync
+* storing carryforward only in metadata
+* using calculated losses instead of recognized losses
+
+---
 
 ## Recommendation
-Implement this only after the main gains and declaration flow is stable. It improves completeness and user convenience, but the absence of this feature does not block basic filing because users can still rely on tax authority rulings and manual follow-up.
+
+Implement after the primary gains-reporting workflow is stable.
+
+The critical rule is:
+
+Tax-authority-recognized losses are the only losses that may generate carryforward balances.
+
+Whenever recognized values exist, they override application-calculated values for carryforward purposes.
