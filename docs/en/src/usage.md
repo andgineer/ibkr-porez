@@ -2,6 +2,20 @@
 
 # Usage
 
+## Quick Start
+
+If you want to quickly create a specific declaration:
+
+1. [Configure settings (config) ↗](#configuration-config) — once on first run
+2. [Fetch latest data (fetch) ↗](#fetch-data-fetch)
+3. [Generate report (report) ↗](#generate-tax-report-report)
+4. Upload the generated XML to the **ePorezi** portal (PPDG-3R section)
+
+To automatically receive all declarations and track their statuses —
+use [sync](#sync-data-and-create-declarations-sync) instead of steps 2–3.
+
+---
+
 ## Configuration (config)
 ```bash
 ibkr-porez config

@@ -2,6 +2,20 @@
 
 # Upotreba
 
+## Brzi start
+
+Ako želite brzo da kreirate konkretnu prijavu:
+
+1. [Podesite podatke (config) ↗](#konfiguracija-config) — jednom pri prvom pokretanju
+2. [Preuzmite najnovije podatke (fetch) ↗](#preuzimanje-podataka-fetch)
+3. [Kreirajte izveštaj (report) ↗](#generisanje-poreskog-izvestaja-report)
+4. Otpremite kreirani XML na portal **ePorezi** (sekcija PPDG-3R)
+
+Za automatsko dobijanje svih prijava i praćenje njihovih statusa —
+koristite [sync](#sinhronizacija-podataka-i-kreiranje-prijava-sync) umesto koraka 2–3.
+
+---
+
 ## Konfiguracija (config)
 ```bash
 ibkr-porez config

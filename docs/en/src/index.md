@@ -1,44 +1,35 @@
 > **English** | [Русский](../ru/) | [Українська](../uk/) | [Srpski](../rs/) | [Српски](../rs-cyr/)
 
-# Quick Start
+Automated generation of PPDG-3R (Capital Gains Tax) and PP OPO (Capital Income Tax) declarations
+for Interactive Brokers users in Serbia.
 
-Automated generation of PPDG-3R (Capital Gains Tax) and PP OPO (Capital Income Tax) reports for Interactive Brokers users in Serbia.
-The app automatically retrieves transaction data and creates a ready-to-upload XML file, converting all prices to dinars (RSD).
+The app downloads your trades from Interactive Brokers and creates a ready-to-upload XML file for ePorezi.
+It tracks the full chain of purchases and sales for each security, calculates profit and loss,
+and converts all amounts to dinars at the official NBS exchange rate on the date of each transaction —
+exactly as required by the declaration.
 
-[Install ibkr-porez ↗](installation.md)
+## Installation
 
-If you use the graphical interface, configure your data (the `Config` button), then just use `Sync` to refresh data and create declarations.
+> ⚠️ **Windows and macOS will block the download or launch** — the app is distributed for free,
+> and paying ~€100/year for a developer certificate is not an option.
+> The installation guide explains how to work around this —
+> **read it before downloading.**
 
-If you installed GUI + CLI, you can use both the graphical interface (starts as `ibkr-porez` without arguments) and the command line, see below.
+[Installation guide ↗](installation.md)
 
-The GUI and CLI use the same database.
+## How to use
 
-> ⚠️ While the GUI is running, do not use the command line,
-> as simultaneous usage may cause database errors.
-
-If you want to do everything via command line, continue with:
-
-- [Configuration (config) ↗](usage.md#configuration-config)
-- [Import Historical Data (import) ↗](usage.md#import-historical-data-import)
-
-> ⚠️ **Import is only necessary if you have more than one year of transaction history in Interactive Brokers.** Flex Query allows downloading data for no more than the last year, so older data must be loaded from a [full CSV export ↗](ibkr.md#export-full-history-for-import-command).
-
-### Quickly create the required declaration
-
-If you want to quickly create a specific declaration.
-
-[Fetch Latest Data (fetch) ↗](usage.md#fetch-data-fetch)
-
-[Generate Report (report) ↗](usage.md#generate-tax-report-report)
-
-Upload the generated XML to the **ePorezi** portal (PPDG-3R section).
+1. Open the app — it will launch with a graphical interface.
+2. Click **Config** and enter your Interactive Brokers credentials.
+3. Click **Sync** — the app will download your latest trades and create declarations.
+4. Upload the generated XML file to the **ePorezi** portal (PPDG-3R section).
 
 ![PPDG-3R](images/ppdg-3r.png)
 
-### Automatic declaration creation
+> ℹ️ If you have **more than one year of trade history** in Interactive Brokers —
+> you need to load the older data manually before the first Sync.
+> [How to do this ↗](ibkr.md#export-full-history-for-import-command)
 
-If you want to automatically receive all required declarations and track their status (submitted, paid).
+---
 
-[Fetch latest data and create declarations (sync) ↗](usage.md#sync-data-and-create-declarations-sync)
-
-[Declaration Management ↗](usage.md#declaration-management)
+Full documentation for the command line and other features — see [Usage ↗](usage.md).

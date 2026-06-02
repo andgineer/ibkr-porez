@@ -2,13 +2,11 @@
 
 # Instalacija
 
-## Instalater (GUI + CLI)
+## Instalater
 
 Preuzmite gotov instalater sa stranice izdanja:
 
 **[https://github.com/andgineer/ibkr-porez/releases](https://github.com/andgineer/ibkr-porez/releases)**
-
-Instalater uključuje grafičku aplikaciju (GUI) i komandu `ibkr-porez` za terminal (CLI).
 
 ### macOS
 
@@ -45,13 +43,16 @@ Pri pokretanju instalatera, Windows može prikazati poruku **Windows protected y
 Može se pojaviti i User Account Control dijalog sa porukom **Unknown publisher**.
 Ako je fajl preuzet sa zvanične stranice izdanja, kliknite **Yes** za nastavak.
 
-Nakon instalacije:
-- **IBKR Porez** će se pojaviti u Start meniju
-- Komanda `ibkr-porez` biće dostupna u terminalu (možda će biti potrebno ponovo pokrenuti terminal)
+Nakon instalacije, **IBKR Porez** će se pojaviti u Start meniju.
 
 ---
 
-## Preuzimanje gotovog binarnog fajla
+## Za napredne korisnike
+
+Instalater takođe instalira komandu `ibkr-porez` za terminal
+(možda će biti potrebno ponovo pokrenuti terminal nakon instalacije).
+
+### Preuzimanje gotovog binarnog fajla
 
 Takođe možete preuzeti binarne fajlove za vašu platformu sa stranice izdanja:
 
@@ -60,7 +61,7 @@ Takođe možete preuzeti binarne fajlove za vašu platformu sa stranice izdanja:
 Arhiva sadrži oba binarna fajla: `ibkr-porez` (CLI) i `ibkr-porez-gui` (GUI).
 Raspakujte arhivu i stavite fajlove negde u vaš `PATH`.
 
-## Instalacija iz izvornog koda
+### Instalacija iz izvornog koda
 
 Ako imate instaliran Rust:
 

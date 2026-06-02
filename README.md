@@ -6,19 +6,12 @@
 Automated PPDG-3R and PP-OPO tax reports generation for Interactive Brokers.
 It automatically fetches your data and generates a ready-to-upload XML files with all prices converted to RSD.
 
-# Quick Start
-
-Graphical installers are available for Windows and macOS.
-
-[Install ibkr-porez](https://andgineer.github.io/ibkr-porez/en/installation.html)
-
-If you use the graphical interface, configure your data (the `Config` button),
-then just use `Sync` to refresh data and create declarations.
-
-If CLI is your native language (AI agents and brave humans), follow
-[CLI documentation](https://andgineer.github.io/ibkr-porez/).
-
----
+📖 Documentation:
+[English](https://andgineer.github.io/ibkr-porez/en/) |
+[Русский](https://andgineer.github.io/ibkr-porez/ru/) |
+[Українська](https://andgineer.github.io/ibkr-porez/uk/) |
+[Srpski](https://andgineer.github.io/ibkr-porez/rs/) |
+[Српски](https://andgineer.github.io/ibkr-porez/rs-cyr/)
 
 ## Development
 

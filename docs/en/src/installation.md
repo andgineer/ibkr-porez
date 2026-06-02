@@ -2,13 +2,11 @@
 
 # Installation
 
-## Installer (GUI + CLI)
+## Installer
 
 Download the installer from the releases page:
 
 **[https://github.com/andgineer/ibkr-porez/releases](https://github.com/andgineer/ibkr-porez/releases)**
-
-The installer includes both the graphical application (GUI) and the `ibkr-porez` terminal command (CLI).
 
 ### macOS
 
@@ -45,13 +43,16 @@ When launching the installer, Windows may show **Windows protected your PC**:
 You may also see a User Account Control dialog with **Unknown publisher**.
 If the file came from the official releases page, click **Yes** to continue.
 
-After installation:
-- **IBKR Porez** will appear in the Start Menu
-- The `ibkr-porez` command will be available in the terminal (you may need to restart the terminal)
+After installation, **IBKR Porez** will appear in the Start Menu.
 
 ---
 
-## Download Prebuilt Binary
+## For Advanced Users
+
+The installer also sets up the `ibkr-porez` command for the terminal
+(you may need to restart the terminal after installation).
+
+### Download Prebuilt Binary
 
 You can also download binaries for your platform from the releases page:
 
@@ -60,7 +61,7 @@ You can also download binaries for your platform from the releases page:
 The archive contains both binaries: `ibkr-porez` (CLI) and `ibkr-porez-gui` (GUI).
 Extract the archive and place the files somewhere in your `PATH`.
 
-## Install from Source
+### Install from Source
 
 If you have the Rust toolchain installed:
 
