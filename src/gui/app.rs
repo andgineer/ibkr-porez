@@ -393,8 +393,15 @@ impl App {
                             }
                         }
                         Err(e) => {
-                            self.set_error(e);
-                            self.status_message = None;
+                            if e.contains("1001") || e.contains("1019") {
+                                self.status_message = Some((
+                                    "Flex Query temporarily unavailable — try again in a few minutes.".into(),
+                                    styles::MessageKind::Warning,
+                                ));
+                            } else {
+                                self.set_error(e);
+                                self.status_message = None;
+                            }
                         }
                     }
                     self.refresh_declarations();
