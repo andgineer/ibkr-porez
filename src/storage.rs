@@ -2,14 +2,14 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use chrono::NaiveDate;
+use chrono::{NaiveDate, NaiveDateTime};
 use indexmap::IndexMap;
 use rust_decimal::Decimal;
 
 use crate::config;
 use crate::models::{
     Currency, Declaration, DeclarationStatus, DeclarationType, DeclarationsFile, ExchangeRate,
-    Transaction, TransactionKey, UserConfig,
+    SyncIssue, Transaction, TransactionKey, UserConfig,
 };
 
 const RATES_FILENAME: &str = "rates.json";
@@ -369,6 +369,62 @@ impl Storage {
     pub fn set_last_declaration_date(&self, date: NaiveDate) -> Result<()> {
         let mut file = self.load_declarations_file();
         file.last_declaration_date = Some(date.format("%Y-%m-%d").to_string());
+        self.save_declarations_file(&file)
+    }
+
+    #[must_use]
+    pub fn get_last_sync_success(&self) -> Option<NaiveDateTime> {
+        let file = self.load_declarations_file();
+        file.last_sync_success
+            .as_deref()
+            .and_then(|s| NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S").ok())
+    }
+
+    pub fn set_last_sync_success(&self, at: NaiveDateTime) -> Result<()> {
+        let mut file = self.load_declarations_file();
+        file.last_sync_success = Some(at.format("%Y-%m-%dT%H:%M:%S").to_string());
+        self.save_declarations_file(&file)
+    }
+
+    #[must_use]
+    pub fn get_last_sync_issue(&self) -> Option<(NaiveDateTime, String)> {
+        let file = self.load_declarations_file();
+        file.last_sync_issue.and_then(|issue| {
+            NaiveDateTime::parse_from_str(&issue.at, "%Y-%m-%dT%H:%M:%S")
+                .ok()
+                .map(|at| (at, issue.message))
+        })
+    }
+
+    pub fn set_last_sync_issue(&self, at: NaiveDateTime, message: &str) -> Result<()> {
+        let mut file = self.load_declarations_file();
+        file.last_sync_issue = Some(SyncIssue {
+            at: at.format("%Y-%m-%dT%H:%M:%S").to_string(),
+            message: message.to_string(),
+        });
+        self.save_declarations_file(&file)
+    }
+
+    pub fn clear_last_sync_issue(&self) -> Result<()> {
+        let mut file = self.load_declarations_file();
+        file.last_sync_issue = None;
+        self.save_declarations_file(&file)
+    }
+
+    #[must_use]
+    pub fn get_pending_new_declarations(&self) -> u32 {
+        self.load_declarations_file().pending_new_declarations
+    }
+
+    pub fn add_pending_new_declarations(&self, count: u32) -> Result<()> {
+        let mut file = self.load_declarations_file();
+        file.pending_new_declarations += count;
+        self.save_declarations_file(&file)
+    }
+
+    pub fn clear_pending_new_declarations(&self) -> Result<()> {
+        let mut file = self.load_declarations_file();
+        file.pending_new_declarations = 0;
         self.save_declarations_file(&file)
     }
 

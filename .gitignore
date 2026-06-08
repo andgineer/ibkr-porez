@@ -2,6 +2,7 @@ target/
 site/
 *.swp
 .DS_Store
+.claude/
 /plans
 .vscode/
 .idea/

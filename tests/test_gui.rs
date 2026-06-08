@@ -99,6 +99,11 @@ fn app_in_dir(decls: Vec<Declaration>, tmp: &tempfile::TempDir) -> App {
         warning_banner: None,
         bg_receiver: None,
         bg_busy: false,
+        last_sync_success: None,
+        last_sync_issue: None,
+        pending_new_declarations: 0,
+        next_auto_sync: None,
+        auto_sync_backoff_idx: 0,
         export_channel: None,
         exporting_ids: HashSet::new(),
         progress_text: None,
@@ -573,6 +578,7 @@ fn poll_sync_done_success() {
     app.bg_receiver = Some(rx);
     app.bg_busy = true;
     app.progress_text = Some("Syncing…".into());
+    app.last_sync_issue = Some((chrono::Local::now().naive_local(), "stale issue".into()));
 
     tx.send(BackgroundResult::SyncDone(Ok(sync_result(vec![], None))))
         .unwrap();
@@ -583,9 +589,10 @@ fn poll_sync_done_success() {
     assert!(app.bg_receiver.is_none());
     assert!(app.progress_text.is_none());
     assert!(app.error_dialog.is_none());
-    let (msg, kind) = app.status_message.as_ref().unwrap();
-    assert_eq!(*kind, styles::MessageKind::Success);
-    assert!(msg.contains("no new declarations"));
+    assert!(app.status_message.is_none());
+    assert!(app.last_sync_success.is_some());
+    assert!(app.last_sync_issue.is_none());
+    assert_eq!(app.pending_new_declarations, 0);
 }
 
 #[test]
@@ -606,8 +613,9 @@ fn poll_sync_done_with_declarations() {
 
     app.poll_background();
 
-    let (msg, _) = app.status_message.as_ref().unwrap();
-    assert!(msg.contains("2 declaration(s) created"));
+    assert!(app.status_message.is_none());
+    assert_eq!(app.pending_new_declarations, 2);
+    assert_eq!(app.storage.get_pending_new_declarations(), 2);
 }
 
 #[test]
@@ -625,8 +633,11 @@ fn poll_sync_done_with_income_error() {
 
     app.poll_background();
 
-    assert!(app.status_message.is_some());
-    assert_eq!(app.error_dialog.as_deref(), Some("tax calc failed"));
+    assert!(app.status_message.is_none());
+    assert!(app.error_dialog.is_none());
+    assert!(app.last_sync_success.is_some());
+    let (_, msg) = app.last_sync_issue.as_ref().unwrap();
+    assert_eq!(msg, "tax calc failed");
 }
 
 #[test]
@@ -646,7 +657,12 @@ fn poll_sync_done_error() {
     assert!(app.bg_receiver.is_none());
     assert!(app.progress_text.is_none());
     assert!(app.status_message.is_none());
-    assert_eq!(app.error_dialog.as_deref(), Some("network failure"));
+    assert!(app.error_dialog.is_none());
+    assert!(app.last_sync_success.is_none());
+    let (_, msg) = app.last_sync_issue.as_ref().unwrap();
+    assert_eq!(msg, "network failure");
+    assert!(app.next_auto_sync.is_some());
+    assert_eq!(app.auto_sync_backoff_idx, 1);
 }
 
 #[test]

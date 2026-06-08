@@ -9,7 +9,7 @@ license = "MIT"
 
 [features]
 default = []
-gui = ["dep:eframe", "dep:egui_extras", "dep:open", "dep:rfd", "dep:wgpu"]
+gui = ["dep:eframe", "dep:egui_extras", "dep:open", "dep:rfd", "dep:wgpu", "dep:notify-rust"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
@@ -33,6 +33,7 @@ eframe = { version = "0.31", default-features = false, features = ["default_font
 egui_extras = { version = "0.31", optional = true }
 open = { version = "5", optional = true }
 rfd = { version = "0.15", optional = true }
+notify-rust = { version = "4", optional = true }
 dirs = "6"
 zip = "2"
 similar = "2"

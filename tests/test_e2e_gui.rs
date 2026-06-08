@@ -107,6 +107,14 @@ fn setup_app(decls: Vec<Declaration>, transactions: Vec<Transaction>) -> (App, t
         warning_banner: None,
         bg_receiver: None,
         bg_busy: false,
+        // Pretend a sync already succeeded today so the auto-sync scheduler
+        // stays quiet — otherwise it would spawn a background sync thread on
+        // the first render and the harness would loop forever waiting for it.
+        last_sync_success: Some(chrono::Local::now().naive_local()),
+        last_sync_issue: None,
+        pending_new_declarations: 0,
+        next_auto_sync: None,
+        auto_sync_backoff_idx: 0,
         export_channel: None,
         exporting_ids: HashSet::new(),
         progress_text: None,

@@ -354,6 +354,20 @@ impl std::fmt::Display for DeclarationType {
 pub struct DeclarationsFile {
     pub declarations: Vec<serde_json::Value>,
     pub last_declaration_date: Option<String>,
+    #[serde(default)]
+    pub last_sync_success: Option<String>,
+    #[serde(default)]
+    pub last_sync_issue: Option<SyncIssue>,
+    #[serde(default)]
+    pub pending_new_declarations: u32,
+}
+
+/// The most recent problem noticed since the last successful sync —
+/// either a fetch failure or an `income_error` from an otherwise-successful sync.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct SyncIssue {
+    pub at: String,
+    pub message: String,
 }
 
 fn default_city_code() -> String {

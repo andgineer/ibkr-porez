@@ -218,6 +218,53 @@ fn test_storage_last_declaration_date() {
 }
 
 #[test]
+fn test_sync_success_round_trip() {
+    let dir = TempDir::new().unwrap();
+    let storage = Storage::with_dir(dir.path());
+
+    assert!(storage.get_last_sync_success().is_none());
+
+    let at = d(2026, 6, 8).and_hms_opt(14, 30, 0).unwrap();
+    storage.set_last_sync_success(at).unwrap();
+    assert_eq!(storage.get_last_sync_success(), Some(at));
+}
+
+#[test]
+fn test_sync_issue_round_trip_and_clear() {
+    let dir = TempDir::new().unwrap();
+    let storage = Storage::with_dir(dir.path());
+
+    assert!(storage.get_last_sync_issue().is_none());
+
+    let at = d(2026, 6, 8).and_hms_opt(9, 15, 0).unwrap();
+    storage
+        .set_last_sync_issue(at, "Flex Query temporarily unavailable")
+        .unwrap();
+    assert_eq!(
+        storage.get_last_sync_issue(),
+        Some((at, "Flex Query temporarily unavailable".to_string()))
+    );
+
+    storage.clear_last_sync_issue().unwrap();
+    assert!(storage.get_last_sync_issue().is_none());
+}
+
+#[test]
+fn test_pending_new_declarations_accumulates_and_clears() {
+    let dir = TempDir::new().unwrap();
+    let storage = Storage::with_dir(dir.path());
+
+    assert_eq!(storage.get_pending_new_declarations(), 0);
+
+    storage.add_pending_new_declarations(2).unwrap();
+    storage.add_pending_new_declarations(3).unwrap();
+    assert_eq!(storage.get_pending_new_declarations(), 5);
+
+    storage.clear_pending_new_declarations().unwrap();
+    assert_eq!(storage.get_pending_new_declarations(), 0);
+}
+
+#[test]
 fn test_save_transactions_merge() {
     let dir = TempDir::new().unwrap();
     let storage = Storage::with_dir(dir.path());

@@ -21,10 +21,14 @@ exactly as required by the declaration.
 
 1. Open the app — it will launch with a graphical interface.
 2. Click **Config** and enter your Interactive Brokers credentials.
-3. Click **Sync** — the app will download your latest trades and create declarations.
+3. Click **Sync now** — the app will download your latest trades and create declarations.
 4. Upload the generated XML file to the **ePorezi** portal (PPDG-3R section).
 
 ![PPDG-3R](images/ppdg-3r.png)
+
+> 💡 From then on, while the app is running it keeps checking for new data
+> automatically — once a day, in the background, retrying until it succeeds.
+> The status of the last attempt is always shown at the top of the window.
 
 > ℹ️ If you have **more than one year of trade history** in Interactive Brokers —
 > you need to load the older data manually before the first Sync.

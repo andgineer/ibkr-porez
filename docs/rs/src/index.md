@@ -21,10 +21,14 @@ tačno onako kako zahteva prijava.
 
 1. Otvorite aplikaciju — pokrenuće se sa grafičkim interfejsom.
 2. Kliknite **Config** i unesite podatke sa Interactive Brokers.
-3. Kliknite **Sync** — aplikacija će preuzeti najnovije transakcije i kreirati prijave.
+3. Kliknite **Sync now** — aplikacija će preuzeti najnovije transakcije i kreirati prijave.
 4. Otpremite kreirani XML fajl na portal **ePorezi** (sekcija PPDG-3R).
 
 ![PPDG-3R](images/ppdg-3r.png)
+
+> 💡 Nakon toga, dok je aplikacija otvorena, sama proverava da li ima novih
+> podataka — jednom dnevno, u pozadini, ponavljajući pokušaje do uspeha.
+> Status poslednjeg pokušaja uvek se vidi na vrhu prozora.
 
 > ℹ️ Ako imate **više od godinu dana istorije transakcija** u Interactive Brokers —
 > pre prvog Sync-a potrebno je ručno učitati starije podatke.

@@ -18,6 +18,9 @@ pub fn show(ui: &mut egui::Ui, app: &mut App) {
         ui.add_space(4.0);
     }
 
+    sync_status_line(ui, app);
+    new_declarations_banner(ui, app);
+
     if let Some(ref text) = app.progress_text {
         egui::Frame::new()
             .fill(ui.visuals().faint_bg_color)
@@ -72,6 +75,72 @@ pub fn show(ui: &mut egui::Ui, app: &mut App) {
     declaration_table(ui, app);
 }
 
+fn sync_status_line(ui: &mut egui::Ui, app: &App) {
+    let (text, kind) = match (app.last_sync_success, &app.last_sync_issue) {
+        (Some(success), Some((at, msg))) => (
+            format!(
+                "Last sync: {} \u{2014} success \u{b7} attempt at {} ran into an issue: {msg}",
+                success.format("%Y-%m-%d %H:%M"),
+                at.format("%H:%M"),
+            ),
+            styles::MessageKind::Warning,
+        ),
+        (Some(success), None) => (
+            format!(
+                "Last sync: {} \u{2014} success",
+                success.format("%Y-%m-%d %H:%M")
+            ),
+            styles::MessageKind::Success,
+        ),
+        (None, Some((at, msg))) => (
+            format!(
+                "Last sync attempt at {}: {msg}",
+                at.format("%Y-%m-%d %H:%M")
+            ),
+            styles::MessageKind::Warning,
+        ),
+        (None, None) => return,
+    };
+
+    egui::Frame::new()
+        .fill(ui.visuals().faint_bg_color)
+        .inner_margin(4.0)
+        .show(ui, |ui| match kind {
+            styles::MessageKind::Warning => {
+                ui.colored_label(ui.visuals().warn_fg_color, text);
+            }
+            styles::MessageKind::Success => {
+                ui.label(text);
+            }
+        });
+    ui.add_space(4.0);
+}
+
+fn new_declarations_banner(ui: &mut egui::Ui, app: &mut App) {
+    if app.pending_new_declarations == 0 {
+        return;
+    }
+    let mut dismiss = false;
+    egui::Frame::new()
+        .fill(ui.visuals().faint_bg_color)
+        .inner_margin(4.0)
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(format!(
+                    "{} new declaration(s) created since you last checked",
+                    app.pending_new_declarations
+                ));
+                if ui.button("Close").clicked() {
+                    dismiss = true;
+                }
+            });
+        });
+    ui.add_space(4.0);
+    if dismiss {
+        app.dismiss_pending_new_declarations();
+    }
+}
+
 fn toolbar(ui: &mut egui::Ui, app: &mut App) {
     ui.horizontal(|ui| {
         let busy = app.bg_busy;
@@ -80,7 +149,7 @@ fn toolbar(ui: &mut egui::Ui, app: &mut App) {
             let label = if busy {
                 "\u{27f3} Syncing\u{2026}"
             } else {
-                "\u{27f3} Sync"
+                "\u{27f3} Sync now"
             };
             if ui
                 .add(

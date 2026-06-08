@@ -121,6 +121,7 @@ fn write_test_declarations(data_dir: &std::path::Path) {
     let decl_file = DeclarationsFile {
         declarations: vec![serde_json::to_value(&decl).unwrap()],
         last_declaration_date: Some("2025-12-31".into()),
+        ..Default::default()
     };
     let json = serde_json::to_string_pretty(&decl_file).unwrap();
     std::fs::write(data_dir.join("declarations.json"), json).unwrap();
