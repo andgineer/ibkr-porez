@@ -19,6 +19,8 @@ pub struct NBSClient<'a> {
     holidays: &'a HolidayCalendar,
     base_url: String,
     http: reqwest::blocking::Client,
+    max_retries: u32,
+    retry_delay: std::time::Duration,
 }
 
 impl<'a> NBSClient<'a> {
@@ -29,6 +31,8 @@ impl<'a> NBSClient<'a> {
             holidays,
             base_url: DEFAULT_BASE_URL.to_string(),
             http: build_http_client(),
+            max_retries: MAX_RETRIES,
+            retry_delay: RETRY_DELAY,
         }
     }
 
@@ -43,7 +47,17 @@ impl<'a> NBSClient<'a> {
             holidays,
             base_url: base_url.to_string(),
             http: build_http_client(),
+            max_retries: MAX_RETRIES,
+            retry_delay: RETRY_DELAY,
         }
+    }
+
+    /// Overrides the retry policy (number of attempts and delay between them).
+    #[must_use]
+    pub fn with_retries(mut self, max_retries: u32, delay: std::time::Duration) -> Self {
+        self.max_retries = max_retries;
+        self.retry_delay = delay;
+        self
     }
 
     #[must_use]
@@ -124,9 +138,9 @@ impl<'a> NBSClient<'a> {
         );
 
         let mut last_err = None;
-        for attempt in 0..MAX_RETRIES {
+        for attempt in 0..self.max_retries {
             if attempt > 0 {
-                std::thread::sleep(RETRY_DELAY);
+                std::thread::sleep(self.retry_delay);
             }
             match self.http.get(&url).send() {
                 Ok(resp) => {

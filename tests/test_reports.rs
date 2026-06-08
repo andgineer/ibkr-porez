@@ -77,7 +77,9 @@ fn setup_with_rates(rates: &[(&str, &str, &str)]) -> (tempfile::TempDir, Storage
 }
 
 fn nbs_offline<'a>(storage: &'a Storage, cal: &'a HolidayCalendar) -> NBSClient<'a> {
-    NBSClient::with_base_url(storage, cal, FAKE_NBS_URL)
+    // Single attempt with no delay: the connection to FAKE_NBS_URL fails instantly,
+    // so the production retry-with-backoff would otherwise add seconds per lookup.
+    NBSClient::with_base_url(storage, cal, FAKE_NBS_URL).with_retries(1, std::time::Duration::ZERO)
 }
 
 #[test]
