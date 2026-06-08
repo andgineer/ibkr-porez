@@ -525,8 +525,8 @@ impl App {
             let tomorrow = today.succ_opt().unwrap().and_hms_opt(0, 0, 0).unwrap();
             let wait = (tomorrow - now)
                 .to_std()
-                .unwrap_or(std::time::Duration::from_secs(3600));
-            ctx.request_repaint_after(wait.min(std::time::Duration::from_secs(3600)));
+                .unwrap_or(std::time::Duration::from_hours(1));
+            ctx.request_repaint_after(wait.min(std::time::Duration::from_hours(1)));
             return;
         }
 
@@ -536,8 +536,8 @@ impl App {
         } else {
             let wait = (next - now)
                 .to_std()
-                .unwrap_or(std::time::Duration::from_secs(60));
-            ctx.request_repaint_after(wait.min(std::time::Duration::from_secs(60)));
+                .unwrap_or(std::time::Duration::from_mins(1));
+            ctx.request_repaint_after(wait.min(std::time::Duration::from_mins(1)));
         }
     }
 
