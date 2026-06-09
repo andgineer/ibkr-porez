@@ -19,13 +19,6 @@ use super::main_window;
 use super::styles;
 use super::sync_file_dialog::SyncFileDialog;
 
-const AUTO_SYNC_BACKOFF_MINUTES: &[i64] = &[5, 10, 20, 30, 60];
-
-fn auto_sync_backoff(idx: usize) -> chrono::Duration {
-    let minutes = AUTO_SYNC_BACKOFF_MINUTES[idx.min(AUTO_SYNC_BACKOFF_MINUTES.len() - 1)];
-    chrono::Duration::minutes(minutes)
-}
-
 fn notify_new_declarations(count: usize) {
     let body = if count == 1 {
         "1 new declaration was created".to_string()
@@ -139,8 +132,9 @@ pub struct App {
     pub last_sync_success: Option<chrono::NaiveDateTime>,
     pub last_sync_issue: Option<(chrono::NaiveDateTime, String)>,
     pub pending_new_declarations: u32,
-    pub next_auto_sync: Option<chrono::NaiveDateTime>,
-    pub auto_sync_backoff_idx: usize,
+    ctx: egui::Context,
+    auto_sync_tx: mpsc::Sender<()>,
+    auto_sync_rx: mpsc::Receiver<()>,
     pub export_channel: Option<(
         mpsc::Sender<BackgroundResult>,
         mpsc::Receiver<BackgroundResult>,
@@ -180,6 +174,11 @@ impl App {
         let last_sync_issue = storage.get_last_sync_issue();
         let pending_new_declarations = storage.get_pending_new_declarations();
 
+        let (auto_sync_tx, auto_sync_rx) = mpsc::channel::<()>();
+        if last_sync_success.is_none_or(|dt| dt.date() != chrono::Local::now().date_naive()) {
+            let _ = auto_sync_tx.send(());
+        }
+
         Self {
             config,
             config_file,
@@ -197,8 +196,9 @@ impl App {
             last_sync_success,
             last_sync_issue,
             pending_new_declarations,
-            next_auto_sync: None,
-            auto_sync_backoff_idx: 0,
+            ctx: egui::Context::default(),
+            auto_sync_tx,
+            auto_sync_rx,
             export_channel: None,
             exporting_ids: std::collections::HashSet::new(),
             progress_text: None,
@@ -350,6 +350,7 @@ impl App {
         self.exporting_ids.insert(id.clone());
         let config = self.config.clone();
         let tx = self.export_sender();
+        let ctx = self.ctx.clone();
 
         std::thread::spawn(move || {
             let output_dir = app_config::get_effective_output_dir_path(&config);
@@ -365,6 +366,7 @@ impl App {
                 Err(e) => Err(e.to_string()),
             };
             let _ = tx.send(BackgroundResult::ExportDone { id, result });
+            ctx.request_repaint();
         });
     }
 
@@ -386,6 +388,7 @@ impl App {
         let config = self.config.clone();
         let (tx, rx) = mpsc::channel();
         self.bg_receiver = Some(rx);
+        let ctx = self.ctx.clone();
 
         std::thread::spawn(move || {
             let storage = Storage::with_config(&config);
@@ -404,6 +407,7 @@ impl App {
             let result = crate::sync::run_sync(&storage, &nbs, &config, &holidays, &opts, &ibkr)
                 .map_err(|e| format!("{e:#}"));
             let _ = tx.send(BackgroundResult::SyncDone(result));
+            ctx.request_repaint();
         });
     }
 
@@ -414,6 +418,7 @@ impl App {
         let config = self.config.clone();
         let (tx, rx) = mpsc::channel();
         self.bg_receiver = Some(rx);
+        let ctx = self.ctx.clone();
 
         std::thread::spawn(move || {
             let storage = Storage::with_config(&config);
@@ -429,10 +434,31 @@ impl App {
                 crate::sync::run_sync_from_file(&path, &storage, &nbs, &config, &holidays, &opts)
                     .map_err(|e| format!("{e:#}"));
             let _ = tx.send(BackgroundResult::SyncDone(result));
+            ctx.request_repaint();
         });
     }
 
     pub fn poll_background(&mut self) {
+        if let Ok(()) = self.auto_sync_rx.try_recv() {
+            let now = chrono::Local::now().naive_local();
+            let synced_today = self
+                .last_sync_success
+                .is_some_and(|dt| dt.date() == now.date());
+            if synced_today {
+                let tomorrow = now.date().succ_opt().unwrap().and_hms_opt(0, 0, 0).unwrap();
+                let until_midnight = (tomorrow - now)
+                    .to_std()
+                    .unwrap_or(std::time::Duration::from_hours(1));
+                self.schedule_auto_sync_after(until_midnight);
+            } else if app_config::validate_config(&self.config).is_empty() {
+                if self.bg_busy {
+                    self.schedule_auto_sync_after(std::time::Duration::from_secs(60));
+                } else {
+                    self.start_sync(false);
+                }
+            }
+        }
+
         if let Some(ref rx) = self.bg_receiver {
             match rx.try_recv() {
                 Ok(BackgroundResult::SyncDone(result)) => {
@@ -511,8 +537,6 @@ impl App {
                     let _ = self.storage.clear_last_sync_issue();
                     self.last_sync_issue = None;
                 }
-                self.auto_sync_backoff_idx = 0;
-                self.next_auto_sync = None;
                 self.warning_banner = check_holiday_warning(&self.config);
 
                 let count = r.created_declarations.len();
@@ -524,49 +548,69 @@ impl App {
                 }
             }
             Err(e) => {
-                let display_message = if e.contains("1001") || e.contains("1019") {
-                    "Flex Query temporarily unavailable — retrying automatically.".to_string()
-                } else {
-                    e.clone()
-                };
+                let display_message =
+                    if e.contains("1001") || e.contains("1018") || e.contains("1019") {
+                        "Flex Query temporarily unavailable — retrying automatically.".to_string()
+                    } else {
+                        e.clone()
+                    };
                 let _ = self.storage.set_last_sync_issue(now, &display_message);
                 self.last_sync_issue = Some((now, display_message));
-                let idx = self.auto_sync_backoff_idx;
-                self.next_auto_sync = Some(now + auto_sync_backoff(idx));
-                self.auto_sync_backoff_idx = (idx + 1).min(AUTO_SYNC_BACKOFF_MINUTES.len() - 1);
+                self.schedule_auto_sync_after(std::time::Duration::from_hours(1));
             }
         }
     }
 
-    fn maybe_auto_sync(&mut self, ctx: &egui::Context) {
-        if self.bg_busy || !app_config::validate_config(&self.config).is_empty() {
-            return;
+    pub fn new_for_test(
+        config: crate::models::UserConfig,
+        config_file: std::path::PathBuf,
+        storage: crate::storage::Storage,
+        declarations: Vec<crate::models::Declaration>,
+    ) -> Self {
+        let (auto_sync_tx, auto_sync_rx) = mpsc::channel::<()>();
+        Self {
+            config,
+            config_file,
+            storage,
+            declarations,
+            selected: std::collections::HashSet::new(),
+            filter: FilterScope::Active,
+            bulk_action: BulkAction::Submit,
+            sort_column: SortColumn::Created,
+            sort_ascending: false,
+            status_message: None,
+            warning_banner: None,
+            bg_receiver: None,
+            bg_busy: false,
+            last_sync_success: None,
+            last_sync_issue: None,
+            pending_new_declarations: 0,
+            export_channel: None,
+            exporting_ids: std::collections::HashSet::new(),
+            progress_text: None,
+            confirm_force_sync: false,
+            config_dialog: None,
+            import_dialog: None,
+            sync_file_dialog: None,
+            details_dialog: None,
+            assessment_dialog: None,
+            error_dialog: None,
+            show_import_hint: false,
+            confirm_discard_config: false,
+            ctx: egui::Context::default(),
+            auto_sync_tx,
+            auto_sync_rx,
         }
+    }
 
-        let now = chrono::Local::now().naive_local();
-        let today = now.date();
-        let synced_today = self.last_sync_success.is_some_and(|dt| dt.date() == today);
-
-        if synced_today {
-            self.next_auto_sync = None;
-            self.auto_sync_backoff_idx = 0;
-            let tomorrow = today.succ_opt().unwrap().and_hms_opt(0, 0, 0).unwrap();
-            let wait = (tomorrow - now)
-                .to_std()
-                .unwrap_or(std::time::Duration::from_hours(1));
-            ctx.request_repaint_after(wait.min(std::time::Duration::from_hours(1)));
-            return;
-        }
-
-        let next = *self.next_auto_sync.get_or_insert(now);
-        if now >= next {
-            self.start_sync(false);
-        } else {
-            let wait = (next - now)
-                .to_std()
-                .unwrap_or(std::time::Duration::from_mins(1));
-            ctx.request_repaint_after(wait.min(std::time::Duration::from_mins(1)));
-        }
+    fn schedule_auto_sync_after(&self, delay: std::time::Duration) {
+        let tx = self.auto_sync_tx.clone();
+        let ctx = self.ctx.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(delay);
+            let _ = tx.send(());
+            ctx.request_repaint();
+        });
     }
 
     pub fn dismiss_pending_new_declarations(&mut self) {
@@ -660,8 +704,8 @@ impl App {
     }
 
     pub fn render(&mut self, ctx: &egui::Context) {
+        self.ctx = ctx.clone();
         self.poll_background();
-        self.maybe_auto_sync(ctx);
 
         let modal_open = self.config_dialog.is_some()
             || self.import_dialog.is_some()
@@ -720,10 +764,6 @@ impl App {
         super::assessment_dialog::show(ctx, self);
 
         self.show_modal_dialogs(ctx);
-
-        if self.bg_busy || !self.exporting_ids.is_empty() {
-            ctx.request_repaint();
-        }
     }
 }
 

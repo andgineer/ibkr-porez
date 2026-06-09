@@ -93,41 +93,12 @@ fn setup_app(decls: Vec<Declaration>, transactions: Vec<Transaction>) -> (App, t
     let json = serde_json::to_string_pretty(&config).unwrap();
     std::fs::write(&config_file, json).unwrap();
 
-    let app = App {
-        config,
-        config_file,
-        storage,
-        declarations: filtered,
-        selected: HashSet::new(),
-        filter: FilterScope::Active,
-        bulk_action: BulkAction::Submit,
-        sort_column: SortColumn::Created,
-        sort_ascending: false,
-        status_message: None,
-        warning_banner: None,
-        bg_receiver: None,
-        bg_busy: false,
-        // Pretend a sync already succeeded today so the auto-sync scheduler
-        // stays quiet — otherwise it would spawn a background sync thread on
-        // the first render and the harness would loop forever waiting for it.
-        last_sync_success: Some(chrono::Local::now().naive_local()),
-        last_sync_issue: None,
-        pending_new_declarations: 0,
-        next_auto_sync: None,
-        auto_sync_backoff_idx: 0,
-        export_channel: None,
-        exporting_ids: HashSet::new(),
-        progress_text: None,
-        confirm_force_sync: false,
-        config_dialog: None,
-        import_dialog: None,
-        sync_file_dialog: None,
-        details_dialog: None,
-        assessment_dialog: None,
-        error_dialog: None,
-        show_import_hint,
-        confirm_discard_config: false,
-    };
+    // Pretend a sync already succeeded today so the auto-sync scheduler
+    // stays quiet — otherwise it would spawn a background sync thread on
+    // the first render and the harness would loop forever waiting for it.
+    let mut app = App::new_for_test(config, config_file, storage, filtered);
+    app.last_sync_success = Some(chrono::Local::now().naive_local());
+    app.show_import_hint = show_import_hint;
     (app, tmp)
 }
 

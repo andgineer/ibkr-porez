@@ -85,38 +85,7 @@ fn app_in_dir(decls: Vec<Declaration>, tmp: &tempfile::TempDir) -> App {
     let config_file = tmp.path().join("config.json");
     let json = serde_json::to_string_pretty(&config).unwrap();
     std::fs::write(&config_file, json).unwrap();
-    App {
-        config,
-        config_file,
-        storage,
-        declarations: decls,
-        selected: HashSet::new(),
-        filter: FilterScope::Active,
-        bulk_action: BulkAction::Submit,
-        sort_column: SortColumn::Created,
-        sort_ascending: false,
-        status_message: None,
-        warning_banner: None,
-        bg_receiver: None,
-        bg_busy: false,
-        last_sync_success: None,
-        last_sync_issue: None,
-        pending_new_declarations: 0,
-        next_auto_sync: None,
-        auto_sync_backoff_idx: 0,
-        export_channel: None,
-        exporting_ids: HashSet::new(),
-        progress_text: None,
-        confirm_force_sync: false,
-        config_dialog: None,
-        import_dialog: None,
-        sync_file_dialog: None,
-        details_dialog: None,
-        assessment_dialog: None,
-        error_dialog: None,
-        show_import_hint: false,
-        confirm_discard_config: false,
-    }
+    App::new_for_test(config, config_file, storage, decls)
 }
 
 // ── Enum labels ──────────────────────────────────────────────
@@ -662,8 +631,6 @@ fn poll_sync_done_error() {
     assert!(app.last_sync_success.is_none());
     let (_, msg) = app.last_sync_issue.as_ref().unwrap();
     assert_eq!(msg, "network failure");
-    assert!(app.next_auto_sync.is_some());
-    assert_eq!(app.auto_sync_backoff_idx, 1);
 }
 
 #[test]

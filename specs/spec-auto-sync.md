@@ -28,9 +28,8 @@ successful sync.
 
 ## Retry schedule
 
-On failure, the next attempt is scheduled with backoff: 5, 10, 20, 30, then 60
-minutes, repeating at 60-minute intervals until the sync succeeds or a new
-local day begins — at which point the schedule restarts from the beginning.
+On failure, the next attempt is scheduled one hour later, repeating hourly
+until the sync succeeds.
 
 ## Configuration gate
 
