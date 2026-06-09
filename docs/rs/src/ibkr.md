@@ -80,6 +80,16 @@ Kako preuzeti odgovarajući izveštaj:
 4.  Kliknite **Download PDF**.
 5.  Na portalu ePorezi, u sekciji **8. Dokazi uz prijavu**, otpremite ovaj fajl.
 
+## Preuzimanje Flex Query XML-a (za `sync --file`)
+
+Ako IBKR API (`sync` / `fetch`) privremeno nije dostupan, možete pokrenuti Flex Query ručno sa IBKR sajta:
+
+1. U IBKR idite na **Performance & Reports** > **Statements** > **Flex Queries**.
+2. Pronađite upit koji ste kreirali za `ibkr-porez` (npr. `ibkr-porez-data`).
+3. Kliknite **Run** (plava strelica desno od naziva upita).
+4. Izaberite format **XML** i preuzmite fajl.
+5. Koristite fajl sa komandom [`sync --file` ↗](usage.md#sinhronizacija-iz-preuzetog-xml-fajla-sync---file) ili opcijom **Sync from file…** u ☰ meniju u GUI-u.
+
 ## Izvoz pune istorije (za import komandu)
 
 Ako treba da učitate istoriju transakcija za period duži od 1 godine (nedostupno preko Flex Web Service-a),

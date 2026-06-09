@@ -49,6 +49,37 @@ pub fn run_sync(
         "fetch complete"
     );
 
+    generate_declarations(storage, nbs, config, holidays, options)
+}
+
+pub fn run_sync_from_file(
+    path: &std::path::Path,
+    storage: &Storage,
+    nbs: &NBSClient,
+    config: &UserConfig,
+    holidays: &HolidayCalendar,
+    options: &SyncOptions,
+) -> Result<SyncResult> {
+    validate_config_or_bail(config)?;
+
+    let fetch_result = fetch::fetch_from_file(path, storage, nbs)?;
+    info!(
+        inserted = fetch_result.inserted,
+        updated = fetch_result.updated,
+        total = fetch_result.transactions.len(),
+        "file import complete"
+    );
+
+    generate_declarations(storage, nbs, config, holidays, options)
+}
+
+fn generate_declarations(
+    storage: &Storage,
+    nbs: &NBSClient,
+    config: &UserConfig,
+    holidays: &HolidayCalendar,
+    options: &SyncOptions,
+) -> Result<SyncResult> {
     let end_period = Local::now().date_naive() - Duration::days(1);
 
     let output_dir = config::get_effective_output_dir_path(config);

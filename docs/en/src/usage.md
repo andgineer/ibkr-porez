@@ -86,6 +86,22 @@ You can then [Manage created declarations](#declaration-management).
 > ibkr-porez list --status submitted -1 | ibkr-porez pay
 > ```
 
+### Sync from a Downloaded XML File (`sync --file`)
+
+If the IBKR API is temporarily unavailable, you can download the Flex Query XML manually from the IBKR website and use it instead:
+
+```bash
+ibkr-porez sync --file /path/to/report.xml
+```
+
+Does everything `sync` does — saves transactions, generates all necessary declarations — but reads data from a local file instead of calling the IBKR API.
+
+See [how to download the Flex Query XML ↗](ibkr.md#download-flex-query-xml-for-sync---file).
+
+In the GUI, the same option is available in the **☰** hamburger menu as **Sync from file…**.
+
+> ℹ️ To only save transactions without generating declarations, use the existing [`import`](#import-historical-data-import) command instead.
+
 ## View Statistics (`stat`)
 
 ```bash

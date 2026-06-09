@@ -80,6 +80,16 @@ How to download the appropriate report:
 4.  Click **Download PDF**.
 5.  On the ePorezi portal, in section **8. Dokazi uz prijavu**, upload this file.
 
+## Download Flex Query XML (for `sync --file`)
+
+If the IBKR API (`sync` / `fetch`) is temporarily unavailable, you can run your Flex Query manually from the IBKR website:
+
+1. In IBKR go to **Performance & Reports** > **Statements** > **Flex Queries**.
+2. Find the query you created for `ibkr-porez` (e.g., `ibkr-porez-data`).
+3. Click **Run** (blue arrow to the right of the query name).
+4. Select **XML** format and download the file.
+5. Use it with the [`sync --file` ↗](usage.md#sync-from-a-downloaded-xml-file-sync---file) command or the **Sync from file…** option in the GUI hamburger menu.
+
 ## Export Full History (for import command)
 
 If you need to load transaction history for a period longer than 1 year (unavailable via Flex Web Service),

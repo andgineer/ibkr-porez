@@ -61,6 +61,10 @@ enum Commands {
         output: Option<PathBuf>,
         #[arg(short, long, value_parser = clap::value_parser!(i64).range(1..))]
         lookback: Option<i64>,
+        /// Import from a locally downloaded Flex Query XML file instead of calling IBKR API
+        /// (see <https://andgineer.github.io/ibkr-porez/en/ibkr.html>)
+        #[arg(short, long)]
+        file: Option<PathBuf>,
     },
     /// Generate tax reports
     Report {
@@ -156,7 +160,11 @@ fn main() {
         Some(Commands::Config) => cli::config::run(),
         Some(Commands::Fetch) => cli::fetch::run(),
         Some(Commands::Import { file_path, r#type }) => cli::import::run(file_path, r#type.into()),
-        Some(Commands::Sync { output, lookback }) => cli::sync::run(output, lookback),
+        Some(Commands::Sync {
+            output,
+            lookback,
+            file,
+        }) => cli::sync::run(output, lookback, file),
         Some(Commands::Report {
             r#type,
             half,

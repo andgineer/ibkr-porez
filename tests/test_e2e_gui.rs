@@ -121,6 +121,7 @@ fn setup_app(decls: Vec<Declaration>, transactions: Vec<Transaction>) -> (App, t
         confirm_force_sync: false,
         config_dialog: None,
         import_dialog: None,
+        sync_file_dialog: None,
         details_dialog: None,
         assessment_dialog: None,
         error_dialog: None,

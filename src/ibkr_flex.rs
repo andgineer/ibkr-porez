@@ -12,8 +12,21 @@ const FLEX_URL_REQUEST: &str =
 const FLEX_URL_GET: &str =
     "https://ndcdyn.interactivebrokers.com/Universal/servlet/FlexStatementService.GetStatement";
 const VERSION: &str = "3";
-const MAX_RETRIES: u32 = 3;
-const RETRY_DELAY: std::time::Duration = std::time::Duration::from_secs(2);
+
+const POLL_DELAY_BUSY: std::time::Duration = std::time::Duration::from_secs(5);
+const POLL_DELAY_THROTTLED: std::time::Duration = std::time::Duration::from_secs(10);
+const MAX_POLL_ATTEMPTS: u32 = 5;
+const FATAL_ERROR_CODES: &[&str] = &[
+    "1010", // Legacy Flex Queries no longer supported
+    "1011", // Service account is inactive
+    "1012", // Token has expired
+    "1013", // IP restriction
+    "1014", // Query is invalid
+    "1015", // Token is invalid
+    "1016", // Account is invalid
+    "1017", // Reference code is invalid
+    "1020", // Invalid request or unable to validate request
+];
 
 pub struct IBKRClient {
     token: String,
@@ -21,6 +34,9 @@ pub struct IBKRClient {
     request_url: String,
     get_url: String,
     http: reqwest::blocking::Client,
+    /// `None` in production — delay per error code. Set in tests to avoid real sleeps.
+    poll_delay_override: Option<std::time::Duration>,
+    max_poll_attempts: u32,
 }
 
 impl IBKRClient {
@@ -32,6 +48,8 @@ impl IBKRClient {
             request_url: FLEX_URL_REQUEST.to_string(),
             get_url: FLEX_URL_GET.to_string(),
             http: build_http_client(std::time::Duration::from_secs(30)),
+            poll_delay_override: None,
+            max_poll_attempts: MAX_POLL_ATTEMPTS,
         }
     }
 
@@ -43,30 +61,19 @@ impl IBKRClient {
             request_url: format!("{base_url}/SendRequest"),
             get_url: format!("{base_url}/GetStatement"),
             http: build_http_client(std::time::Duration::from_secs(30)),
+            poll_delay_override: None,
+            max_poll_attempts: MAX_POLL_ATTEMPTS,
         }
     }
 
-    /// Fetch the latest Flex Query report XML from IBKR.
-    /// Retries up to 3 times with 2-second delays.
     pub fn fetch_latest_report(&self) -> Result<String> {
-        let mut last_err = None;
-        for attempt in 0..MAX_RETRIES {
-            if attempt > 0 {
-                debug!(attempt, "retrying IBKR fetch");
-                std::thread::sleep(RETRY_DELAY);
-            }
-            match self.try_fetch_report() {
-                Ok(xml) => return Ok(xml),
-                Err(e) => {
-                    debug!(attempt, error = %e, "IBKR fetch attempt failed");
-                    last_err = Some(e);
-                }
-            }
-        }
-        Err(last_err.unwrap_or_else(|| anyhow::anyhow!("fetch failed after {MAX_RETRIES} retries")))
+        let (reference_code, base_url) = self.send_statement_request()?;
+        self.poll_for_statement(&reference_code, &base_url)
     }
 
-    fn try_fetch_report(&self) -> Result<String> {
+    /// `SendRequest` once — no retries. If it fails for any reason the caller
+    /// (GUI hourly retry or CLI invocation) decides whether to try again.
+    fn send_statement_request(&self) -> Result<(String, String)> {
         let resp = self
             .http
             .get(&self.request_url)
@@ -76,13 +83,13 @@ impl IBKRClient {
                 ("v", VERSION),
             ])
             .send()
-            .context("Failed to send IBKR request")?;
+            .context("IBKR SendRequest failed")?;
         resp.error_for_status_ref()
-            .context("IBKR request endpoint returned error")?;
+            .context("IBKR SendRequest HTTP error")?;
         let body = resp.text()?;
 
         let req_resp: XmlRequestResponse =
-            quick_xml::de::from_str(&body).context("Failed to parse IBKR request response")?;
+            quick_xml::de::from_str(&body).context("Failed to parse IBKR SendRequest response")?;
 
         if let Some(code) = &req_resp.error_code {
             let msg = req_resp.error_message.as_deref().unwrap_or("Unknown");
@@ -97,19 +104,77 @@ impl IBKRClient {
             .filter(|u| !u.is_empty())
             .unwrap_or_else(|| self.get_url.clone());
 
-        let resp = self
-            .http
-            .get(&base_url)
-            .query(&[
-                ("q", reference_code.as_str()),
-                ("t", self.token.as_str()),
-                ("v", VERSION),
-            ])
-            .send()
-            .context("Failed to fetch IBKR report")?;
-        resp.error_for_status_ref()
-            .context("IBKR report endpoint returned error")?;
-        Ok(resp.text()?)
+        Ok((reference_code, base_url))
+    }
+
+    /// Poll the same `ReferenceCode` up to `max_poll_attempts` times.
+    /// Retries on transient IBKR error codes and network errors; aborts on fatal codes.
+    fn poll_for_statement(&self, reference_code: &str, base_url: &str) -> Result<String> {
+        let mut last_err: Option<anyhow::Error> = None;
+        for attempt in 0..self.max_poll_attempts {
+            let body = self
+                .http
+                .get(base_url)
+                .query(&[
+                    ("q", reference_code),
+                    ("t", self.token.as_str()),
+                    ("v", VERSION),
+                ])
+                .send()
+                .context("IBKR GetStatement request failed")
+                .and_then(|r| {
+                    r.error_for_status_ref()
+                        .context("IBKR GetStatement HTTP error")?;
+                    Ok(r.text()?)
+                });
+
+            match body {
+                Err(e) => {
+                    debug!(attempt, error = %e, "GetStatement failed, retrying");
+                    if attempt + 1 < self.max_poll_attempts {
+                        std::thread::sleep(self.poll_delay_override.unwrap_or(POLL_DELAY_BUSY));
+                    }
+                    last_err = Some(e);
+                }
+                Ok(body) => {
+                    if body.contains("<ErrorCode>")
+                        && let Ok(err_resp) = quick_xml::de::from_str::<XmlErrorResponse>(&body)
+                        && let Some(code) = &err_resp.error_code
+                    {
+                        let msg = err_resp.error_message.as_deref().unwrap_or("Unknown");
+                        let e = anyhow::anyhow!("IBKR API Error {code}: {msg}");
+                        if FATAL_ERROR_CODES.contains(&code.as_str()) {
+                            return Err(e);
+                        }
+                        let delay = if code == "1018" {
+                            POLL_DELAY_THROTTLED
+                        } else {
+                            POLL_DELAY_BUSY
+                        };
+                        debug!(attempt, error = %e, "GetStatement not ready, retrying");
+                        if attempt + 1 < self.max_poll_attempts {
+                            std::thread::sleep(self.poll_delay_override.unwrap_or(delay));
+                        }
+                        last_err = Some(e);
+                        continue;
+                    }
+                    return Ok(body);
+                }
+            }
+        }
+        Err(last_err.unwrap_or_else(|| {
+            anyhow::anyhow!(
+                "GetStatement: not ready after {} attempts",
+                self.max_poll_attempts
+            )
+        }))
+    }
+
+    #[cfg(test)]
+    fn with_poll_params(mut self, delay_override: std::time::Duration, max_attempts: u32) -> Self {
+        self.poll_delay_override = Some(delay_override);
+        self.max_poll_attempts = max_attempts;
+        self
     }
 }
 
@@ -504,11 +569,8 @@ mod tests {
         mockito::Matcher::Regex(r"^/GetStatement\?".into())
     }
 
-    #[test]
-    fn ibkr_client_fetch_success() {
-        let xml = flex_xml_report();
-        let mut server = mockito::Server::new();
-        let request_mock = server
+    fn mock_send_request_success(server: &mut mockito::Server) -> mockito::Mock {
+        server
             .mock("GET", send_request_matcher())
             .with_status(200)
             .with_body(format!(
@@ -519,7 +581,15 @@ mod tests {
                  </FlexStatementResponse>",
                 server.url()
             ))
-            .create();
+            .expect(1)
+            .create()
+    }
+
+    #[test]
+    fn ibkr_client_fetch_success() {
+        let xml = flex_xml_report();
+        let mut server = mockito::Server::new();
+        let request_mock = mock_send_request_success(&mut server);
         let get_mock = server
             .mock("GET", get_statement_matcher())
             .with_status(200)
@@ -534,9 +604,10 @@ mod tests {
     }
 
     #[test]
-    fn ibkr_client_api_error() {
+    fn ibkr_client_send_request_error_fails_immediately() {
+        // SendRequest IBKR error → fails immediately, no retry
         let mut server = mockito::Server::new();
-        let _mock = server
+        let mock = server
             .mock("GET", send_request_matcher())
             .with_status(200)
             .with_body(
@@ -545,28 +616,108 @@ mod tests {
                    <ErrorMessage>Token expired</ErrorMessage>\
                  </FlexStatementResponse>",
             )
-            .expect(3)
+            .expect(1)
             .create();
 
         let client = IBKRClient::with_base_url("tok", "qid", &server.url());
         let err = client.fetch_latest_report().unwrap_err();
         assert!(err.to_string().contains("1019"));
         assert!(err.to_string().contains("Token expired"));
+        mock.assert();
+    }
+
+    #[test]
+    fn ibkr_client_get_statement_fatal_error_aborts_immediately() {
+        // Fatal IBKR error on GetStatement → no retry
+        let mut server = mockito::Server::new();
+        let request_mock = mock_send_request_success(&mut server);
+        let get_mock = server
+            .mock("GET", get_statement_matcher())
+            .with_status(200)
+            .with_body(
+                "<FlexStatementResponse>\
+                   <ErrorCode>1012</ErrorCode>\
+                   <ErrorMessage>Token has expired</ErrorMessage>\
+                 </FlexStatementResponse>",
+            )
+            .expect(1)
+            .create();
+
+        let client = IBKRClient::with_base_url("tok", "qid", &server.url())
+            .with_poll_params(std::time::Duration::ZERO, 5);
+        let err = client.fetch_latest_report().unwrap_err();
+        assert!(err.to_string().contains("1012"));
+        request_mock.assert();
+        get_mock.assert();
+    }
+
+    #[test]
+    fn ibkr_client_get_statement_exhausts_retries() {
+        // Transient error on every GetStatement → exhausts budget, returns error
+        let mut server = mockito::Server::new();
+        let request_mock = mock_send_request_success(&mut server);
+        let get_mock = server
+            .mock("GET", get_statement_matcher())
+            .with_status(200)
+            .with_body(
+                "<FlexStatementResponse>\
+                   <ErrorCode>1019</ErrorCode>\
+                   <ErrorMessage>Statement generation in progress</ErrorMessage>\
+                 </FlexStatementResponse>",
+            )
+            .expect(3)
+            .create();
+
+        let client = IBKRClient::with_base_url("tok", "qid", &server.url())
+            .with_poll_params(std::time::Duration::ZERO, 3);
+        let err = client.fetch_latest_report().unwrap_err();
+        assert!(err.to_string().contains("1019"));
+        request_mock.assert();
+        get_mock.assert();
+    }
+
+    #[test]
+    fn ibkr_client_polls_same_reference_code() {
+        // All GetStatement calls must carry the ReferenceCode from SendRequest
+        let xml = flex_xml_report();
+        let mut server = mockito::Server::new();
+        let request_mock = mock_send_request_success(&mut server);
+        // Verify the same ReferenceCode (REF123) is used on every GetStatement call
+        let get_mock = server
+            .mock(
+                "GET",
+                mockito::Matcher::Regex(r"/GetStatement\?.*q=REF123".into()),
+            )
+            .with_status(200)
+            .with_body(xml)
+            .expect(1)
+            .create();
+
+        let client = IBKRClient::with_base_url("tok", "qid", &server.url())
+            .with_poll_params(std::time::Duration::ZERO, 5);
+        let result = client.fetch_latest_report().unwrap();
+        assert!(result.contains("AAPL"));
+        request_mock.assert();
+        get_mock.assert();
     }
 
     #[test]
     fn ibkr_client_http_error_retries() {
+        // HTTP 500 on GetStatement is retried; SendRequest is called only once
         let mut server = mockito::Server::new();
-        let mock = server
-            .mock("GET", send_request_matcher())
+        let request_mock = mock_send_request_success(&mut server);
+        let get_mock = server
+            .mock("GET", get_statement_matcher())
             .with_status(500)
             .expect(3)
             .create();
 
-        let client = IBKRClient::with_base_url("tok", "qid", &server.url());
+        let client = IBKRClient::with_base_url("tok", "qid", &server.url())
+            .with_poll_params(std::time::Duration::ZERO, 3);
         let result = client.fetch_latest_report();
         assert!(result.is_err());
-        mock.assert();
+        request_mock.assert();
+        get_mock.assert();
     }
 
     #[test]

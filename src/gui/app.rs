@@ -17,6 +17,7 @@ use super::details_dialog::DetailsDialog;
 use super::import_dialog::ImportDialog;
 use super::main_window;
 use super::styles;
+use super::sync_file_dialog::SyncFileDialog;
 
 const AUTO_SYNC_BACKOFF_MINUTES: &[i64] = &[5, 10, 20, 30, 60];
 
@@ -151,6 +152,7 @@ pub struct App {
 
     pub config_dialog: Option<ConfigDialog>,
     pub import_dialog: Option<ImportDialog>,
+    pub sync_file_dialog: Option<SyncFileDialog>,
     pub details_dialog: Option<DetailsDialog>,
     pub assessment_dialog: Option<AssessmentDialog>,
     pub error_dialog: Option<String>,
@@ -203,6 +205,7 @@ impl App {
             confirm_force_sync: false,
             config_dialog: None,
             import_dialog: None,
+            sync_file_dialog: None,
             details_dialog: None,
             assessment_dialog: None,
             error_dialog: None,
@@ -400,6 +403,31 @@ impl App {
             };
             let result = crate::sync::run_sync(&storage, &nbs, &config, &holidays, &opts, &ibkr)
                 .map_err(|e| format!("{e:#}"));
+            let _ = tx.send(BackgroundResult::SyncDone(result));
+        });
+    }
+
+    pub fn start_sync_from_file(&mut self, path: PathBuf) {
+        self.bg_busy = true;
+        self.status_message = None;
+        self.progress_text = Some("Syncing from file\u{2026}".into());
+        let config = self.config.clone();
+        let (tx, rx) = mpsc::channel();
+        self.bg_receiver = Some(rx);
+
+        std::thread::spawn(move || {
+            let storage = Storage::with_config(&config);
+            let mut holidays = crate::holidays::HolidayCalendar::load_embedded();
+            let data_dir = app_config::get_effective_data_dir_path(&config);
+            holidays.merge_file(&data_dir);
+            let nbs = crate::nbs::NBSClient::new(&storage, &holidays);
+            let opts = crate::sync::SyncOptions {
+                force: false,
+                ..Default::default()
+            };
+            let result =
+                crate::sync::run_sync_from_file(&path, &storage, &nbs, &config, &holidays, &opts)
+                    .map_err(|e| format!("{e:#}"));
             let _ = tx.send(BackgroundResult::SyncDone(result));
         });
     }
@@ -637,6 +665,7 @@ impl App {
 
         let modal_open = self.config_dialog.is_some()
             || self.import_dialog.is_some()
+            || self.sync_file_dialog.is_some()
             || self.details_dialog.is_some()
             || self.assessment_dialog.is_some()
             || self.error_dialog.is_some()
@@ -671,6 +700,8 @@ impl App {
                 self.assessment_dialog = None;
             } else if self.details_dialog.is_some() {
                 self.details_dialog = None;
+            } else if self.sync_file_dialog.is_some() {
+                self.sync_file_dialog = None;
             } else if self.import_dialog.is_some() && !self.bg_busy {
                 self.import_dialog = None;
             } else if let Some(ref dialog) = self.config_dialog {
@@ -684,6 +715,7 @@ impl App {
 
         super::config_dialog::show(ctx, self);
         super::import_dialog::show(ctx, self);
+        super::sync_file_dialog::show(ctx, self);
         super::details_dialog::show(ctx, self);
         super::assessment_dialog::show(ctx, self);
 

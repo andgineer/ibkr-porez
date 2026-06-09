@@ -177,6 +177,10 @@ fn toolbar(ui: &mut egui::Ui, app: &mut App) {
                     app.import_dialog = Some(super::import_dialog::ImportDialog::new());
                     ui.close_menu();
                 }
+                if ui.button("Sync from file\u{2026}").clicked() {
+                    app.sync_file_dialog = Some(super::sync_file_dialog::SyncFileDialog::new());
+                    ui.close_menu();
+                }
                 if ui.button("Refresh table from disk").clicked() {
                     app.refresh_declarations();
                     ui.close_menu();

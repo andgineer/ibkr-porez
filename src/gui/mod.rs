@@ -6,3 +6,4 @@ pub mod icon;
 pub mod import_dialog;
 pub mod main_window;
 pub mod styles;
+pub mod sync_file_dialog;

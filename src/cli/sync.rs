@@ -11,10 +11,14 @@ use ibkr_porez::ibkr_flex::IBKRClient;
 use ibkr_porez::models::{DeclarationType, IncomeDeclarationEntry, TaxReportEntry, UserConfig};
 use ibkr_porez::openholiday::OpenHolidayClient;
 use ibkr_porez::sync::SyncResult;
-use ibkr_porez::sync::{SyncOptions, run_sync};
+use ibkr_porez::sync::{SyncOptions, run_sync, run_sync_from_file};
 
 #[allow(clippy::needless_pass_by_value, clippy::unnecessary_wraps)]
-pub fn run(output_dir: Option<PathBuf>, lookback: Option<i64>) -> Result<()> {
+pub fn run(
+    output_dir: Option<PathBuf>,
+    lookback: Option<i64>,
+    file: Option<PathBuf>,
+) -> Result<()> {
     let mut cfg = load_config_or_exit();
 
     if let Some(ref out) = output_dir {
@@ -24,24 +28,38 @@ pub fn run(output_dir: Option<PathBuf>, lookback: Option<i64>) -> Result<()> {
     let storage = make_storage(&cfg);
     let cal = init_calendar_with_sync(&cfg);
     let nbs = make_nbs(&storage, &cal);
-    let ibkr = IBKRClient::new(&cfg.ibkr_token, &cfg.ibkr_query_id);
 
     let options = SyncOptions {
         force: false,
         forced_lookback_days: lookback,
     };
 
-    let sp = output::spinner("Syncing data and creating declarations...");
-
-    let result = match run_sync(&storage, &nbs, &cfg, &cal, &options, &ibkr) {
-        Ok(r) => {
-            sp.finish_and_clear();
-            r
+    let result = if let Some(ref path) = file {
+        let sp = output::spinner("Importing from file and creating declarations...");
+        match run_sync_from_file(path, &storage, &nbs, &cfg, &cal, &options) {
+            Ok(r) => {
+                sp.finish_and_clear();
+                r
+            }
+            Err(e) => {
+                sp.finish_and_clear();
+                output::error(&format!("{e:#}"));
+                return Ok(());
+            }
         }
-        Err(e) => {
-            sp.finish_and_clear();
-            output::error(&format!("{e:#}"));
-            return Ok(());
+    } else {
+        let ibkr = IBKRClient::new(&cfg.ibkr_token, &cfg.ibkr_query_id);
+        let sp = output::spinner("Syncing data and creating declarations...");
+        match run_sync(&storage, &nbs, &cfg, &cal, &options, &ibkr) {
+            Ok(r) => {
+                sp.finish_and_clear();
+                r
+            }
+            Err(e) => {
+                sp.finish_and_clear();
+                output::error(&format!("{e:#}"));
+                return Ok(());
+            }
         }
     };
 

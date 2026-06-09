@@ -86,6 +86,22 @@ Zatim možete [Upravljati kreiranim prijavama](#upravljanje-prijavama).
 > ibkr-porez list --status submitted -1 | ibkr-porez pay
 > ```
 
+### Sinhronizacija iz preuzetog XML fajla (`sync --file`)
+
+Ako IBKR API privremeno nije dostupan, možete ručno preuzeti Flex Query XML sa IBKR sajta i koristiti ga:
+
+```bash
+ibkr-porez sync --file /path/to/report.xml
+```
+
+Radi sve isto što i `sync` — čuva transakcije, kreira sve potrebne prijave — ali čita podatke iz lokalnog fajla umesto pozivanja IBKR API-ja.
+
+Pogledajte [kako preuzeti Flex Query XML ↗](ibkr.md#preuzimanje-flex-query-xml-a-za-sync---file).
+
+U GUI-u, ista opcija dostupna je u meniju **☰** kao **Sync from file…**.
+
+> ℹ️ Ako samo treba da sačuvate transakcije bez kreiranja prijava, koristite komandu [`import`](#uvoz-istorijskih-podataka-import).
+
 ## Prikaz statistike (`stat`)
 
 ```bash

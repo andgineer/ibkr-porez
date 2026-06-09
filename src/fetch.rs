@@ -48,6 +48,34 @@ pub fn fetch_and_import(
     })
 }
 
+pub fn fetch_from_file(
+    path: &std::path::Path,
+    storage: &Storage,
+    nbs: &NBSClient,
+) -> Result<FetchResult> {
+    let xml =
+        std::fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))?;
+
+    let report_date = Local::now().date_naive();
+    storage
+        .save_raw_report(&xml, report_date)
+        .with_context(|| storage.io_error_hint())?;
+
+    let transactions = parse_flex_report(&xml)?;
+    let (inserted, updated) = storage
+        .save_transactions(&transactions)
+        .with_context(|| storage.io_error_hint())?;
+    info!(inserted, updated, "saved transactions from file");
+
+    prefetch_rates(storage, nbs, &transactions);
+
+    Ok(FetchResult {
+        transactions,
+        inserted,
+        updated,
+    })
+}
+
 pub fn validate_ibkr_config(config: &UserConfig) -> Result<()> {
     if config.ibkr_token.is_empty() || config.ibkr_query_id.is_empty() {
         anyhow::bail!(
