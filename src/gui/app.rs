@@ -452,7 +452,7 @@ impl App {
                 self.schedule_auto_sync_after(until_midnight);
             } else if app_config::validate_config(&self.config).is_empty() {
                 if self.bg_busy {
-                    self.schedule_auto_sync_after(std::time::Duration::from_secs(60));
+                    self.schedule_auto_sync_after(std::time::Duration::from_mins(1));
                 } else {
                     self.start_sync(false);
                 }
