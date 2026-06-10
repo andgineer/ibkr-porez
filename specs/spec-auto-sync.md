@@ -62,16 +62,24 @@ triggered it, is handled identically: no modal error dialogs and no transient
 
 Transient IBKR errors (the "statement generation in progress" family) and
 network connectivity errors are shown with friendly wording rather than the
-raw error text, since the app retries them automatically every hour without
-the user needing to do anything. Errors that indicate a configuration problem
-(invalid token, expired token, invalid query ID, and similar) are shown with
-their original IBKR error text plus a note that automatic retries are paused
-and the user should use "Sync now" to try again. This phrasing also holds up
-once the user has since changed the configuration: the message still
-correctly describes a past attempt and the action needed, rather than
-appearing to comment on the just-saved configuration. Such errors are not
-retried hourly with the same configuration — the app picks them up again
-automatically at most once a day, or immediately via "Sync now".
+raw error text. Errors that indicate a configuration problem (invalid token,
+expired token, invalid query ID, and similar) are shown with their original
+IBKR error text. This phrasing also holds up once the user has since changed
+the configuration: the message still correctly describes a past attempt and
+the action needed, rather than appearing to comment on the just-saved
+configuration.
+
+Every error is retried automatically at least once a day — there is no
+"won't retry" outcome. The status line reflects this honestly:
+
+- If the daily cycle hasn't succeeded yet today and the error is transient
+  (Flex Query not ready, network issues), it is retried every hour, and the
+  message says so ("retrying automatically").
+- Otherwise — either the error is a configuration problem (retried only
+  after local midnight, not hourly), or today's sync already succeeded and
+  this was an extra manual attempt (the daily cycle is done for today) — the
+  message names tomorrow as the next automatic attempt and points to "Sync
+  now" for an immediate retry.
 
 ## Persistence
 

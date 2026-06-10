@@ -1,5 +1,4 @@
 use crate::models::DeclarationStatus;
-use chrono::Local;
 use eframe::egui;
 use egui_extras::{Column, TableBuilder};
 
@@ -94,8 +93,7 @@ pub fn show(ui: &mut egui::Ui, app: &mut App) {
 }
 
 fn sync_status_line(ui: &mut egui::Ui, app: &App) {
-    let today = Local::now().date_naive();
-    let synced_today = app.last_sync_success.is_some_and(|s| s.date() == today);
+    let synced_today = app.synced_today();
 
     let visible_issue = app.last_sync_issue.as_ref().filter(|(issue_at, _)| {
         app.last_sync_success

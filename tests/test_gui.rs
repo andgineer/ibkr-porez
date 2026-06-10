@@ -631,7 +631,7 @@ fn poll_sync_done_error() {
     let (_, msg) = app.last_sync_issue.as_ref().unwrap();
     assert_eq!(
         msg,
-        "network failure \u{2014} won't retry automatically; click \"Sync now\" to try again."
+        "network failure \u{2014} next automatic sync: tomorrow; click \"Sync now\" to try again sooner."
     );
 }
 
@@ -1028,7 +1028,7 @@ fn poll_sync_error_fatal_shows_raw_message() {
     let (_, msg) = app.last_sync_issue.as_ref().unwrap();
     assert_eq!(
         msg,
-        "IBKR API Error 1012: Token has expired \u{2014} won't retry automatically; click \"Sync now\" to try again."
+        "IBKR API Error 1012: Token has expired \u{2014} next automatic sync: tomorrow; click \"Sync now\" to try again sooner."
     );
 }
 
@@ -1150,6 +1150,39 @@ fn poll_sync_success_then_recheck_does_not_resync_same_day() {
     assert!(
         !app.bg_busy,
         "should not start second sync when already synced today"
+    );
+}
+
+#[test]
+fn poll_sync_error_after_success_today_does_not_claim_hourly_retry() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+
+    // First: today's auto-sync succeeds.
+    let (tx1, rx1) = mpsc::channel();
+    app.bg_receiver = Some(rx1);
+    app.bg_busy = true;
+    tx1.send(BackgroundResult::SyncDone(Ok(sync_result(
+        Vec::new(),
+        None,
+    ))))
+    .unwrap();
+    app.poll_background();
+    assert!(app.last_sync_success.is_some());
+
+    // Then: user clicks "Sync now" again and hits a transient error.
+    let (tx2, rx2) = mpsc::channel();
+    app.bg_receiver = Some(rx2);
+    app.bg_busy = true;
+    tx2.send(BackgroundResult::SyncDone(Err(
+        "IBKR API Error 1001: Statement not ready".into(),
+    )))
+    .unwrap();
+    app.poll_background();
+
+    let (_, msg) = app.last_sync_issue.as_ref().unwrap();
+    assert_eq!(
+        msg,
+        "Flex Query temporarily unavailable \u{2014} next automatic sync: tomorrow; click \"Sync now\" to try again sooner."
     );
 }
 

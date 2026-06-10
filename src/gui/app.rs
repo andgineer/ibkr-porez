@@ -448,13 +448,17 @@ impl App {
         });
     }
 
+    /// True once a sync has succeeded today — the daily auto-cycle is done
+    /// for today and resumes only after local midnight.
+    pub fn synced_today(&self) -> bool {
+        let today = chrono::Local::now().date_naive();
+        self.last_sync_success.is_some_and(|dt| dt.date() == today)
+    }
+
     pub fn poll_background(&mut self) {
         while let Ok(()) = self.auto_sync_rx.try_recv() {
             let now = chrono::Local::now().naive_local();
-            let synced_today = self
-                .last_sync_success
-                .is_some_and(|dt| dt.date() == now.date());
-            if synced_today {
+            if self.synced_today() {
                 continue;
             }
             if app_config::validate_config(&self.config).is_empty() {
@@ -562,7 +566,7 @@ impl App {
                 }
             }
             Err(e) => {
-                let (display_message, should_retry) = classify_sync_error(&e);
+                let (display_message, should_retry) = classify_sync_error(&e, self.synced_today());
                 let _ = self.storage.set_last_sync_issue(now, &display_message);
                 self.last_sync_issue = Some((now, display_message));
                 self.last_sync_fatal = !should_retry;
@@ -571,31 +575,33 @@ impl App {
     }
 }
 
-fn classify_sync_error(e: &str) -> (String, bool) {
-    if e.contains("IBKR API Error 1001:")
+/// Every error is retried automatically at least once a day, so the message
+/// never claims "won't retry" — only whether it's hourly (now) or tomorrow.
+fn classify_sync_error(e: &str, synced_today: bool) -> (String, bool) {
+    let (reason, should_retry) = if e.contains("IBKR API Error 1001:")
         || e.contains("IBKR API Error 1018:")
         || e.contains("IBKR API Error 1019:")
     {
-        (
-            "Flex Query temporarily unavailable \u{2014} retrying automatically.".to_string(),
-            true,
-        )
+        ("Flex Query temporarily unavailable".to_string(), true)
     } else if e.contains("IBKR SendRequest failed")
         || e.contains("IBKR GetStatement request failed")
         || e.contains("IBKR SendRequest HTTP error")
         || e.contains("IBKR GetStatement HTTP error")
         || e.contains("GetStatement: not ready after")
     {
-        (
-            "Connection to IBKR failed \u{2014} retrying automatically.".to_string(),
-            true,
-        )
+        ("Connection to IBKR failed".to_string(), true)
     } else {
-        (
-            format!("{e} \u{2014} won't retry automatically; click \"Sync now\" to try again."),
-            false,
+        (e.to_string(), false)
+    };
+
+    let message = if should_retry && !synced_today {
+        format!("{reason} \u{2014} retrying automatically.")
+    } else {
+        format!(
+            "{reason} \u{2014} next automatic sync: tomorrow; click \"Sync now\" to try again sooner."
         )
-    }
+    };
+    (message, should_retry)
 }
 
 impl App {
