@@ -69,16 +69,6 @@ pub fn fetch_from_xml(xml: &str, storage: &Storage, nbs: &NBSClient) -> Result<F
     })
 }
 
-pub fn fetch_from_file(
-    path: &std::path::Path,
-    storage: &Storage,
-    nbs: &NBSClient,
-) -> Result<FetchResult> {
-    let xml =
-        std::fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))?;
-    fetch_from_xml(&xml, storage, nbs)
-}
-
 pub fn validate_ibkr_config(config: &UserConfig) -> Result<()> {
     if config.ibkr_token.is_empty() || config.ibkr_query_id.is_empty() {
         anyhow::bail!(

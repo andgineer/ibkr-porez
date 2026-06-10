@@ -53,7 +53,7 @@ enum Commands {
         #[arg(short, long, value_parser = clap::value_parser!(i64).range(1..))]
         lookback: Option<i64>,
         /// Import from a locally downloaded Flex Query XML file instead of calling IBKR API
-        /// (see <https://andgineer.github.io/ibkr-porez/en/ibkr.html>)
+        /// (use - to read from stdin; see <https://andgineer.github.io/ibkr-porez/en/ibkr.html>)
         #[arg(short, long)]
         file: Option<PathBuf>,
     },
