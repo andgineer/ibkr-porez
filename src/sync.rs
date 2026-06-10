@@ -52,8 +52,8 @@ pub fn run_sync(
     generate_declarations(storage, nbs, config, holidays, options)
 }
 
-pub fn run_sync_from_file(
-    path: &std::path::Path,
+pub fn run_sync_from_xml(
+    xml: &str,
     storage: &Storage,
     nbs: &NBSClient,
     config: &UserConfig,
@@ -62,15 +62,28 @@ pub fn run_sync_from_file(
 ) -> Result<SyncResult> {
     validate_config_or_bail(config)?;
 
-    let fetch_result = fetch::fetch_from_file(path, storage, nbs)?;
+    let fetch_result = fetch::fetch_from_xml(xml, storage, nbs)?;
     info!(
         inserted = fetch_result.inserted,
         updated = fetch_result.updated,
         total = fetch_result.transactions.len(),
-        "file import complete"
+        "xml import complete"
     );
 
     generate_declarations(storage, nbs, config, holidays, options)
+}
+
+pub fn run_sync_from_file(
+    path: &std::path::Path,
+    storage: &Storage,
+    nbs: &NBSClient,
+    config: &UserConfig,
+    holidays: &HolidayCalendar,
+    options: &SyncOptions,
+) -> Result<SyncResult> {
+    let xml =
+        std::fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))?;
+    run_sync_from_xml(&xml, storage, nbs, config, holidays, options)
 }
 
 fn generate_declarations(

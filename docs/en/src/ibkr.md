@@ -88,7 +88,7 @@ If the IBKR API (`sync` / `fetch`) is temporarily unavailable, you can run your 
 2. Find the query you created for `ibkr-porez` (e.g., `ibkr-porez-data`).
 3. Click **Run** (blue arrow to the right of the query name).
 4. Select **XML** format and download the file.
-5. Use it with the [`sync --file` ↗](usage.md#sync-from-a-downloaded-xml-file-sync---file) command or the **Sync from file…** option in the GUI hamburger menu.
+5. Use it with the [`sync --file` ↗](usage.md#sync-from-a-downloaded-xml-file-sync---file) command or the **Sync from Flex Query XML…** option in the GUI hamburger menu.
 
 ## Export Full History (for import command)
 

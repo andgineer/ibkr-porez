@@ -98,9 +98,7 @@ Does everything `sync` does — saves transactions, generates all necessary decl
 
 See [how to download the Flex Query XML ↗](ibkr.md#download-flex-query-xml-for-sync---file).
 
-In the GUI, the same option is available in the **☰** hamburger menu as **Sync from file…**.
-
-> ℹ️ To only save transactions without generating declarations, use the existing [`import`](#import-historical-data-import) command instead.
+In the GUI, the same option is available in the **☰** hamburger menu as **Sync from Flex Query XML…**.
 
 ## View Statistics (`stat`)
 
@@ -275,5 +273,5 @@ Exports Flex Query XML file obtained during [fetch](#fetch-data-fetch) or [sync]
 
 Example usage in Linux-style:
 ```bash
-ibkr-porez export-flex 2025-01-15 | ibkr-porez import
+ibkr-porez export-flex 2025-01-15 | ibkr-porez sync --file -
 ```

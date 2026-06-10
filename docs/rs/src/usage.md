@@ -98,9 +98,7 @@ Radi sve isto što i `sync` — čuva transakcije, kreira sve potrebne prijave �
 
 Pogledajte [kako preuzeti Flex Query XML ↗](ibkr.md#preuzimanje-flex-query-xml-a-za-sync---file).
 
-U GUI-u, ista opcija dostupna je u meniju **☰** kao **Sync from file…**.
-
-> ℹ️ Ako samo treba da sačuvate transakcije bez kreiranja prijava, koristite komandu [`import`](#uvoz-istorijskih-podataka-import).
+U GUI-u, ista opcija dostupna je u meniju **☰** kao **Sync from Flex Query XML…**.
 
 ## Prikaz statistike (`stat`)
 
@@ -275,5 +273,5 @@ Izvoz XML fajla Flex Query dobijenog tokom [fetch](#preuzimanje-podataka-fetch) 
 
 Primer korišćenja u linux-stilu:
 ```bash
-ibkr-porez export-flex 2025-01-15 | ibkr-porez import
+ibkr-porez export-flex 2025-01-15 | ibkr-porez sync --file -
 ```

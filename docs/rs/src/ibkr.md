@@ -88,7 +88,7 @@ Ako IBKR API (`sync` / `fetch`) privremeno nije dostupan, možete pokrenuti Flex
 2. Pronađite upit koji ste kreirali za `ibkr-porez` (npr. `ibkr-porez-data`).
 3. Kliknite **Run** (plava strelica desno od naziva upita).
 4. Izaberite format **XML** i preuzmite fajl.
-5. Koristite fajl sa komandom [`sync --file` ↗](usage.md#sinhronizacija-iz-preuzetog-xml-fajla-sync---file) ili opcijom **Sync from file…** u ☰ meniju u GUI-u.
+5. Koristite fajl sa komandom [`sync --file` ↗](usage.md#sinhronizacija-iz-preuzetog-xml-fajla-sync---file) ili opcijom **Sync from Flex Query XML…** u ☰ meniju u GUI-u.
 
 ## Izvoz pune istorije (za import komandu)
 

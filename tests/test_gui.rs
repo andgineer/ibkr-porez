@@ -1,6 +1,5 @@
 #![cfg(feature = "gui")]
 
-use std::collections::HashSet;
 use std::sync::mpsc;
 
 use chrono::NaiveDate;
@@ -10,7 +9,7 @@ use ibkr_porez::gui::config_dialog::ConfigDialog;
 use ibkr_porez::gui::details_dialog::{self, DetailsDialog};
 use ibkr_porez::gui::import_dialog::ImportDialog;
 use ibkr_porez::gui::styles;
-use ibkr_porez::import::{FileType, ImportResult};
+use ibkr_porez::import::ImportResult;
 use ibkr_porez::models::{Declaration, DeclarationStatus, DeclarationType, UserConfig};
 use ibkr_porez::storage::Storage;
 use ibkr_porez::sync::SyncResult;
@@ -630,7 +629,10 @@ fn poll_sync_done_error() {
     assert!(app.error_dialog.is_none());
     assert!(app.last_sync_success.is_none());
     let (_, msg) = app.last_sync_issue.as_ref().unwrap();
-    assert_eq!(msg, "network failure");
+    assert_eq!(
+        msg,
+        "network failure \u{2014} won't retry automatically; click \"Sync now\" to try again."
+    );
 }
 
 #[test]
@@ -925,7 +927,6 @@ fn config_dialog_defaults_to_empty_strings() {
 fn import_dialog_defaults() {
     let dialog = ImportDialog::new();
     assert!(dialog.file_path.is_empty());
-    assert_eq!(dialog.file_type, FileType::Auto);
     assert!(!dialog.busy);
 }
 
@@ -966,4 +967,272 @@ fn start_sync_reloads_config_from_disk() {
         "start_sync should reload valid config from disk and proceed"
     );
     assert!(app.error_dialog.is_none());
+}
+
+// ── classify_sync_error / handle_sync_done ────────────────────
+
+#[test]
+fn poll_sync_error_ibkr_transient_shows_friendly_message() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    let (tx, rx) = mpsc::channel();
+    app.bg_receiver = Some(rx);
+    app.bg_busy = true;
+
+    tx.send(BackgroundResult::SyncDone(Err(
+        "IBKR API Error 1001: Flex Query is not ready".into(),
+    )))
+    .unwrap();
+    app.poll_background();
+
+    let (_, msg) = app.last_sync_issue.as_ref().unwrap();
+    assert!(
+        msg.contains("temporarily unavailable"),
+        "expected friendly message, got: {msg}"
+    );
+}
+
+#[test]
+fn poll_sync_error_network_shows_friendly_message() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    let (tx, rx) = mpsc::channel();
+    app.bg_receiver = Some(rx);
+    app.bg_busy = true;
+
+    tx.send(BackgroundResult::SyncDone(Err(
+        "failed to fetch IBKR Flex Query report: IBKR SendRequest failed: connection refused"
+            .into(),
+    )))
+    .unwrap();
+    app.poll_background();
+
+    let (_, msg) = app.last_sync_issue.as_ref().unwrap();
+    assert!(
+        msg.contains("Connection to IBKR failed"),
+        "expected network-error message, got: {msg}"
+    );
+}
+
+#[test]
+fn poll_sync_error_fatal_shows_raw_message() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    let (tx, rx) = mpsc::channel();
+    app.bg_receiver = Some(rx);
+    app.bg_busy = true;
+
+    tx.send(BackgroundResult::SyncDone(Err(
+        "IBKR API Error 1012: Token has expired".into(),
+    )))
+    .unwrap();
+    app.poll_background();
+
+    let (_, msg) = app.last_sync_issue.as_ref().unwrap();
+    assert_eq!(
+        msg,
+        "IBKR API Error 1012: Token has expired \u{2014} won't retry automatically; click \"Sync now\" to try again."
+    );
+}
+
+#[test]
+fn poll_background_skips_retry_after_fatal_error_same_day() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    let (tx, rx) = mpsc::channel();
+    app.bg_receiver = Some(rx);
+    app.bg_busy = true;
+
+    tx.send(BackgroundResult::SyncDone(Err(
+        "IBKR API Error 1012: Token has expired".into(),
+    )))
+    .unwrap();
+    app.poll_background();
+    assert!(!app.bg_busy);
+
+    // Simulates the persistent hourly tick.
+    app.trigger_sync_check();
+    app.poll_background();
+
+    assert!(
+        !app.bg_busy,
+        "fatal error from earlier today should not be retried automatically"
+    );
+}
+
+#[test]
+fn poll_background_resumes_hourly_retry_after_transient_error_following_fatal() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+
+    // First attempt today: fatal error (e.g. expired token).
+    let (tx1, rx1) = mpsc::channel();
+    app.bg_receiver = Some(rx1);
+    app.bg_busy = true;
+    tx1.send(BackgroundResult::SyncDone(Err(
+        "IBKR API Error 1012: Token has expired".into(),
+    )))
+    .unwrap();
+    app.poll_background();
+
+    // User fixes the config and clicks "Sync now"; this attempt hits a
+    // transient error instead.
+    let (tx2, rx2) = mpsc::channel();
+    app.bg_receiver = Some(rx2);
+    app.bg_busy = true;
+    tx2.send(BackgroundResult::SyncDone(Err(
+        "IBKR API Error 1001: Statement not ready".into(),
+    )))
+    .unwrap();
+    app.poll_background();
+    assert!(!app.bg_busy);
+
+    // The next hourly tick should retry, since the latest error was
+    // transient — the earlier fatal classification must not stick.
+    app.trigger_sync_check();
+    app.poll_background();
+
+    assert!(
+        app.bg_busy,
+        "transient error after a fixed fatal error should resume hourly retries"
+    );
+}
+
+// ── Config-missing banner ─────────────────────────────────────
+
+#[test]
+fn poll_background_sets_banner_when_config_invalid() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    app.config.ibkr_token = String::new();
+    app.config.ibkr_query_id = String::new();
+
+    app.trigger_sync_check();
+    app.poll_background();
+
+    let banner = app.warning_banner.as_deref().unwrap_or("");
+    assert!(
+        banner.contains("Not configured"),
+        "expected config warning banner, got: {banner:?}"
+    );
+}
+
+#[test]
+fn start_sync_clears_config_banner_when_config_valid() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    app.warning_banner = Some("Not configured — open Config to set up IBKR token".into());
+
+    app.start_sync(false);
+
+    assert!(
+        app.warning_banner
+            .as_deref()
+            .is_none_or(|b| !b.contains("Not configured")),
+        "config banner should be cleared after start_sync with valid config"
+    );
+}
+
+// ── Midnight schedule after success ──────────────────────────
+
+#[test]
+fn poll_sync_success_then_recheck_does_not_resync_same_day() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    let (tx, rx) = mpsc::channel();
+    app.bg_receiver = Some(rx);
+    app.bg_busy = true;
+
+    tx.send(BackgroundResult::SyncDone(Ok(sync_result(
+        Vec::new(),
+        None,
+    ))))
+    .unwrap();
+    app.poll_background();
+
+    assert!(app.last_sync_success.is_some());
+    // Simulates the persistent hourly tick: synced_today=true should be a
+    // no-op rather than starting another sync.
+    app.trigger_sync_check();
+    app.poll_background();
+    assert!(
+        !app.bg_busy,
+        "should not start second sync when already synced today"
+    );
+}
+
+// ── classify_sync_error — precise code matching ───────────────
+
+#[test]
+fn classify_does_not_match_raw_number_in_unrelated_message() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    let (tx, rx) = mpsc::channel();
+    app.bg_receiver = Some(rx);
+    app.bg_busy = true;
+
+    // Error message that happens to contain "1001" but is not an IBKR code.
+    tx.send(BackgroundResult::SyncDone(Err(
+        "storage error: file descriptor 1001 closed unexpectedly".into(),
+    )))
+    .unwrap();
+    app.poll_background();
+
+    let (_, msg) = app.last_sync_issue.as_ref().unwrap();
+    assert!(
+        !msg.contains("temporarily unavailable"),
+        "should not classify unrelated message as transient IBKR error: {msg}"
+    );
+}
+
+// ── Status line hides stale issue ────────────────────────────
+
+#[test]
+fn poll_sync_success_after_error_clears_visible_issue() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    let (tx, rx) = mpsc::channel();
+    app.bg_receiver = Some(rx);
+    app.bg_busy = true;
+
+    // First: error sets last_sync_issue.
+    tx.send(BackgroundResult::SyncDone(Err(
+        "IBKR API Error 1001: Statement not ready".into(),
+    )))
+    .unwrap();
+    app.poll_background();
+    assert!(app.last_sync_issue.is_some());
+
+    // Second: success clears the issue.
+    let (tx2, rx2) = mpsc::channel();
+    app.bg_receiver = Some(rx2);
+    app.bg_busy = true;
+    tx2.send(BackgroundResult::SyncDone(Ok(sync_result(
+        Vec::new(),
+        None,
+    ))))
+    .unwrap();
+    app.poll_background();
+
+    assert!(app.last_sync_success.is_some());
+    assert!(
+        app.last_sync_issue.is_none(),
+        "issue should be cleared after successful sync with no income error"
+    );
+}
+
+#[test]
+fn stale_issue_has_earlier_timestamp_than_success() {
+    // Verify the timestamp ordering invariant that sync_status_line relies on:
+    // when a success clears the issue, last_sync_issue is None.
+    // When an income error is set, both timestamps are equal (same `now`).
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    let (tx, rx) = mpsc::channel();
+    app.bg_receiver = Some(rx);
+    app.bg_busy = true;
+
+    let income_err = "no NBS exchange rate for 2025-01-01".to_string();
+    tx.send(BackgroundResult::SyncDone(Ok(sync_result(
+        Vec::new(),
+        Some(income_err.clone()),
+    ))))
+    .unwrap();
+    app.poll_background();
+
+    let success_at = app.last_sync_success.unwrap();
+    let (issue_at, _) = app.last_sync_issue.as_ref().unwrap();
+    assert!(
+        *issue_at >= success_at,
+        "income error timestamp should be >= success timestamp so it stays visible"
+    );
 }

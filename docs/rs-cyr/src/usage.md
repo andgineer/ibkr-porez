@@ -102,9 +102,7 @@ ibkr-porez sync --file /path/to/report.xml
 
 Погледајте [како преузети Flex Query XML ↗](ibkr.md#преузимање-flex-query-xml-а-за-sync---file).
 
-У GUI-у, иста опција доступна је у менију **☰** као **Sync from file…**.
-
-> ℹ️ Ако само треба да сачувате трансакције без креирања пријава, користите команду [`import`](#увоз-историјских-података-import).
+У GUI-у, иста опција доступна је у менију **☰** као **Sync from Flex Query XML…**.
 
 ## Приказ статистике (stat)
 
@@ -289,5 +287,5 @@ ibkr-porez export-flex 2025-01-15 -o -  # Излаз у stdout (за цеви)
 Пример коришћења у linux-стилу:
 
 ```bash
-ibkr-porez export-flex 2025-01-15 | ibkr-porez import
+ibkr-porez export-flex 2025-01-15 | ibkr-porez sync --file -
 ```

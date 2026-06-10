@@ -3,21 +3,15 @@ use std::path::PathBuf;
 
 use anyhow::{Result, bail};
 
-use super::{LibImportType, init_calendar, load_config_or_exit, make_nbs, make_storage, output};
-use ibkr_porez::import::{self, FileType};
+use super::{init_calendar, load_config_or_exit, make_nbs, make_storage, output};
+use ibkr_porez::import;
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn run(file_path: Option<PathBuf>, import_type: LibImportType) -> Result<()> {
+pub fn run(file_path: Option<PathBuf>) -> Result<()> {
     let cfg = load_config_or_exit();
     let storage = make_storage(&cfg);
     let cal = init_calendar(&cfg);
     let nbs = make_nbs(&storage, &cal);
-
-    let ft = match import_type {
-        LibImportType::Auto => FileType::Auto,
-        LibImportType::Csv => FileType::Csv,
-        LibImportType::Flex => FileType::Flex,
-    };
 
     let source = resolve_input(file_path)?;
     let label = match &source {
@@ -32,9 +26,9 @@ pub fn run(file_path: Option<PathBuf>, import_type: LibImportType) -> Result<()>
             let mut buf = Vec::new();
             io::stdin().read_to_end(&mut buf)?;
             let cursor = io::Cursor::new(buf);
-            import::import_from_reader(&storage, &nbs, cursor, ft, None)
+            import::import_from_reader(&storage, &nbs, cursor)
         }
-        InputSource::File(path) => import::import_from_file(&storage, &nbs, path, ft),
+        InputSource::File(path) => import::import_from_file(&storage, &nbs, path),
     };
 
     sp.finish_and_clear();
@@ -68,7 +62,7 @@ fn resolve_input(file_path: Option<PathBuf>) -> Result<InputSource> {
         None => {
             if io::stdin().is_terminal() {
                 bail!(
-                    "no file specified and stdin is a terminal; provide a file path or pipe data"
+                    "no file specified and stdin is a terminal; provide a CSV file path or pipe data"
                 );
             }
             Ok(InputSource::Stdin)

@@ -1,14 +1,12 @@
 #![cfg(feature = "gui")]
 
-use std::collections::HashSet;
-
 use chrono::NaiveDate;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use rust_decimal_macros::dec;
 
-use ibkr_porez::gui::app::{self, App, BulkAction, FilterScope, SortColumn};
+use ibkr_porez::gui::app::{self, App, FilterScope, SortColumn};
 use ibkr_porez::gui::config_dialog::ConfigDialog;
 use ibkr_porez::models::{
     Currency, Declaration, DeclarationStatus, DeclarationType, Transaction, TransactionType,
@@ -184,6 +182,26 @@ fn config_button_opens_dialog() {
     assert!(
         harness.state().config_dialog.is_some(),
         "clicking Config button should open config dialog"
+    );
+}
+
+#[test]
+fn not_configured_banner_link_opens_config_dialog() {
+    let (mut app, _tmp) = setup_app(vec![], vec![]);
+    app.warning_banner = Some("Not configured \u{2014} open Config to set up IBKR token".into());
+    let mut harness = harness_for(app);
+    harness.run();
+
+    assert!(harness.state().config_dialog.is_none());
+
+    // Exact match: the toolbar button is labeled "\u{2699} Config", the
+    // banner link is plain "Config" — `get_by_label` (exact) picks the link.
+    harness.get_by_label("Config").click();
+    harness.run();
+
+    assert!(
+        harness.state().config_dialog.is_some(),
+        "clicking the Config link in the banner should open the config dialog"
     );
 }
 
@@ -377,7 +395,7 @@ fn import_dialog_opens_via_state() {
 }
 
 #[test]
-fn import_dialog_has_file_type_radios() {
+fn import_dialog_shows_csv_controls() {
     let (app, _tmp) = setup_app(vec![], vec![]);
     let mut harness = harness_for(app);
 
@@ -385,16 +403,12 @@ fn import_dialog_has_file_type_radios() {
     harness.run();
 
     assert!(
-        harness.query_by_label_contains("Auto").is_some(),
-        "Auto radio should be visible"
+        harness.query_by_label_contains("File:").is_some(),
+        "File label should be visible"
     );
     assert!(
-        harness.query_by_label_contains("CSV").is_some(),
-        "CSV radio should be visible"
-    );
-    assert!(
-        harness.query_by_label_contains("Flex XML").is_some(),
-        "Flex XML radio should be visible"
+        harness.query_by_label_contains("Close").is_some(),
+        "Close button should be visible"
     );
 }
 

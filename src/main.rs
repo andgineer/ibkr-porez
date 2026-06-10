@@ -24,13 +24,6 @@ struct Cli {
 }
 
 #[derive(Clone, ValueEnum)]
-enum ImportType {
-    Auto,
-    Csv,
-    Flex,
-}
-
-#[derive(Clone, ValueEnum)]
 enum ReportType {
     Gains,
     Income,
@@ -48,12 +41,10 @@ enum Commands {
     Config,
     /// Fetch data from IBKR (without generating reports)
     Fetch,
-    /// Import transactions from a CSV or Flex XML file
+    /// Import transactions from a CSV activity statement (full history, older than 1 year)
     Import {
-        /// Path to file (use - or omit for stdin)
+        /// Path to CSV file (use - or omit for stdin)
         file_path: Option<PathBuf>,
-        #[arg(short = 't', long, default_value = "auto")]
-        r#type: ImportType,
     },
     /// Sync data from IBKR, generate reports and declarations
     Sync {
@@ -159,7 +150,7 @@ fn main() {
     let result = match cli.command {
         Some(Commands::Config) => cli::config::run(),
         Some(Commands::Fetch) => cli::fetch::run(),
-        Some(Commands::Import { file_path, r#type }) => cli::import::run(file_path, r#type.into()),
+        Some(Commands::Import { file_path }) => cli::import::run(file_path),
         Some(Commands::Sync {
             output,
             lookback,

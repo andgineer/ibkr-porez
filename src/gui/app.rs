@@ -131,10 +131,12 @@ pub struct App {
     pub bg_busy: bool,
     pub last_sync_success: Option<chrono::NaiveDateTime>,
     pub last_sync_issue: Option<(chrono::NaiveDateTime, String)>,
+    last_sync_fatal: bool,
     pub pending_new_declarations: u32,
     ctx: egui::Context,
     auto_sync_tx: mpsc::Sender<()>,
     auto_sync_rx: mpsc::Receiver<()>,
+    scheduler_started: bool,
     pub export_channel: Option<(
         mpsc::Sender<BackgroundResult>,
         mpsc::Receiver<BackgroundResult>,
@@ -175,9 +177,7 @@ impl App {
         let pending_new_declarations = storage.get_pending_new_declarations();
 
         let (auto_sync_tx, auto_sync_rx) = mpsc::channel::<()>();
-        if last_sync_success.is_none_or(|dt| dt.date() != chrono::Local::now().date_naive()) {
-            let _ = auto_sync_tx.send(());
-        }
+        let _ = auto_sync_tx.send(());
 
         Self {
             config,
@@ -195,10 +195,12 @@ impl App {
             bg_busy: false,
             last_sync_success,
             last_sync_issue,
+            last_sync_fatal: false,
             pending_new_declarations,
             ctx: egui::Context::default(),
             auto_sync_tx,
             auto_sync_rx,
+            scheduler_started: false,
             export_channel: None,
             exporting_ids: std::collections::HashSet::new(),
             progress_text: None,
@@ -382,6 +384,14 @@ impl App {
             return;
         }
 
+        if self
+            .warning_banner
+            .as_deref()
+            .is_some_and(|b| b.starts_with("Not configured"))
+        {
+            self.warning_banner = check_holiday_warning(&self.config);
+        }
+
         self.bg_busy = true;
         self.status_message = None;
         self.progress_text = Some("Syncing…".into());
@@ -439,23 +449,26 @@ impl App {
     }
 
     pub fn poll_background(&mut self) {
-        if let Ok(()) = self.auto_sync_rx.try_recv() {
+        while let Ok(()) = self.auto_sync_rx.try_recv() {
             let now = chrono::Local::now().naive_local();
             let synced_today = self
                 .last_sync_success
                 .is_some_and(|dt| dt.date() == now.date());
             if synced_today {
-                let tomorrow = now.date().succ_opt().unwrap().and_hms_opt(0, 0, 0).unwrap();
-                let until_midnight = (tomorrow - now)
-                    .to_std()
-                    .unwrap_or(std::time::Duration::from_hours(1));
-                self.schedule_auto_sync_after(until_midnight);
-            } else if app_config::validate_config(&self.config).is_empty() {
-                if self.bg_busy {
-                    self.schedule_auto_sync_after(std::time::Duration::from_mins(1));
-                } else {
+                continue;
+            }
+            if app_config::validate_config(&self.config).is_empty() {
+                let already_failed_fatally_today = self.last_sync_fatal
+                    && self
+                        .last_sync_issue
+                        .as_ref()
+                        .is_some_and(|(dt, _)| dt.date() == now.date());
+                if !self.bg_busy && !already_failed_fatally_today {
                     self.start_sync(false);
                 }
+            } else {
+                self.warning_banner =
+                    Some("Not configured \u{2014} open Config to set up IBKR token".to_string());
             }
         }
 
@@ -530,6 +543,7 @@ impl App {
             Ok(r) => {
                 let _ = self.storage.set_last_sync_success(now);
                 self.last_sync_success = Some(now);
+                self.last_sync_fatal = false;
                 if let Some(msg) = &r.income_error {
                     let _ = self.storage.set_last_sync_issue(now, msg);
                     self.last_sync_issue = Some((now, msg.clone()));
@@ -548,19 +562,43 @@ impl App {
                 }
             }
             Err(e) => {
-                let display_message =
-                    if e.contains("1001") || e.contains("1018") || e.contains("1019") {
-                        "Flex Query temporarily unavailable — retrying automatically.".to_string()
-                    } else {
-                        e.clone()
-                    };
+                let (display_message, should_retry) = classify_sync_error(&e);
                 let _ = self.storage.set_last_sync_issue(now, &display_message);
                 self.last_sync_issue = Some((now, display_message));
-                self.schedule_auto_sync_after(std::time::Duration::from_hours(1));
+                self.last_sync_fatal = !should_retry;
             }
         }
     }
+}
 
+fn classify_sync_error(e: &str) -> (String, bool) {
+    if e.contains("IBKR API Error 1001:")
+        || e.contains("IBKR API Error 1018:")
+        || e.contains("IBKR API Error 1019:")
+    {
+        (
+            "Flex Query temporarily unavailable \u{2014} retrying automatically.".to_string(),
+            true,
+        )
+    } else if e.contains("IBKR SendRequest failed")
+        || e.contains("IBKR GetStatement request failed")
+        || e.contains("IBKR SendRequest HTTP error")
+        || e.contains("IBKR GetStatement HTTP error")
+        || e.contains("GetStatement: not ready after")
+    {
+        (
+            "Connection to IBKR failed \u{2014} retrying automatically.".to_string(),
+            true,
+        )
+    } else {
+        (
+            format!("{e} \u{2014} won't retry automatically; click \"Sync now\" to try again."),
+            false,
+        )
+    }
+}
+
+impl App {
     pub fn new_for_test(
         config: crate::models::UserConfig,
         config_file: std::path::PathBuf,
@@ -584,6 +622,7 @@ impl App {
             bg_busy: false,
             last_sync_success: None,
             last_sync_issue: None,
+            last_sync_fatal: false,
             pending_new_declarations: 0,
             export_channel: None,
             exporting_ids: std::collections::HashSet::new(),
@@ -600,17 +639,13 @@ impl App {
             ctx: egui::Context::default(),
             auto_sync_tx,
             auto_sync_rx,
+            scheduler_started: true,
         }
     }
 
-    fn schedule_auto_sync_after(&self, delay: std::time::Duration) {
-        let tx = self.auto_sync_tx.clone();
-        let ctx = self.ctx.clone();
-        std::thread::spawn(move || {
-            std::thread::sleep(delay);
-            let _ = tx.send(());
-            ctx.request_repaint();
-        });
+    pub fn trigger_sync_check(&self) {
+        let _ = self.auto_sync_tx.send(());
+        self.ctx.request_repaint();
     }
 
     pub fn dismiss_pending_new_declarations(&mut self) {
@@ -705,6 +740,20 @@ impl App {
 
     pub fn render(&mut self, ctx: &egui::Context) {
         self.ctx = ctx.clone();
+
+        if !self.scheduler_started {
+            self.scheduler_started = true;
+            let tx = self.auto_sync_tx.clone();
+            let ctx = self.ctx.clone();
+            std::thread::spawn(move || {
+                loop {
+                    std::thread::sleep(std::time::Duration::from_hours(1));
+                    let _ = tx.send(());
+                    ctx.request_repaint();
+                }
+            });
+        }
+
         self.poll_background();
 
         let modal_open = self.config_dialog.is_some()

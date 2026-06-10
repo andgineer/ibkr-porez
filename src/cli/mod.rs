@@ -48,22 +48,6 @@ impl StatusFilter {
     }
 }
 
-pub enum LibImportType {
-    Auto,
-    Csv,
-    Flex,
-}
-
-impl From<super::ImportType> for LibImportType {
-    fn from(t: super::ImportType) -> Self {
-        match t {
-            super::ImportType::Auto => Self::Auto,
-            super::ImportType::Csv => Self::Csv,
-            super::ImportType::Flex => Self::Flex,
-        }
-    }
-}
-
 pub enum LibReportType {
     Gains,
     Income,

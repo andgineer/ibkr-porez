@@ -30,7 +30,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
 
     let dialog = app.sync_file_dialog.as_mut().unwrap();
 
-    egui::Window::new("Sync from File")
+    egui::Window::new("Sync from Flex Query XML")
         .collapsible(false)
         .resizable(true)
         .default_width(500.0)

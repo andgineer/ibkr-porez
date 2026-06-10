@@ -28,14 +28,27 @@ successful sync.
 
 ## Retry schedule
 
-On failure, the next attempt is scheduled one hour later, repeating hourly
-until the sync succeeds.
+A single persistent background timer ticks hourly while there is no
+successful sync recorded for the current day.
+
+- Transient errors (Flex Query not ready yet, network issues) are retried on
+  every tick until they succeed.
+- Errors that indicate a configuration problem (expired/invalid token,
+  invalid query ID, and similar) are not retried hourly, since repeating the
+  same request would just fail again. Such an error is retried at most once
+  a day (the cycle self-heals automatically across midnight, even if the app
+  stays open). The user can also force an immediate retry at any time with
+  "Sync now".
 
 ## Configuration gate
 
 If the IBKR configuration is incomplete or invalid, the auto-cycle does not
-run at all — no attempts, no backoff, no status-line noise. Triggering a sync
-manually still shows the configuration-validation dialog as before.
+run. A permanent status-line banner informs the user that configuration is
+required. Saving a valid configuration does not by itself trigger a sync —
+the next hourly tick picks it up automatically (within an hour), or the user
+can use "Sync now" for an immediate attempt. Triggering a sync manually with
+an invalid configuration still shows the configuration-validation error as
+before.
 
 ## Manual vs. automatic sync
 
@@ -45,9 +58,18 @@ triggered it, is handled identically: no modal error dialogs and no transient
 "sync complete" messages, only the permanent status line and a dismissible
 "new declarations" banner are updated.
 
-Transient IBKR errors (the "statement generation in progress" family) are
-shown with friendly wording rather than the raw IBKR error text, since the app
-retries them automatically without the user needing to do anything.
+Transient IBKR errors (the "statement generation in progress" family) and
+network connectivity errors are shown with friendly wording rather than the
+raw error text, since the app retries them automatically every hour without
+the user needing to do anything. Errors that indicate a configuration problem
+(invalid token, expired token, invalid query ID, and similar) are shown with
+their original IBKR error text plus a note that automatic retries are paused
+and the user should use "Sync now" to try again. This phrasing also holds up
+once the user has since changed the configuration: the message still
+correctly describes a past attempt and the action needed, rather than
+appearing to comment on the just-saved configuration. Such errors are not
+retried hourly with the same configuration — the app picks them up again
+automatically at most once a day, or immediately via "Sync now".
 
 ## Persistence
 

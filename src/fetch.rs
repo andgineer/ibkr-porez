@@ -48,24 +48,17 @@ pub fn fetch_and_import(
     })
 }
 
-pub fn fetch_from_file(
-    path: &std::path::Path,
-    storage: &Storage,
-    nbs: &NBSClient,
-) -> Result<FetchResult> {
-    let xml =
-        std::fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))?;
-
+pub fn fetch_from_xml(xml: &str, storage: &Storage, nbs: &NBSClient) -> Result<FetchResult> {
     let report_date = Local::now().date_naive();
     storage
-        .save_raw_report(&xml, report_date)
+        .save_raw_report(xml, report_date)
         .with_context(|| storage.io_error_hint())?;
 
-    let transactions = parse_flex_report(&xml)?;
+    let transactions = parse_flex_report(xml)?;
     let (inserted, updated) = storage
         .save_transactions(&transactions)
         .with_context(|| storage.io_error_hint())?;
-    info!(inserted, updated, "saved transactions from file");
+    info!(inserted, updated, "saved transactions from xml");
 
     prefetch_rates(storage, nbs, &transactions);
 
@@ -74,6 +67,16 @@ pub fn fetch_from_file(
         inserted,
         updated,
     })
+}
+
+pub fn fetch_from_file(
+    path: &std::path::Path,
+    storage: &Storage,
+    nbs: &NBSClient,
+) -> Result<FetchResult> {
+    let xml =
+        std::fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))?;
+    fetch_from_xml(&xml, storage, nbs)
 }
 
 pub fn validate_ibkr_config(config: &UserConfig) -> Result<()> {

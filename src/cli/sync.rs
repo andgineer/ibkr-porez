@@ -1,7 +1,8 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::io::{self, IsTerminal, Read};
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use chrono::{Datelike, Local};
 
 use super::{load_config_or_exit, make_nbs, make_storage, output, tables};
@@ -11,7 +12,7 @@ use ibkr_porez::ibkr_flex::IBKRClient;
 use ibkr_porez::models::{DeclarationType, IncomeDeclarationEntry, TaxReportEntry, UserConfig};
 use ibkr_porez::openholiday::OpenHolidayClient;
 use ibkr_porez::sync::SyncResult;
-use ibkr_porez::sync::{SyncOptions, run_sync, run_sync_from_file};
+use ibkr_porez::sync::{SyncOptions, run_sync, run_sync_from_file, run_sync_from_xml};
 
 #[allow(clippy::needless_pass_by_value, clippy::unnecessary_wraps)]
 pub fn run(
@@ -36,7 +37,17 @@ pub fn run(
 
     let result = if let Some(ref path) = file {
         let sp = output::spinner("Importing from file and creating declarations...");
-        match run_sync_from_file(path, &storage, &nbs, &cfg, &cal, &options) {
+        let sync_result = if path.to_str() == Some("-") {
+            if io::stdin().is_terminal() {
+                bail!("--file - requires piped input (stdin is a terminal)");
+            }
+            let mut xml = String::new();
+            io::stdin().read_to_string(&mut xml)?;
+            run_sync_from_xml(&xml, &storage, &nbs, &cfg, &cal, &options)
+        } else {
+            run_sync_from_file(path, &storage, &nbs, &cfg, &cal, &options)
+        };
+        match sync_result {
             Ok(r) => {
                 sp.finish_and_clear();
                 r

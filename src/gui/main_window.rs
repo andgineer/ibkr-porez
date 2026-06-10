@@ -1,4 +1,5 @@
 use crate::models::DeclarationStatus;
+use chrono::Local;
 use eframe::egui;
 use egui_extras::{Column, TableBuilder};
 
@@ -9,11 +10,28 @@ pub fn show(ui: &mut egui::Ui, app: &mut App) {
     toolbar(ui, app);
 
     if let Some(ref banner) = app.warning_banner {
+        let is_config_banner = banner.starts_with("Not configured");
         egui::Frame::new()
             .fill(ui.visuals().faint_bg_color)
             .inner_margin(4.0)
             .show(ui, |ui| {
-                ui.colored_label(ui.visuals().warn_fg_color, banner);
+                let warn = ui.visuals().warn_fg_color;
+                if is_config_banner {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.spacing_mut().item_spacing.x = 0.0;
+                        ui.colored_label(warn, "Not configured \u{2014} click ");
+                        if ui.link("Config").clicked() {
+                            app.config_dialog =
+                                Some(super::config_dialog::ConfigDialog::new(&app.config));
+                        }
+                        ui.colored_label(
+                            warn,
+                            " to set up your IBKR token and other required fields.",
+                        );
+                    });
+                } else {
+                    ui.colored_label(warn, banner);
+                }
             });
         ui.add_space(4.0);
     }
@@ -76,7 +94,15 @@ pub fn show(ui: &mut egui::Ui, app: &mut App) {
 }
 
 fn sync_status_line(ui: &mut egui::Ui, app: &App) {
-    let (text, kind) = match (app.last_sync_success, &app.last_sync_issue) {
+    let today = Local::now().date_naive();
+    let synced_today = app.last_sync_success.is_some_and(|s| s.date() == today);
+
+    let visible_issue = app.last_sync_issue.as_ref().filter(|(issue_at, _)| {
+        app.last_sync_success
+            .is_none_or(|success_at| *issue_at >= success_at)
+    });
+
+    let (text, kind) = match (app.last_sync_success, visible_issue) {
         (Some(success), Some((at, msg))) => (
             format!(
                 "Last sync: {} \u{2014} success \u{b7} attempt at {} ran into an issue: {msg}",
@@ -84,6 +110,13 @@ fn sync_status_line(ui: &mut egui::Ui, app: &App) {
                 at.format("%H:%M"),
             ),
             styles::MessageKind::Warning,
+        ),
+        (Some(success), None) if synced_today => (
+            format!(
+                "Last sync: {} \u{2014} success \u{b7} next sync: tomorrow",
+                success.format("%H:%M"),
+            ),
+            styles::MessageKind::Success,
         ),
         (Some(success), None) => (
             format!(
@@ -170,14 +203,11 @@ fn toolbar(ui: &mut egui::Ui, app: &mut App) {
                     ui.close_menu();
                 }
                 ui.separator();
-                if ui
-                    .button("Import historical transactions\u{2026}")
-                    .clicked()
-                {
+                if ui.button("Import full history (CSV)\u{2026}").clicked() {
                     app.import_dialog = Some(super::import_dialog::ImportDialog::new());
                     ui.close_menu();
                 }
-                if ui.button("Sync from file\u{2026}").clicked() {
+                if ui.button("Sync from Flex Query XML\u{2026}").clicked() {
                     app.sync_file_dialog = Some(super::sync_file_dialog::SyncFileDialog::new());
                     ui.close_menu();
                 }

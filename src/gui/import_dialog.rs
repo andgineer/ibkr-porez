@@ -2,13 +2,10 @@ use std::sync::mpsc;
 
 use eframe::egui;
 
-use crate::import::FileType;
-
 use super::app::{App, BackgroundResult};
 
 pub struct ImportDialog {
     pub file_path: String,
-    pub file_type: FileType,
     pub busy: bool,
 }
 
@@ -22,7 +19,6 @@ impl ImportDialog {
     pub fn new() -> Self {
         Self {
             file_path: String::new(),
-            file_type: FileType::Auto,
             busy: false,
         }
     }
@@ -38,35 +34,23 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
 
     let dialog = app.import_dialog.as_mut().unwrap();
 
-    egui::Window::new("Import Transactions")
+    egui::Window::new("Import Full History (CSV)")
         .collapsible(false)
         .resizable(true)
         .default_width(450.0)
         .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
         .show(ctx, |ui| {
-            ui.heading("Source File");
             ui.add_space(4.0);
             ui.horizontal(|ui| {
                 ui.label("File:");
                 ui.text_edit_singleline(&mut dialog.file_path);
-                if ui.small_button("Browse...").clicked()
+                if ui.small_button("Browse\u{2026}").clicked()
                     && let Some(path) = rfd::FileDialog::new()
-                        .add_filter("All supported", &["csv", "xml"])
                         .add_filter("CSV", &["csv"])
-                        .add_filter("XML (Flex)", &["xml"])
                         .pick_file()
                 {
                     dialog.file_path = path.display().to_string();
                 }
-            });
-
-            ui.add_space(12.0);
-            ui.heading("Format");
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.radio_value(&mut dialog.file_type, FileType::Auto, "Auto");
-                ui.radio_value(&mut dialog.file_type, FileType::Csv, "CSV");
-                ui.radio_value(&mut dialog.file_type, FileType::Flex, "Flex XML");
             });
 
             ui.add_space(12.0);
@@ -77,8 +61,9 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
             );
             ui.add_space(4.0);
             ui.hyperlink_to(
-                "Import documentation",
-                "https://andgineer.github.io/ibkr-porez/en/usage.html",
+                "How to export full history from IBKR",
+                "https://andgineer.github.io/ibkr-porez/en/ibkr.html\
+                 #export-full-history-for-import-command",
             );
 
             ui.add_space(16.0);
@@ -110,7 +95,6 @@ fn start_import(app: &mut App) {
     dialog.busy = true;
 
     let path = dialog.file_path.clone();
-    let file_type = dialog.file_type;
     let (tx, rx) = mpsc::channel();
     app.bg_receiver = Some(rx);
     app.bg_busy = true;
@@ -120,13 +104,9 @@ fn start_import(app: &mut App) {
         let storage = crate::storage::Storage::new();
         let holidays = crate::holidays::HolidayCalendar::load_embedded();
         let nbs = crate::nbs::NBSClient::new(&storage, &holidays);
-        let result = crate::import::import_from_file(
-            &storage,
-            &nbs,
-            &std::path::PathBuf::from(path),
-            file_type,
-        )
-        .map_err(|e| format!("{e:#}"));
+        let result =
+            crate::import::import_from_file(&storage, &nbs, &std::path::PathBuf::from(path))
+                .map_err(|e| format!("{e:#}"));
         let _ = tx.send(BackgroundResult::ImportDone(result));
     });
 }
