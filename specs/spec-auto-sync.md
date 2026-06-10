@@ -11,9 +11,10 @@ is broken.
 
 While the GUI is running, the app retries syncing automatically in the
 background: once a day, after the US market close (when the prior trading
-day's Flex Query report becomes available), it keeps trying — with backoff —
-until it succeeds. The user always sees, in a permanent status line, when the
-last successful sync was and whether a later attempt ran into an issue.
+day's Flex Query report becomes available), it keeps retrying until it
+succeeds (see Retry schedule). The user always sees, in a permanent status
+line, when the last successful sync was and whether a later attempt ran into
+an issue.
 
 This is GUI-only; the CLI remains a one-shot command, unaffected.
 
@@ -44,7 +45,8 @@ successful sync recorded for the current day.
 
 If the IBKR configuration is incomplete or invalid, the auto-cycle does not
 run. A permanent status-line banner informs the user that configuration is
-required. Saving a valid configuration does not by itself trigger a sync —
+required, with a clickable link that opens the Config dialog directly. Saving
+a valid configuration does not by itself trigger a sync —
 the next hourly tick picks it up automatically (within an hour), or the user
 can use "Sync now" for an immediate attempt. Triggering a sync manually with
 an invalid configuration still shows the configuration-validation error as
