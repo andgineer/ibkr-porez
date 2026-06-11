@@ -92,6 +92,41 @@ pub fn show(ui: &mut egui::Ui, app: &mut App) {
     declaration_table(ui, app);
 }
 
+/// Formats the last successful sync time, using "yesterday HH:MM" for syncs
+/// exactly one day old and the full date otherwise.
+fn format_last_success(success: chrono::NaiveDateTime, synced_today: bool) -> String {
+    if synced_today {
+        success.format("%H:%M").to_string()
+    } else if chrono::Local::now().date_naive() - success.date() == chrono::Duration::days(1) {
+        format!("yesterday {}", success.format("%H:%M"))
+    } else {
+        success.format("%Y-%m-%d %H:%M").to_string()
+    }
+}
+
+/// Splits a message produced by `classify_sync_error` into the failure
+/// reason and, if present, a short retry-schedule hint.
+fn split_sync_issue(msg: &str) -> (&str, Option<&'static str>) {
+    if let Some(idx) = msg.find(" \u{2014} retrying automatically.") {
+        return (&msg[..idx], Some("Retrying automatically."));
+    }
+    if let Some(idx) = msg.find(" \u{2014} next automatic sync") {
+        return (&msg[..idx], Some("Next sync: tomorrow."));
+    }
+    (msg, None)
+}
+
+/// A small rounded badge used to show one piece of sync status.
+fn status_pill(ui: &mut egui::Ui, text: &str) {
+    egui::Frame::new()
+        .fill(ui.visuals().faint_bg_color)
+        .corner_radius(6.0)
+        .inner_margin(egui::vec2(8.0, 4.0))
+        .show(ui, |ui| {
+            ui.label(text);
+        });
+}
+
 fn sync_status_line(ui: &mut egui::Ui, app: &App) {
     let synced_today = app.synced_today();
 
@@ -100,50 +135,36 @@ fn sync_status_line(ui: &mut egui::Ui, app: &App) {
             .is_none_or(|success_at| *issue_at >= success_at)
     });
 
-    let (text, kind) = match (app.last_sync_success, visible_issue) {
-        (Some(success), Some((at, msg))) => (
-            format!(
-                "Last sync: {} \u{2014} success \u{b7} attempt at {} ran into an issue: {msg}",
-                success.format("%Y-%m-%d %H:%M"),
-                at.format("%H:%M"),
-            ),
-            styles::MessageKind::Warning,
-        ),
-        (Some(success), None) if synced_today => (
-            format!(
-                "Last sync: {} \u{2014} success \u{b7} next sync: tomorrow",
-                success.format("%H:%M"),
-            ),
-            styles::MessageKind::Success,
-        ),
-        (Some(success), None) => (
-            format!(
-                "Last sync: {} \u{2014} success",
-                success.format("%Y-%m-%d %H:%M")
-            ),
-            styles::MessageKind::Success,
-        ),
-        (None, Some((at, msg))) => (
-            format!(
-                "Last sync attempt at {}: {msg}",
-                at.format("%Y-%m-%d %H:%M")
-            ),
-            styles::MessageKind::Warning,
-        ),
-        (None, None) => return,
-    };
+    if app.last_sync_success.is_none() && visible_issue.is_none() {
+        return;
+    }
 
-    egui::Frame::new()
-        .fill(ui.visuals().faint_bg_color)
-        .inner_margin(4.0)
-        .show(ui, |ui| match kind {
-            styles::MessageKind::Warning => {
-                ui.colored_label(ui.visuals().warn_fg_color, text);
+    ui.horizontal_wrapped(|ui| {
+        if let Some(success) = app.last_sync_success {
+            status_pill(
+                ui,
+                &format!(
+                    "\u{2714} Synced {}",
+                    format_last_success(success, synced_today)
+                ),
+            );
+        }
+
+        if let Some((at, msg)) = visible_issue {
+            let (reason, hint) = split_sync_issue(msg);
+            let fmt = if app.last_sync_success.is_some() {
+                "%H:%M"
+            } else {
+                "%Y-%m-%d %H:%M"
+            };
+            status_pill(ui, &format!("\u{26a0} {}: {reason}", at.format(fmt)));
+            if let Some(hint) = hint {
+                status_pill(ui, &format!("\u{21bb} {hint}"));
             }
-            styles::MessageKind::Success => {
-                ui.label(text);
-            }
-        });
+        } else if synced_today {
+            status_pill(ui, "\u{21bb} Next sync: tomorrow");
+        }
+    });
     ui.add_space(4.0);
 }
 

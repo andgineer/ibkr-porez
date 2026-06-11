@@ -210,7 +210,7 @@ fn sync_button_shows_config_error() {
     let (app, _tmp) = setup_app_invalid_config(vec![], vec![]);
     let mut harness = harness_for(app);
 
-    harness.get_by_label_contains("Sync").click();
+    harness.get_by_label_contains("Sync now").click();
     harness.run();
 
     assert!(
