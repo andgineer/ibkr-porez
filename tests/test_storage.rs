@@ -311,3 +311,105 @@ fn test_get_transactions_date_filter() {
     let to_only = storage.get_transactions(None, Some(d(2025, 7, 20)));
     assert_eq!(to_only.len(), 2);
 }
+
+// ---------------------------------------------------------------------------
+// Carryforward ledger
+// ---------------------------------------------------------------------------
+
+fn make_vintage(id: &str, remaining: Decimal) -> CarryforwardVintage {
+    CarryforwardVintage {
+        id: id.into(),
+        origin_declaration_id: "1".into(),
+        assessment_reference: None,
+        origin_period_start: d(2025, 1, 1),
+        origin_period_end: d(2025, 6, 30),
+        recognized_loss_rsd: Decimal::from_str("1000").unwrap(),
+        remaining_loss_rsd: remaining,
+        created_at: chrono::NaiveDateTime::default(),
+        expiration_tax_year: 2030,
+        notes: None,
+    }
+}
+
+#[test]
+fn test_carryforward_ledger_empty_when_missing() {
+    let dir = TempDir::new().unwrap();
+    let storage = Storage::with_dir(dir.path());
+
+    assert!(storage.get_carryforward_vintages().is_empty());
+    assert!(storage.find_carryforward_vintage("CF-1").is_none());
+}
+
+#[test]
+fn test_upsert_and_find_carryforward_vintage() {
+    let dir = TempDir::new().unwrap();
+    let storage = Storage::with_dir(dir.path());
+
+    let vintage = make_vintage("CF-1", Decimal::from_str("1000").unwrap());
+    storage
+        .upsert_carryforward_vintage(vintage.clone())
+        .unwrap();
+
+    let found = storage.find_carryforward_vintage("CF-1").unwrap();
+    assert_eq!(found, vintage);
+    assert_eq!(storage.get_carryforward_vintages().len(), 1);
+
+    // Upsert again with a changed value replaces in place, no duplicate.
+    let mut updated = vintage.clone();
+    updated.remaining_loss_rsd = Decimal::from_str("500").unwrap();
+    storage
+        .upsert_carryforward_vintage(updated.clone())
+        .unwrap();
+
+    let vintages = storage.get_carryforward_vintages();
+    assert_eq!(vintages.len(), 1);
+    assert_eq!(
+        vintages[0].remaining_loss_rsd,
+        Decimal::from_str("500").unwrap()
+    );
+}
+
+#[test]
+fn test_apply_carryforward_consumption_decrements_remaining() {
+    let dir = TempDir::new().unwrap();
+    let storage = Storage::with_dir(dir.path());
+
+    storage
+        .upsert_carryforward_vintage(make_vintage("CF-1", Decimal::from_str("1000").unwrap()))
+        .unwrap();
+    storage
+        .upsert_carryforward_vintage(make_vintage("CF-2", Decimal::from_str("500").unwrap()))
+        .unwrap();
+
+    storage
+        .apply_carryforward_consumption(&[
+            CarryforwardSource {
+                vintage_id: "CF-1".into(),
+                amount_used: Decimal::from_str("300").unwrap(),
+            },
+            CarryforwardSource {
+                vintage_id: "CF-2".into(),
+                amount_used: Decimal::from_str("500").unwrap(),
+            },
+        ])
+        .unwrap();
+
+    let v1 = storage.find_carryforward_vintage("CF-1").unwrap();
+    assert_eq!(v1.remaining_loss_rsd, Decimal::from_str("700").unwrap());
+    let v2 = storage.find_carryforward_vintage("CF-2").unwrap();
+    assert_eq!(v2.remaining_loss_rsd, Decimal::ZERO);
+}
+
+#[test]
+fn test_remove_carryforward_vintage() {
+    let dir = TempDir::new().unwrap();
+    let storage = Storage::with_dir(dir.path());
+
+    storage
+        .upsert_carryforward_vintage(make_vintage("CF-1", Decimal::from_str("1000").unwrap()))
+        .unwrap();
+    storage.remove_carryforward_vintage("CF-1").unwrap();
+
+    assert!(storage.find_carryforward_vintage("CF-1").is_none());
+    assert!(storage.get_carryforward_vintages().is_empty());
+}

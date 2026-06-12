@@ -8,12 +8,14 @@ use rust_decimal::Decimal;
 
 use crate::config;
 use crate::models::{
-    Currency, Declaration, DeclarationStatus, DeclarationType, DeclarationsFile, ExchangeRate,
-    SyncIssue, Transaction, TransactionKey, UserConfig,
+    CarryforwardLedger, CarryforwardSource, CarryforwardVintage, Currency, Declaration,
+    DeclarationStatus, DeclarationType, DeclarationsFile, ExchangeRate, SyncIssue, Transaction,
+    TransactionKey, UserConfig,
 };
 
 const RATES_FILENAME: &str = "rates.json";
 const DECLARATIONS_FILENAME: &str = "declarations.json";
+const CAPITAL_LOSSES_FILENAME: &str = "capital_losses.json";
 const TRANSACTIONS_FILENAME: &str = "transactions.json";
 const DECLARATIONS_DIR: &str = "declarations";
 const FLEX_QUERIES_DIR: &str = "flex-queries";
@@ -25,6 +27,7 @@ pub struct Storage {
     transactions_file: PathBuf,
     rates_file: PathBuf,
     declarations_file: PathBuf,
+    capital_losses_file: PathBuf,
     declarations_dir: PathBuf,
     flex_queries_dir: PathBuf,
 }
@@ -56,6 +59,7 @@ impl Storage {
             transactions_file: data_dir.join(TRANSACTIONS_FILENAME),
             rates_file: data_dir.join(RATES_FILENAME),
             declarations_file: data_dir.join(DECLARATIONS_FILENAME),
+            capital_losses_file: data_dir.join(CAPITAL_LOSSES_FILENAME),
             declarations_dir: data_dir.join(DECLARATIONS_DIR),
             flex_queries_dir: app_data_dir.join(FLEX_QUERIES_DIR),
             data_dir,
@@ -72,6 +76,7 @@ impl Storage {
             transactions_file: dir.join(TRANSACTIONS_FILENAME),
             rates_file: dir.join(RATES_FILENAME),
             declarations_file: dir.join(DECLARATIONS_FILENAME),
+            capital_losses_file: dir.join(CAPITAL_LOSSES_FILENAME),
             declarations_dir: dir.join(DECLARATIONS_DIR),
             flex_queries_dir: dir.join(FLEX_QUERIES_DIR),
         };
@@ -426,6 +431,74 @@ impl Storage {
         let mut file = self.load_declarations_file();
         file.pending_new_declarations = 0;
         self.save_declarations_file(&file)
+    }
+
+    // =======================================================================
+    // Carryforward
+    // =======================================================================
+
+    fn load_carryforward_ledger(&self) -> CarryforwardLedger {
+        if !self.capital_losses_file.exists() {
+            return CarryforwardLedger::default();
+        }
+        match std::fs::read_to_string(&self.capital_losses_file) {
+            Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+            Err(_) => CarryforwardLedger::default(),
+        }
+    }
+
+    fn save_carryforward_ledger(&self, ledger: &CarryforwardLedger) -> Result<()> {
+        let json = serde_json::to_string_pretty(ledger)?;
+        std::fs::write(&self.capital_losses_file, &json)?;
+        Ok(())
+    }
+
+    #[must_use]
+    pub fn get_carryforward_vintages(&self) -> Vec<CarryforwardVintage> {
+        self.load_carryforward_ledger().vintages
+    }
+
+    #[must_use]
+    pub fn find_carryforward_vintage(&self, id: &str) -> Option<CarryforwardVintage> {
+        self.get_carryforward_vintages()
+            .into_iter()
+            .find(|v| v.id == id)
+    }
+
+    /// Insert or replace a vintage by `id`.
+    pub fn upsert_carryforward_vintage(&self, vintage: CarryforwardVintage) -> Result<()> {
+        let mut ledger = self.load_carryforward_ledger();
+        if let Some(existing) = ledger.vintages.iter_mut().find(|v| v.id == vintage.id) {
+            *existing = vintage;
+        } else {
+            ledger.vintages.push(vintage);
+        }
+        self.save_carryforward_ledger(&ledger)
+    }
+
+    pub fn remove_carryforward_vintage(&self, id: &str) -> Result<()> {
+        let mut ledger = self.load_carryforward_ledger();
+        ledger.vintages.retain(|v| v.id != id);
+        self.save_carryforward_ledger(&ledger)
+    }
+
+    /// Decrement `remaining_loss_rsd` for each consumed source. Called once,
+    /// only when a gains declaration is actually saved.
+    pub fn apply_carryforward_consumption(&self, sources: &[CarryforwardSource]) -> Result<()> {
+        if sources.is_empty() {
+            return Ok(());
+        }
+        let mut ledger = self.load_carryforward_ledger();
+        for source in sources {
+            if let Some(v) = ledger
+                .vintages
+                .iter_mut()
+                .find(|v| v.id == source.vintage_id)
+            {
+                v.remaining_loss_rsd -= source.amount_used;
+            }
+        }
+        self.save_carryforward_ledger(&ledger)
     }
 
     /// Save a flex query XML report with delta compression.

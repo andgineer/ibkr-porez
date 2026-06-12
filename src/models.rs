@@ -1,4 +1,4 @@
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{Datelike, NaiveDate, NaiveDateTime};
 use indexmap::IndexMap;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -493,4 +493,92 @@ impl Transaction {
         let other_cur = serde_json::to_value(&other.currency).unwrap_or_default();
         self_cur == other_cur
     }
+}
+
+// ---------------------------------------------------------------------------
+// Capital loss carryforward
+// ---------------------------------------------------------------------------
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct CarryforwardVintage {
+    pub id: String,
+    pub origin_declaration_id: String,
+    pub assessment_reference: Option<String>,
+    pub origin_period_start: NaiveDate,
+    pub origin_period_end: NaiveDate,
+    pub recognized_loss_rsd: Decimal,
+    pub remaining_loss_rsd: Decimal,
+    pub created_at: NaiveDateTime,
+    pub expiration_tax_year: i32,
+    pub notes: Option<String>,
+}
+
+/// Display status of a [`CarryforwardVintage`], shared by the CLI `carryforward`
+/// table and the GUI carryforward dialog.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CarryforwardStatus {
+    Active,
+    Exhausted,
+    Expired,
+}
+
+impl std::fmt::Display for CarryforwardStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Active => write!(f, "Active"),
+            Self::Exhausted => write!(f, "Exhausted"),
+            Self::Expired => write!(f, "Expired"),
+        }
+    }
+}
+
+impl CarryforwardVintage {
+    #[must_use]
+    pub fn origin_tax_year(&self) -> i32 {
+        self.origin_period_end.year()
+    }
+
+    /// Eligible = unused balance, and `current_tax_year` is in
+    /// (`origin_tax_year`, `expiration_tax_year`] i.e. Y+1..=Y+5.
+    #[must_use]
+    pub fn is_eligible(&self, current_tax_year: i32) -> bool {
+        self.remaining_loss_rsd > Decimal::ZERO
+            && current_tax_year > self.origin_tax_year()
+            && current_tax_year <= self.expiration_tax_year
+    }
+
+    #[must_use]
+    pub fn is_expired(&self, current_tax_year: i32) -> bool {
+        current_tax_year > self.expiration_tax_year
+    }
+
+    #[must_use]
+    pub fn status(&self, current_tax_year: i32) -> CarryforwardStatus {
+        if self.is_expired(current_tax_year) {
+            CarryforwardStatus::Expired
+        } else if self.remaining_loss_rsd > Decimal::ZERO {
+            CarryforwardStatus::Active
+        } else {
+            CarryforwardStatus::Exhausted
+        }
+    }
+}
+
+/// Sort vintages oldest-origin-period-first, ties broken by creation order.
+/// This is the fixed consumption order from the spec, also used for display.
+pub fn sort_oldest_origin_first(vintages: &mut [CarryforwardVintage]) {
+    vintages.sort_by_key(|v| (v.origin_period_end, v.created_at));
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct CarryforwardSource {
+    pub vintage_id: String,
+    pub amount_used: Decimal,
+}
+
+/// Top-level structure of `capital_losses.json`.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+pub struct CarryforwardLedger {
+    #[serde(default)]
+    pub vintages: Vec<CarryforwardVintage>,
 }

@@ -234,6 +234,13 @@ fn toolbar(ui: &mut egui::Ui, app: &mut App) {
                     app.refresh_declarations();
                     ui.close_menu();
                 }
+                ui.separator();
+                if ui.button("Capital loss carryforward...").clicked() {
+                    app.carryforward_dialog = Some(
+                        super::carryforward_dialog::CarryforwardDialog::new(&app.storage),
+                    );
+                    ui.close_menu();
+                }
             });
         });
 
@@ -405,7 +412,13 @@ fn declaration_table(ui: &mut egui::Ui, app: &mut App) {
             RowAction::Pay(id) => app.row_pay(&id),
             RowAction::Revert(id) => app.row_revert(&id),
             RowAction::SetTax(id) => {
-                app.assessment_dialog = Some(super::assessment_dialog::AssessmentDialog::new(id));
+                let decl_type = app
+                    .storage
+                    .get_declaration(&id)
+                    .map_or(crate::models::DeclarationType::Ppdg3r, |d| d.r#type);
+                app.assessment_dialog = Some(super::assessment_dialog::AssessmentDialog::new(
+                    id, decl_type,
+                ));
             }
             RowAction::Export(id) => app.row_export(id),
         }

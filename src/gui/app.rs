@@ -12,6 +12,7 @@ use crate::storage::Storage;
 use eframe::egui;
 
 use super::assessment_dialog::AssessmentDialog;
+use super::carryforward_dialog::CarryforwardDialog;
 use super::config_dialog::ConfigDialog;
 use super::details_dialog::DetailsDialog;
 use super::import_dialog::ImportDialog;
@@ -151,6 +152,7 @@ pub struct App {
     pub sync_file_dialog: Option<SyncFileDialog>,
     pub details_dialog: Option<DetailsDialog>,
     pub assessment_dialog: Option<AssessmentDialog>,
+    pub carryforward_dialog: Option<CarryforwardDialog>,
     pub error_dialog: Option<String>,
     pub show_import_hint: bool,
     pub confirm_discard_config: bool,
@@ -210,6 +212,7 @@ impl App {
             sync_file_dialog: None,
             details_dialog: None,
             assessment_dialog: None,
+            carryforward_dialog: None,
             error_dialog: None,
             show_import_hint,
             confirm_discard_config: false,
@@ -639,6 +642,7 @@ impl App {
             sync_file_dialog: None,
             details_dialog: None,
             assessment_dialog: None,
+            carryforward_dialog: None,
             error_dialog: None,
             show_import_hint: false,
             confirm_discard_config: false,
@@ -767,6 +771,7 @@ impl App {
             || self.sync_file_dialog.is_some()
             || self.details_dialog.is_some()
             || self.assessment_dialog.is_some()
+            || self.carryforward_dialog.is_some()
             || self.error_dialog.is_some()
             || self.confirm_force_sync
             || self.confirm_discard_config;
@@ -797,6 +802,8 @@ impl App {
                 self.confirm_force_sync = false;
             } else if self.assessment_dialog.is_some() {
                 self.assessment_dialog = None;
+            } else if self.carryforward_dialog.is_some() {
+                self.carryforward_dialog = None;
             } else if self.details_dialog.is_some() {
                 self.details_dialog = None;
             } else if self.sync_file_dialog.is_some() {
@@ -817,6 +824,7 @@ impl App {
         super::sync_file_dialog::show(ctx, self);
         super::details_dialog::show(ctx, self);
         super::assessment_dialog::show(ctx, self);
+        super::carryforward_dialog::show(ctx, self);
 
         self.show_modal_dialogs(ctx);
     }

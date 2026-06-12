@@ -37,6 +37,7 @@ fn help_all_subcommands() {
         "submit",
         "pay",
         "assess",
+        "carryforward",
         "export",
         "export-flex",
         "revert",
@@ -204,7 +205,9 @@ fn assess_requires_tax_due() {
         .args(["assess", "some-id"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--tax-due"));
+        .stderr(predicate::str::contains(
+            "at least one of --tax, --gain, or --loss",
+        ));
 }
 
 #[test]

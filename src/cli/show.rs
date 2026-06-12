@@ -95,12 +95,23 @@ const METADATA_KEY_ORDER: &[&str] = &[
     "total_gain_rsd",
     "gross_income_rsd",
     "tax_base_rsd",
+    "opening_carryforward_rsd",
+    "carryforward_used_rsd",
+    "adjusted_tax_base_rsd",
+    "closing_carryforward_rsd",
     "calculated_tax_rsd",
     "estimated_tax_rsd",
     "foreign_tax_paid_rsd",
+    "recognized_capital_gain_rsd",
+    "recognized_capital_loss_rsd",
     "assessed_tax_due_rsd",
     "tax_due_rsd",
+    "assessment_reference",
+    "assessment_date",
+    "assessment_notes",
 ];
+
+const CARRYFORWARD_SOURCES_KEY: &str = "carryforward_sources";
 
 fn print_metadata(metadata: &indexmap::IndexMap<String, serde_json::Value>) {
     println!();
@@ -111,13 +122,13 @@ fn print_metadata(metadata: &indexmap::IndexMap<String, serde_json::Value>) {
 
     let mut ordered_keys: Vec<&str> = METADATA_KEY_ORDER
         .iter()
-        .filter(|k| metadata.contains_key(**k))
+        .filter(|k| **k != CARRYFORWARD_SOURCES_KEY && metadata.contains_key(**k))
         .copied()
         .collect();
     let mut extras: Vec<&str> = metadata
         .keys()
         .map(String::as_str)
-        .filter(|k| !ordered_keys.contains(k))
+        .filter(|k| *k != CARRYFORWARD_SOURCES_KEY && !ordered_keys.contains(k))
         .collect();
     extras.sort_unstable();
     ordered_keys.extend(extras);
@@ -127,6 +138,40 @@ fn print_metadata(metadata: &indexmap::IndexMap<String, serde_json::Value>) {
             let formatted = format_metadata_value(val);
             table.add_row(vec![Cell::new(key).fg(Color::Cyan), Cell::new(formatted)]);
         }
+    }
+    println!("{table}");
+
+    print_carryforward_sources(metadata);
+}
+
+fn print_carryforward_sources(metadata: &indexmap::IndexMap<String, serde_json::Value>) {
+    let Some(serde_json::Value::Array(sources)) = metadata.get(CARRYFORWARD_SOURCES_KEY) else {
+        return;
+    };
+    if sources.is_empty() {
+        return;
+    }
+
+    println!();
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .apply_modifier(UTF8_ROUND_CORNERS)
+        .set_header(vec![
+            Cell::new("Vintage").fg(Color::Cyan),
+            Cell::new("Amount Used (RSD)").fg(Color::Cyan),
+        ]);
+
+    for source in sources {
+        let vintage_id = source
+            .get("vintage_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
+        let amount_used = source
+            .get("amount_used")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
+        table.add_row(vec![Cell::new(vintage_id), Cell::new(amount_used)]);
     }
     println!("{table}");
 }

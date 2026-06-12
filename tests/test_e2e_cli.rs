@@ -617,7 +617,7 @@ fn assess_pending_declaration() {
         .success();
 
     cmd()
-        .args(["assess", "asx-1", "--tax-due", "5000"])
+        .args(["assess", "asx-1", "--tax", "5000"])
         .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
         .assert()
         .success()
@@ -652,7 +652,7 @@ fn assess_with_paid_flag() {
         .success();
 
     cmd()
-        .args(["assess", "asx-2", "--tax-due", "5000", "--paid"])
+        .args(["assess", "asx-2", "--tax", "5000", "--paid"])
         .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
         .assert()
         .success()

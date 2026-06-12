@@ -422,9 +422,11 @@ fn assessment_dialog_opens_and_cancels() {
     );
     let mut harness = harness_for(app);
 
-    harness.state_mut().assessment_dialog = Some(
-        ibkr_porez::gui::assessment_dialog::AssessmentDialog::new("assess-1".into()),
-    );
+    harness.state_mut().assessment_dialog =
+        Some(ibkr_porez::gui::assessment_dialog::AssessmentDialog::new(
+            "assess-1".into(),
+            DeclarationType::Ppo,
+        ));
     harness.run();
 
     assert!(

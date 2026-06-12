@@ -932,8 +932,9 @@ fn import_dialog_defaults() {
 
 #[test]
 fn assessment_dialog_new() {
-    let dialog = AssessmentDialog::new("DECL-123".to_string());
+    let dialog = AssessmentDialog::new("DECL-123".to_string(), DeclarationType::Ppdg3r);
     assert_eq!(dialog.declaration_id, "DECL-123");
+    assert_eq!(dialog.decl_type, DeclarationType::Ppdg3r);
     assert!(dialog.tax_input.is_empty());
     assert!(!dialog.mark_paid);
 }

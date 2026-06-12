@@ -179,6 +179,9 @@ Prikazuje:
 *   Period prijave
 *   Status (nacrt, podneta, na čekanju, završena)
 *   Detalje transakcija i proračuna
+*   Za PPDG-3R: dobitak/gubitak priznat od strane poreske uprave pored
+    izračunatih vrednosti, iskorišćeni prenos kapitalnih gubitaka (početno/
+    iskorišćeno/korigovano/krajnje stanje) i iz kojih "tranši" je iskorišćen
 *   Priložene fajlove
 
 ### Podnošenje prijave (`submit`)
@@ -210,21 +213,75 @@ Nakon toga će nestati sa spiska prikazanog [list](#spisak-prijava-list) (bez `-
 ### Evidencija iznosa po rešenju poreske (`assess`)
 ```bash
 # Zabeleži zvaničan iznos poreza iz rešenja
-ibkr-porez assess <declaration_id> --tax-due 1234.56
+ibkr-porez assess <declaration_id> --tax 1234.56
 
 # Zabeleži iznos i odmah označi kao već plaćeno
-ibkr-porez assess <declaration_id> --tax-due 1234.56 --paid
+ibkr-porez assess <declaration_id> --tax 1234.56 --paid
+
+# Zabeleži gubitak priznat od strane poreske uprave (samo za PPDG-3R)
+ibkr-porez assess <declaration_id> --loss 50000.00 \
+    --reference "RES-123/2025" --date 2025-09-01
+
+# Zabeleži dobitak priznat od strane poreske uprave (samo za PPDG-3R)
+ibkr-porez assess <declaration_id> --gain 12000.00
 ```
 
-Komanda je najvažnija za `PPDG-3R`, gde iznos poreza određuje poreska uprava nakon podnošenja prijave.
+Komanda je najvažnija za `PPDG-3R`, gde iznos poreza, kao i priznati kapitalni
+dobitak/gubitak, određuje poreska uprava nakon podnošenja prijave.
 
 Šta komanda radi:
 
-*   upisuje zvaničan iznos poreza u metapodatke prijave;
+*   upisuje zvaničan iznos poreza u metapodatke prijave (`--tax`);
 *   sa `--paid` odmah prebacuje prijavu u `finalized`;
 *   bez `--paid`:
     *   ako je iznos veći od nule, prijava ostaje aktivna (`submitted`) za naknadno plaćanje;
     *   ako je iznos nula, prijava prelazi u `finalized`.
+
+Mora biti navedena bar jedna od opcija: `--tax`, `--gain`, `--loss`.
+
+`--gain` i `--loss` su dostupni samo za `PPDG-3R` i upisuju kapitalni
+dobitak/gubitak priznat od strane poreske uprave — čuvaju se pored izračunatih
+vrednosti aplikacije i mogu se razlikovati od njih (zbog CPI korekcija ili
+metodologije poreske uprave). Jedno rešenje ne može istovremeno priznati i
+dobitak i gubitak.
+
+`--reference`, `--date` i `--notes` su opcioni podaci o rešenju (broj, datum,
+napomene), prikazuju se u [show](#pregled-detalja-prijave-show).
+
+Ako rešenje priznaje gubitak (`--loss` veći od nule), kreira se (ili ažurira)
+zapis u registru [prenosa kapitalnih gubitaka](#prenos-kapitalnih-gubitaka-carryforward).
+Prenos se uvek zasniva na gubitku priznatom od strane poreske uprave, a ne na
+izračunatom.
+
+> ⚠️ Nakon što je preneti gubitak makar delimično iskorišćen u jednoj od
+> narednih prijava, priznati gubitak se više ne može menjati putem `assess` —
+> komanda će vratiti grešku.
+
+### Prenos kapitalnih gubitaka (`carryforward`)
+```bash
+ibkr-porez carryforward
+```
+
+Prikazuje listu svih "tranši" (vintages) kapitalnih gubitaka priznatih od
+strane poreske uprave, dostupnih za prenos u buduće periode:
+
+*   prijavu-izvor i period za koji je gubitak priznat;
+*   priznat i preostali (neiskorišćeni) iznos;
+*   poresku godinu nakon koje prenos ističe (gubitak se može preneti najviše 5
+    godina unapred);
+*   status: `Active` (može se koristiti), `Exhausted` (potpuno iskorišćen),
+    `Expired` (istekao rok).
+
+Ista lista je dostupna u GUI-ju u meniju **☰** → **Capital loss carryforward...**.
+
+Svaka PPDG-3R prijava kreirana putem
+[sync](#sinhronizacija-podataka-i-kreiranje-prijava-sync) automatski umanjuje
+izračunatu poresku osnovicu koristeći raspoložive prenose (od starijih ka
+novijim periodima), dok se osnovica ne svede na nulu ili se prenosi ne
+iscrpe. Pregled [report](#generisanje-poreskog-izveštaja-report)-a prikazuje
+iskorišćeni i preostali iznos prenosa nakon toga. Iznos se odbija iz registra
+samo jednom — prilikom čuvanja prijave; ponovni `sync` za isti period ga ne
+odbija ponovo.
 
 ### Izvoz prijave (`export`)
 ```bash

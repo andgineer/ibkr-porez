@@ -197,6 +197,72 @@ fn test_is_identical_record() {
     assert!(!t1.is_identical_to(&t3));
 }
 
+// ---------------------------------------------------------------------------
+// CarryforwardVintage
+// ---------------------------------------------------------------------------
+
+fn make_vintage(
+    remaining: &str,
+    origin_period_end_year: i32,
+    expiration_tax_year: i32,
+) -> CarryforwardVintage {
+    use rust_decimal::Decimal;
+    use std::str::FromStr;
+    CarryforwardVintage {
+        id: "CF-1".into(),
+        origin_declaration_id: "1".into(),
+        assessment_reference: None,
+        origin_period_start: chrono::NaiveDate::from_ymd_opt(origin_period_end_year, 1, 1).unwrap(),
+        origin_period_end: chrono::NaiveDate::from_ymd_opt(origin_period_end_year, 6, 30).unwrap(),
+        recognized_loss_rsd: Decimal::from_str("1000").unwrap(),
+        remaining_loss_rsd: Decimal::from_str(remaining).unwrap(),
+        created_at: chrono::NaiveDateTime::default(),
+        expiration_tax_year,
+        notes: None,
+    }
+}
+
+#[test]
+fn test_is_eligible_origin_year_not_eligible() {
+    // Loss originated in tax year 2025 (origin_period_end.year() == 2025);
+    // it must not be usable in a declaration for the same year.
+    let v = make_vintage("1000", 2025, 2030);
+    assert!(!v.is_eligible(2025));
+}
+
+#[test]
+fn test_is_eligible_within_y1_to_y5() {
+    let v = make_vintage("1000", 2025, 2030);
+    for year in 2026..=2030 {
+        assert!(v.is_eligible(year), "year {year} should be eligible");
+    }
+}
+
+#[test]
+fn test_is_eligible_after_expiration() {
+    let v = make_vintage("1000", 2025, 2030);
+    assert!(!v.is_eligible(2031));
+}
+
+#[test]
+fn test_is_eligible_zero_remaining() {
+    let v = make_vintage("0", 2025, 2030);
+    assert!(!v.is_eligible(2027));
+}
+
+#[test]
+fn test_is_expired() {
+    let v = make_vintage("1000", 2025, 2030);
+    assert!(!v.is_expired(2030));
+    assert!(v.is_expired(2031));
+}
+
+#[test]
+fn test_origin_tax_year() {
+    let v = make_vintage("1000", 2025, 2030);
+    assert_eq!(v.origin_tax_year(), 2025);
+}
+
 fn make_test_transaction(id: &str, symbol: &str, qty: &str, price: &str) -> Transaction {
     use rust_decimal::Decimal;
     use std::str::FromStr;

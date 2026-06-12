@@ -1,12 +1,12 @@
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use ibkr_porez::declaration_manager::DeclarationManager;
 use ibkr_porez::holidays::HolidayCalendar;
 use ibkr_porez::models::{
-    Currency, Declaration, DeclarationStatus, DeclarationType, Transaction, TransactionType,
-    UserConfig,
+    CarryforwardVintage, Currency, Declaration, DeclarationStatus, DeclarationType, Transaction,
+    TransactionType, UserConfig,
 };
 use ibkr_porez::nbs::NBSClient;
-use ibkr_porez::report_gains::generate_gains_report;
+use ibkr_porez::report_gains::{compute_carryforward_application, generate_gains_report};
 use ibkr_porez::report_income::generate_income_reports;
 use ibkr_porez::storage::Storage;
 use rust_decimal::Decimal;
@@ -236,6 +236,165 @@ fn test_gains_report_metadata() {
     assert_eq!(meta["entry_count"], 1);
     assert_eq!(meta["period_start"], "2023-01-01");
     assert_eq!(meta["period_end"], "2023-06-30");
+}
+
+// ---------------------------------------------------------------------------
+// compute_carryforward_application
+// ---------------------------------------------------------------------------
+
+#[allow(clippy::too_many_arguments)]
+fn make_vintage(
+    id: &str,
+    origin_period_end: NaiveDate,
+    recognized: Decimal,
+    remaining: Decimal,
+    expiration_tax_year: i32,
+    created_at: chrono::NaiveDateTime,
+) -> CarryforwardVintage {
+    CarryforwardVintage {
+        id: id.into(),
+        origin_declaration_id: "origin".into(),
+        assessment_reference: None,
+        origin_period_start: NaiveDate::from_ymd_opt(origin_period_end.year() - 1, 7, 1).unwrap(),
+        origin_period_end,
+        recognized_loss_rsd: recognized,
+        remaining_loss_rsd: remaining,
+        created_at,
+        expiration_tax_year,
+        notes: None,
+    }
+}
+
+#[test]
+fn test_carryforward_oldest_first_consumption() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+
+    // Older vintage (origin 2023) should be consumed before the newer one (origin 2024).
+    storage
+        .upsert_carryforward_vintage(make_vintage(
+            "CF-old",
+            NaiveDate::from_ymd_opt(2023, 12, 31).unwrap(),
+            dec!(500),
+            dec!(500),
+            2028,
+            chrono::NaiveDateTime::default(),
+        ))
+        .unwrap();
+    storage
+        .upsert_carryforward_vintage(make_vintage(
+            "CF-new",
+            NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            dec!(500),
+            dec!(500),
+            2029,
+            chrono::NaiveDateTime::default(),
+        ))
+        .unwrap();
+
+    let app = compute_carryforward_application(&storage, dec!(700), 2025);
+
+    assert_eq!(app.opening_carryforward_rsd, dec!(1000));
+    assert_eq!(app.carryforward_used_rsd, dec!(700));
+    assert_eq!(app.closing_carryforward_rsd, dec!(300));
+    assert_eq!(app.adjusted_tax_base_rsd, Decimal::ZERO);
+    assert_eq!(app.estimated_tax_rsd, Decimal::ZERO);
+
+    assert_eq!(app.sources.len(), 2);
+    assert_eq!(app.sources[0].vintage_id, "CF-old");
+    assert_eq!(app.sources[0].amount_used, dec!(500));
+    assert_eq!(app.sources[1].vintage_id, "CF-new");
+    assert_eq!(app.sources[1].amount_used, dec!(200));
+}
+
+#[test]
+fn test_carryforward_partial_consumption_of_larger_vintage() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+
+    storage
+        .upsert_carryforward_vintage(make_vintage(
+            "CF-1",
+            NaiveDate::from_ymd_opt(2023, 12, 31).unwrap(),
+            dec!(2000),
+            dec!(2000),
+            2028,
+            chrono::NaiveDateTime::default(),
+        ))
+        .unwrap();
+
+    let app = compute_carryforward_application(&storage, dec!(500), 2025);
+
+    assert_eq!(app.carryforward_used_rsd, dec!(500));
+    assert_eq!(app.closing_carryforward_rsd, dec!(1500));
+    assert_eq!(app.adjusted_tax_base_rsd, Decimal::ZERO);
+    assert_eq!(app.sources.len(), 1);
+    assert_eq!(app.sources[0].amount_used, dec!(500));
+}
+
+#[test]
+fn test_carryforward_expired_and_current_year_vintages_excluded() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+
+    // Expired: expiration_tax_year < current_tax_year
+    storage
+        .upsert_carryforward_vintage(make_vintage(
+            "CF-expired",
+            NaiveDate::from_ymd_opt(2018, 12, 31).unwrap(),
+            dec!(1000),
+            dec!(1000),
+            2023,
+            chrono::NaiveDateTime::default(),
+        ))
+        .unwrap();
+    // Originated in the current tax year: not yet eligible (Y, not Y+1..=Y+5).
+    storage
+        .upsert_carryforward_vintage(make_vintage(
+            "CF-current-year",
+            NaiveDate::from_ymd_opt(2025, 12, 31).unwrap(),
+            dec!(1000),
+            dec!(1000),
+            2030,
+            chrono::NaiveDateTime::default(),
+        ))
+        .unwrap();
+
+    let app = compute_carryforward_application(&storage, dec!(5000), 2025);
+
+    assert_eq!(app.opening_carryforward_rsd, Decimal::ZERO);
+    assert_eq!(app.carryforward_used_rsd, Decimal::ZERO);
+    assert_eq!(app.adjusted_tax_base_rsd, dec!(5000));
+    assert!(app.sources.is_empty());
+}
+
+#[test]
+fn test_carryforward_zero_or_negative_base_consumes_nothing() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+
+    storage
+        .upsert_carryforward_vintage(make_vintage(
+            "CF-1",
+            NaiveDate::from_ymd_opt(2023, 12, 31).unwrap(),
+            dec!(1000),
+            dec!(1000),
+            2028,
+            chrono::NaiveDateTime::default(),
+        ))
+        .unwrap();
+
+    let app = compute_carryforward_application(&storage, Decimal::ZERO, 2025);
+
+    assert_eq!(app.opening_carryforward_rsd, dec!(1000));
+    assert_eq!(app.carryforward_used_rsd, Decimal::ZERO);
+    assert_eq!(app.closing_carryforward_rsd, dec!(1000));
+    assert_eq!(app.adjusted_tax_base_rsd, Decimal::ZERO);
+    assert!(app.sources.is_empty());
+
+    // Ledger untouched.
+    let v = storage.find_carryforward_vintage("CF-1").unwrap();
+    assert_eq!(v.remaining_loss_rsd, dec!(1000));
 }
 
 #[test]

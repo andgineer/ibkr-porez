@@ -179,6 +179,9 @@ Displays:
 *   Declaration period
 *   Status (draft, submitted, pending, finalized)
 *   Transaction details and calculations
+*   For PPDG-3R: tax-authority-recognized gain/loss alongside the calculated
+    values, the capital loss carryforward applied (opening/used/adjusted/
+    closing balance), and which vintages it was drawn from
 *   Attached files
 
 ### Submit Declaration (`submit`)
@@ -209,22 +212,80 @@ After this, it will disappear from the list shown by [list](#list-declarations-l
 
 ### Record Assessed Tax (`assess`)
 ```bash
-# Record official tax amount from the tax authority
-ibkr-porez assess <declaration_id> --tax-due 1234.56
+# Record the official tax amount from the assessment
+ibkr-porez assess <declaration_id> --tax 1234.56
 
-# Record amount and immediately mark as already paid
-ibkr-porez assess <declaration_id> --tax-due 1234.56 --paid
+# Record the amount and immediately mark it as already paid
+ibkr-porez assess <declaration_id> --tax 1234.56 --paid
+
+# Record a capital loss recognized by the tax authority (PPDG-3R only)
+ibkr-porez assess <declaration_id> --loss 50000.00 \
+    --reference "RES-123/2025" --date 2025-09-01
+
+# Record a capital gain recognized by the tax authority (PPDG-3R only)
+ibkr-porez assess <declaration_id> --gain 12000.00
 ```
 
-This command is mainly for `PPDG-3R`, where tax amount is determined by the tax authority after submission.
+This command is mainly for `PPDG-3R`, where the tax amount as well as the
+recognized capital gain/loss are determined by the tax authority after
+submission.
 
 What it does:
 
-*   stores official tax amount in declaration metadata;
-*   with `--paid`, immediately moves declaration to `finalized`;
+*   stores the official tax amount in the declaration metadata (`--tax`);
+*   with `--paid`, immediately moves the declaration to `finalized`;
 *   without `--paid`:
-    *   if amount is greater than zero, keeps declaration active (`submitted`) for later payment;
-    *   if amount is zero, moves declaration to `finalized`.
+    *   if the amount is greater than zero, keeps the declaration active (`submitted`) for later payment;
+    *   if the amount is zero, moves the declaration to `finalized`.
+
+At least one of `--tax`, `--gain`, or `--loss` must be provided.
+
+`--gain` and `--loss` are only available for `PPDG-3R` and record the capital
+gain/loss recognized by the tax authority — they are stored alongside the
+application's calculated values and may differ from them (due to CPI
+adjustments or the tax authority's methodology). A single assessment cannot
+recognize both a gain and a loss.
+
+`--reference`, `--date`, and `--notes` are optional details about the
+assessment decision (reference number, date, notes), shown in
+[show](#view-declaration-details-show).
+
+If the assessment recognizes a loss (`--loss` greater than zero), an entry is
+created (or updated) in the
+[capital loss carryforward](#capital-loss-carryforward-carryforward) registry.
+The carryforward is always based on the loss recognized by the tax authority,
+not the calculated one.
+
+> ⚠️ Once a carried-forward loss has been at least partially used by a
+> subsequent declaration, the recognized loss can no longer be changed via
+> `assess` — the command will return an error.
+
+### Capital Loss Carryforward (`carryforward`)
+```bash
+ibkr-porez carryforward
+```
+
+Shows all vintages of capital losses recognized by the tax authority that are
+available for carryforward to future periods:
+
+*   the source declaration and the period for which the loss was recognized;
+*   the recognized and remaining (unused) amount;
+*   the tax year after which the carryforward expires (a loss can be carried
+    forward for 5 years);
+*   status: `Active` (usable), `Exhausted` (fully used), `Expired` (past its
+    expiration).
+
+The same list is available in the GUI from the **☰** menu →
+**Capital loss carryforward...**.
+
+Every PPDG-3R declaration created via
+[sync](#sync-data-and-create-declarations-sync) automatically reduces the
+calculated tax base using available carryforward (from older periods to
+newer), until the base reaches zero or the carryforward is exhausted. The
+[report](#generate-tax-report-report) preview shows the carryforward amount
+used and remaining afterwards. The amount is deducted from the registry once
+— when the declaration is saved; re-running `sync` for the same period does
+not deduct it again.
 
 ### Export Declaration (`export`)
 ```bash

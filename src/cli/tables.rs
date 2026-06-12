@@ -3,7 +3,9 @@ use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Attribute, Cell, Color, ContentArrangement, Table};
 use rust_decimal::Decimal;
 
-use ibkr_porez::models::{IncomeDeclarationEntry, TaxReportEntry};
+use ibkr_porez::models::{
+    CarryforwardStatus, CarryforwardVintage, IncomeDeclarationEntry, TaxReportEntry,
+};
 
 pub fn render_gains_table(entries: &[TaxReportEntry]) -> Table {
     let mut table = Table::new();
@@ -108,6 +110,47 @@ pub fn render_declarations_table(declarations: &[ibkr_porez::models::Declaration
             Cell::new(&status_str).fg(Color::Yellow),
             Cell::new(&created).fg(Color::Blue),
             Cell::new(&attachments).add_attribute(Attribute::Dim),
+        ]);
+    }
+
+    table
+}
+
+pub fn render_carryforward_table(vintages: &[CarryforwardVintage], current_year: i32) -> Table {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .apply_modifier(UTF8_ROUND_CORNERS)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            Cell::new("ID").fg(Color::Cyan),
+            Cell::new("Origin Period").fg(Color::Cyan),
+            Cell::new("Recognized").fg(Color::Cyan),
+            Cell::new("Remaining").fg(Color::Cyan),
+            Cell::new("Expires (tax year)").fg(Color::Cyan),
+            Cell::new("Status").fg(Color::Cyan),
+        ]);
+
+    for v in vintages {
+        let period = format!(
+            "{} - {}",
+            v.origin_period_start.format("%Y-%m-%d"),
+            v.origin_period_end.format("%Y-%m-%d"),
+        );
+        let status = v.status(current_year);
+        let color = match status {
+            CarryforwardStatus::Active => Color::Green,
+            CarryforwardStatus::Exhausted => Color::Yellow,
+            CarryforwardStatus::Expired => Color::Red,
+        };
+
+        table.add_row(vec![
+            Cell::new(&v.id).fg(Color::Cyan),
+            Cell::new(&period).fg(Color::Green),
+            Cell::new(format!("{:.2}", v.recognized_loss_rsd)),
+            Cell::new(format!("{:.2}", v.remaining_loss_rsd)),
+            Cell::new(v.expiration_tax_year),
+            Cell::new(status.to_string()).fg(color),
         ]);
     }
 

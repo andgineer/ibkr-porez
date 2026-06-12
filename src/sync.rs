@@ -8,9 +8,12 @@ use crate::config;
 use crate::fetch;
 use crate::holidays::HolidayCalendar;
 use crate::ibkr_flex::IBKRClient;
+use crate::models::CarryforwardSource;
+#[cfg(test)]
+use crate::models::{CarryforwardVintage, Currency, Transaction, TransactionType};
 use crate::models::{Declaration, DeclarationStatus, DeclarationType, UserConfig};
 use crate::nbs::NBSClient;
-use crate::report_gains::generate_gains_report;
+use crate::report_gains::{compute_carryforward_application, generate_gains_report};
 use crate::report_income::generate_income_reports;
 use crate::storage::Storage;
 
@@ -242,7 +245,21 @@ fn generate_and_save_gains(
         return Ok(Vec::new());
     }
 
-    let decl = save_declaration(
+    let mut metadata = report.metadata();
+    let current_tax_year = report.period_end.year();
+    let cf_app = compute_carryforward_application(storage, report.tax_base(), current_tax_year);
+    cf_app.apply_to_metadata(&mut metadata);
+
+    // Consume the ledger *before* persisting the declaration: if saving the
+    // declaration fails, the consumption is rolled back so a retry doesn't
+    // see a half-applied carryforward (the declaration would otherwise not
+    // exist yet, `is_duplicate` wouldn't catch it, and the retry would
+    // recompute and consume the same vintages again).
+    storage
+        .apply_carryforward_consumption(&cf_app.sources)
+        .with_context(|| storage.io_error_hint())?;
+
+    let decl = match save_declaration(
         storage,
         &report.filename,
         &report.xml_content,
@@ -250,9 +267,25 @@ fn generate_and_save_gains(
         report.period_start,
         report.period_end,
         &report.entries,
-        &report.metadata(),
+        &metadata,
         output_dir,
-    )?;
+    ) {
+        Ok(decl) => decl,
+        Err(e) => {
+            let reversal: Vec<CarryforwardSource> = cf_app
+                .sources
+                .iter()
+                .map(|s| CarryforwardSource {
+                    vintage_id: s.vintage_id.clone(),
+                    amount_used: -s.amount_used,
+                })
+                .collect();
+            if let Err(rollback_err) = storage.apply_carryforward_consumption(&reversal) {
+                warn!(error = %rollback_err, "failed to roll back carryforward consumption after save failure");
+            }
+            return Err(e);
+        }
+    };
 
     info!(filename = %report.filename, "created PPDG-3R declaration");
     Ok(vec![decl])
@@ -397,6 +430,8 @@ fn save_declaration<T: serde::Serialize>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rust_decimal::Decimal;
+    use rust_decimal_macros::dec;
 
     #[test]
     fn test_gains_period_h1() {
@@ -668,5 +703,246 @@ mod tests {
         let cfg = UserConfig::default();
         let err = validate_config_or_bail(&cfg).unwrap_err();
         assert!(err.to_string().contains("Configuration"));
+    }
+
+    // -----------------------------------------------------------------
+    // Carryforward consumption during gains declaration creation
+    // -----------------------------------------------------------------
+
+    #[allow(clippy::too_many_arguments)]
+    fn make_txn(
+        id: &str,
+        symbol: &str,
+        date: &str,
+        quantity: rust_decimal::Decimal,
+        price: rust_decimal::Decimal,
+        amount: rust_decimal::Decimal,
+    ) -> Transaction {
+        Transaction {
+            transaction_id: id.to_string(),
+            date: NaiveDate::parse_from_str(date, "%Y-%m-%d").unwrap(),
+            r#type: TransactionType::Trade,
+            symbol: symbol.to_string(),
+            description: String::new(),
+            quantity,
+            price,
+            amount,
+            currency: Currency::USD,
+            open_date: None,
+            open_price: None,
+            exchange_rate: None,
+            amount_rsd: None,
+        }
+    }
+
+    fn seed_rates(storage: &Storage, rates: &[(&str, &str)]) {
+        let mut rate_map = storage.load_rates();
+        for (date, rate) in rates {
+            rate_map.insert(format!("{date}_USD"), (*rate).to_string());
+        }
+        storage.write_rates(&rate_map).unwrap();
+    }
+
+    fn seed_carryforward_vintage(storage: &Storage, id: &str, remaining: rust_decimal::Decimal) {
+        storage
+            .upsert_carryforward_vintage(CarryforwardVintage {
+                id: id.into(),
+                origin_declaration_id: "origin".into(),
+                assessment_reference: None,
+                origin_period_start: NaiveDate::from_ymd_opt(2023, 1, 1).unwrap(),
+                origin_period_end: NaiveDate::from_ymd_opt(2023, 6, 30).unwrap(),
+                recognized_loss_rsd: remaining,
+                remaining_loss_rsd: remaining,
+                created_at: Local::now().naive_local(),
+                expiration_tax_year: 2028,
+                notes: None,
+            })
+            .unwrap();
+    }
+
+    fn nbs_offline<'a>(
+        storage: &'a Storage,
+        cal: &'a crate::holidays::HolidayCalendar,
+    ) -> crate::nbs::NBSClient<'a> {
+        crate::nbs::NBSClient::with_base_url(storage, cal, "http://127.0.0.1:1")
+            .with_retries(1, std::time::Duration::ZERO)
+    }
+
+    fn carryforward_test_setup() -> (tempfile::TempDir, Storage, crate::holidays::HolidayCalendar) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let storage = Storage::with_dir(tmp.path());
+        let mut cal = crate::holidays::HolidayCalendar::empty();
+        cal.set_fallback(true);
+
+        seed_rates(
+            &storage,
+            &[("2024-01-15", "100.00"), ("2024-03-10", "110.00")],
+        );
+
+        let txns = vec![
+            make_txn(
+                "buy-1",
+                "AAPL",
+                "2024-01-15",
+                dec!(10),
+                dec!(100),
+                dec!(-1000),
+            ),
+            make_txn(
+                "sell-1",
+                "AAPL",
+                "2024-03-10",
+                dec!(-10),
+                dec!(150),
+                dec!(1500),
+            ),
+        ];
+        storage.save_transactions(&txns).unwrap();
+
+        (tmp, storage, cal)
+    }
+
+    #[test]
+    fn generate_and_save_gains_consumes_carryforward() {
+        let (tmp, storage, cal) = carryforward_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let cfg = valid_config();
+        let output_dir = tmp.path().join("output");
+        std::fs::create_dir_all(&output_dir).unwrap();
+        let opts = SyncOptions::default();
+
+        seed_carryforward_vintage(&storage, "CF-origin", dec!(50000));
+
+        let end_period = NaiveDate::from_ymd_opt(2024, 8, 1).unwrap();
+        let decls =
+            generate_and_save_gains(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+
+        assert_eq!(decls.len(), 1);
+        let decl = &decls[0];
+        assert_eq!(decl.metadata["tax_base_rsd"], "65000.00");
+        assert_eq!(decl.metadata["opening_carryforward_rsd"], "50000.00");
+        assert_eq!(decl.metadata["carryforward_used_rsd"], "50000.00");
+        assert_eq!(decl.metadata["closing_carryforward_rsd"], "0.00");
+        assert_eq!(decl.metadata["adjusted_tax_base_rsd"], "15000.00");
+        assert_eq!(decl.metadata["estimated_tax_rsd"], "2250.00");
+
+        let sources = decl.metadata["carryforward_sources"].as_array().unwrap();
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0]["vintage_id"], "CF-origin");
+        assert_eq!(sources[0]["amount_used"], "50000.00");
+
+        let vintage = storage.find_carryforward_vintage("CF-origin").unwrap();
+        assert_eq!(vintage.remaining_loss_rsd, Decimal::ZERO);
+    }
+
+    #[test]
+    fn generate_and_save_gains_idempotent_consumption() {
+        let (tmp, storage, cal) = carryforward_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let cfg = valid_config();
+        let output_dir = tmp.path().join("output");
+        std::fs::create_dir_all(&output_dir).unwrap();
+        let opts = SyncOptions::default();
+
+        seed_carryforward_vintage(&storage, "CF-origin", dec!(50000));
+
+        let end_period = NaiveDate::from_ymd_opt(2024, 8, 1).unwrap();
+        let first =
+            generate_and_save_gains(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(first.len(), 1);
+
+        let second =
+            generate_and_save_gains(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert!(
+            second.is_empty(),
+            "second sync should hit is_duplicate and skip"
+        );
+
+        let vintage = storage.find_carryforward_vintage("CF-origin").unwrap();
+        assert_eq!(vintage.remaining_loss_rsd, Decimal::ZERO);
+    }
+
+    #[test]
+    fn generate_and_save_gains_preserves_historical_snapshot() {
+        let (tmp, storage, cal) = carryforward_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let cfg = valid_config();
+        let output_dir = tmp.path().join("output");
+        std::fs::create_dir_all(&output_dir).unwrap();
+        let opts = SyncOptions::default();
+
+        seed_carryforward_vintage(&storage, "CF-origin", dec!(50000));
+
+        // First period (H1 2024): consumes the full carryforward balance.
+        let end_period_1 = NaiveDate::from_ymd_opt(2024, 8, 1).unwrap();
+        let first =
+            generate_and_save_gains(&storage, &nbs, &cfg, &cal, end_period_1, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(first.len(), 1);
+        let decl_1_id = first[0].declaration_id.clone();
+
+        // Second period (H2 2024): independent gain, no carryforward left.
+        seed_rates(
+            &storage,
+            &[("2024-08-01", "100.00"), ("2024-10-01", "105.00")],
+        );
+        let mut txns = storage.load_transactions();
+        txns.push(make_txn(
+            "buy-2",
+            "MSFT",
+            "2024-08-01",
+            dec!(5),
+            dec!(200),
+            dec!(-1000),
+        ));
+        txns.push(make_txn(
+            "sell-2",
+            "MSFT",
+            "2024-10-01",
+            dec!(-5),
+            dec!(220),
+            dec!(1100),
+        ));
+        storage.write_transactions(&txns).unwrap();
+
+        let end_period_2 = NaiveDate::from_ymd_opt(2025, 3, 1).unwrap();
+        let second =
+            generate_and_save_gains(&storage, &nbs, &cfg, &cal, end_period_2, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(second.len(), 1);
+
+        // The first declaration's carryforward snapshot must be unchanged.
+        let decl_1 = storage.get_declaration(&decl_1_id).unwrap();
+        assert_eq!(decl_1.metadata["carryforward_used_rsd"], "50000.00");
+        assert_eq!(decl_1.metadata["closing_carryforward_rsd"], "0.00");
+
+        // The second declaration sees no remaining carryforward.
+        assert_eq!(second[0].metadata["opening_carryforward_rsd"], "0.00");
+        assert_eq!(second[0].metadata["carryforward_used_rsd"], "0.00");
+    }
+
+    #[test]
+    fn generate_and_save_gains_rolls_back_consumption_on_save_failure() {
+        let (tmp, storage, cal) = carryforward_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let cfg = valid_config();
+        // Intentionally not created: save_declaration fails writing here,
+        // after the ledger consumption has already been applied.
+        let output_dir = tmp.path().join("missing-output");
+        let opts = SyncOptions::default();
+
+        seed_carryforward_vintage(&storage, "CF-origin", dec!(50000));
+
+        let end_period = NaiveDate::from_ymd_opt(2024, 8, 1).unwrap();
+        let result =
+            generate_and_save_gains(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts);
+        assert!(result.is_err());
+
+        let vintage = storage.find_carryforward_vintage("CF-origin").unwrap();
+        assert_eq!(vintage.remaining_loss_rsd, dec!(50000));
+        assert!(storage.get_declarations(None, None).is_empty());
     }
 }

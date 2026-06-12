@@ -1,6 +1,6 @@
-use chrono::{Local, NaiveDate, NaiveDateTime};
-use ibkr_porez::declaration_manager::DeclarationManager;
-use ibkr_porez::models::{Declaration, DeclarationStatus, DeclarationType};
+use chrono::{Datelike, Local, NaiveDate, NaiveDateTime};
+use ibkr_porez::declaration_manager::{AssessmentInput, DeclarationManager};
+use ibkr_porez::models::{CarryforwardVintage, Declaration, DeclarationStatus, DeclarationType};
 use ibkr_porez::storage::Storage;
 use indexmap::IndexMap;
 use rust_decimal_macros::dec;
@@ -189,7 +189,7 @@ fn test_revert_to_draft() {
 }
 
 #[test]
-fn test_set_assessed_tax_on_draft_fails() {
+fn test_record_assessment_on_draft_fails() {
     let tmp = tempfile::TempDir::new().unwrap();
     let storage = Storage::with_dir(tmp.path());
     make_declaration(
@@ -200,12 +200,16 @@ fn test_set_assessed_tax_on_draft_fails() {
     );
 
     let mgr = DeclarationManager::new(&storage);
-    let result = mgr.set_assessed_tax("1", dec!(100), false);
+    let input = AssessmentInput {
+        assessed_tax_rsd: Some(dec!(100)),
+        ..Default::default()
+    };
+    let result = mgr.record_assessment("1", &input);
     assert!(result.is_err());
 }
 
 #[test]
-fn test_set_assessed_tax_and_mark_paid() {
+fn test_record_assessment_and_mark_paid() {
     let tmp = tempfile::TempDir::new().unwrap();
     let storage = Storage::with_dir(tmp.path());
     make_declaration(
@@ -216,12 +220,381 @@ fn test_set_assessed_tax_and_mark_paid() {
     );
 
     let mgr = DeclarationManager::new(&storage);
-    mgr.set_assessed_tax("1", dec!(500), true).unwrap();
+    let input = AssessmentInput {
+        assessed_tax_rsd: Some(dec!(500)),
+        mark_paid: true,
+        ..Default::default()
+    };
+    mgr.record_assessment("1", &input).unwrap();
 
     let decl = storage.get_declaration("1").unwrap();
     assert_eq!(decl.status, DeclarationStatus::Finalized);
     assert!(decl.paid_at.is_some());
     assert_eq!(mgr.tax_due_rsd(&decl), dec!(500));
+}
+
+#[test]
+fn test_record_assessment_requires_at_least_one_field() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+    make_declaration(
+        &storage,
+        "1",
+        DeclarationType::Ppdg3r,
+        DeclarationStatus::Pending,
+    );
+
+    let mgr = DeclarationManager::new(&storage);
+    let result = mgr.record_assessment("1", &AssessmentInput::default());
+    assert!(result.is_err());
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("at least one of --tax, --gain, or --loss")
+    );
+}
+
+#[test]
+fn test_record_assessment_recognized_gain_loss_only_for_ppdg3r() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+    make_declaration(
+        &storage,
+        "1",
+        DeclarationType::Ppo,
+        DeclarationStatus::Submitted,
+    );
+
+    let mgr = DeclarationManager::new(&storage);
+    let input = AssessmentInput {
+        recognized_capital_loss_rsd: Some(dec!(100)),
+        ..Default::default()
+    };
+    let result = mgr.record_assessment("1", &input);
+    assert!(result.is_err());
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("only applies to PPDG-3R")
+    );
+}
+
+#[test]
+fn test_record_assessment_cannot_recognize_both_gain_and_loss() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+    make_declaration(
+        &storage,
+        "1",
+        DeclarationType::Ppdg3r,
+        DeclarationStatus::Pending,
+    );
+
+    let mgr = DeclarationManager::new(&storage);
+    let input = AssessmentInput {
+        recognized_capital_gain_rsd: Some(dec!(100)),
+        recognized_capital_loss_rsd: Some(dec!(50)),
+        ..Default::default()
+    };
+    let result = mgr.record_assessment("1", &input);
+    assert!(result.is_err());
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot recognize both a capital gain and a capital loss")
+    );
+}
+
+#[test]
+fn test_record_assessment_recognized_loss_creates_carryforward_vintage() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+    let decl = make_declaration(
+        &storage,
+        "1",
+        DeclarationType::Ppdg3r,
+        DeclarationStatus::Pending,
+    );
+
+    let mgr = DeclarationManager::new(&storage);
+    let input = AssessmentInput {
+        recognized_capital_loss_rsd: Some(dec!(44471.30)),
+        assessment_reference: Some("REF-1".into()),
+        ..Default::default()
+    };
+    mgr.record_assessment("1", &input).unwrap();
+
+    let vintage = storage.find_carryforward_vintage("CF-1").unwrap();
+    assert_eq!(vintage.recognized_loss_rsd, dec!(44471.30));
+    assert_eq!(vintage.remaining_loss_rsd, dec!(44471.30));
+    assert_eq!(vintage.origin_declaration_id, "1");
+    assert_eq!(vintage.assessment_reference, Some("REF-1".into()));
+    assert_eq!(vintage.expiration_tax_year, decl.period_end.year() + 5);
+
+    let saved = storage.get_declaration("1").unwrap();
+    assert_eq!(
+        saved.metadata.get("recognized_capital_loss_rsd").unwrap(),
+        "44471.30"
+    );
+}
+
+#[test]
+fn test_record_assessment_re_run_updates_unconsumed_vintage_in_place() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+    make_declaration(
+        &storage,
+        "1",
+        DeclarationType::Ppdg3r,
+        DeclarationStatus::Pending,
+    );
+
+    let mgr = DeclarationManager::new(&storage);
+    let input = AssessmentInput {
+        recognized_capital_loss_rsd: Some(dec!(1000)),
+        ..Default::default()
+    };
+    mgr.record_assessment("1", &input).unwrap();
+
+    let input2 = AssessmentInput {
+        recognized_capital_loss_rsd: Some(dec!(1500)),
+        ..Default::default()
+    };
+    mgr.record_assessment("1", &input2).unwrap();
+
+    let vintages = storage.get_carryforward_vintages();
+    assert_eq!(vintages.len(), 1);
+    assert_eq!(vintages[0].recognized_loss_rsd, dec!(1500));
+    assert_eq!(vintages[0].remaining_loss_rsd, dec!(1500));
+}
+
+#[test]
+fn test_record_assessment_fails_after_partial_consumption() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+    let decl = make_declaration(
+        &storage,
+        "1",
+        DeclarationType::Ppdg3r,
+        DeclarationStatus::Pending,
+    );
+
+    let mgr = DeclarationManager::new(&storage);
+    let input = AssessmentInput {
+        recognized_capital_loss_rsd: Some(dec!(1000)),
+        ..Default::default()
+    };
+    mgr.record_assessment("1", &input).unwrap();
+
+    // Simulate partial consumption.
+    storage
+        .upsert_carryforward_vintage(CarryforwardVintage {
+            id: "CF-1".into(),
+            origin_declaration_id: "1".into(),
+            assessment_reference: None,
+            origin_period_start: decl.period_start,
+            origin_period_end: decl.period_end,
+            recognized_loss_rsd: dec!(1000),
+            remaining_loss_rsd: dec!(400),
+            created_at: now(),
+            expiration_tax_year: decl.period_end.year() + 5,
+            notes: None,
+        })
+        .unwrap();
+
+    let input2 = AssessmentInput {
+        recognized_capital_loss_rsd: Some(dec!(1500)),
+        ..Default::default()
+    };
+    let result = mgr.record_assessment("1", &input2);
+    assert!(result.is_err());
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("already been partially consumed")
+    );
+}
+
+#[test]
+fn test_record_assessment_cannot_add_loss_after_recognized_gain() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+    make_declaration(
+        &storage,
+        "1",
+        DeclarationType::Ppdg3r,
+        DeclarationStatus::Pending,
+    );
+
+    let mgr = DeclarationManager::new(&storage);
+    let gain_input = AssessmentInput {
+        recognized_capital_gain_rsd: Some(dec!(100)),
+        ..Default::default()
+    };
+    mgr.record_assessment("1", &gain_input).unwrap();
+
+    let loss_input = AssessmentInput {
+        recognized_capital_loss_rsd: Some(dec!(50)),
+        ..Default::default()
+    };
+    let result = mgr.record_assessment("1", &loss_input);
+    assert!(result.is_err());
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot recognize both a capital gain and a capital loss")
+    );
+
+    // Neither the metadata nor the ledger should reflect the rejected loss.
+    let saved = storage.get_declaration("1").unwrap();
+    assert!(saved.metadata.get("recognized_capital_loss_rsd").is_none());
+    assert!(storage.find_carryforward_vintage("CF-1").is_none());
+}
+
+#[test]
+fn test_record_assessment_cannot_add_gain_after_recognized_loss() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+    make_declaration(
+        &storage,
+        "1",
+        DeclarationType::Ppdg3r,
+        DeclarationStatus::Pending,
+    );
+
+    let mgr = DeclarationManager::new(&storage);
+    let loss_input = AssessmentInput {
+        recognized_capital_loss_rsd: Some(dec!(1000)),
+        ..Default::default()
+    };
+    mgr.record_assessment("1", &loss_input).unwrap();
+
+    let gain_input = AssessmentInput {
+        recognized_capital_gain_rsd: Some(dec!(100)),
+        ..Default::default()
+    };
+    let result = mgr.record_assessment("1", &gain_input);
+    assert!(result.is_err());
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("cannot recognize both a capital gain and a capital loss")
+    );
+}
+
+#[test]
+fn test_record_assessment_clearing_loss_then_recognizing_gain_succeeds() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+    make_declaration(
+        &storage,
+        "1",
+        DeclarationType::Ppdg3r,
+        DeclarationStatus::Pending,
+    );
+
+    let mgr = DeclarationManager::new(&storage);
+    let loss_input = AssessmentInput {
+        recognized_capital_loss_rsd: Some(dec!(1000)),
+        ..Default::default()
+    };
+    mgr.record_assessment("1", &loss_input).unwrap();
+
+    // Correct the assessment in one go: clear the recognized loss and
+    // recognize a gain instead.
+    let correction = AssessmentInput {
+        recognized_capital_gain_rsd: Some(dec!(100)),
+        recognized_capital_loss_rsd: Some(dec!(0)),
+        ..Default::default()
+    };
+    mgr.record_assessment("1", &correction).unwrap();
+
+    assert!(storage.find_carryforward_vintage("CF-1").is_none());
+    let saved = storage.get_declaration("1").unwrap();
+    assert_eq!(
+        saved.metadata.get("recognized_capital_gain_rsd").unwrap(),
+        "100.00"
+    );
+}
+
+#[test]
+fn test_revert_removes_unconsumed_carryforward_vintage() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+    make_declaration(
+        &storage,
+        "1",
+        DeclarationType::Ppdg3r,
+        DeclarationStatus::Pending,
+    );
+
+    let mgr = DeclarationManager::new(&storage);
+    let input = AssessmentInput {
+        recognized_capital_loss_rsd: Some(dec!(1000)),
+        ..Default::default()
+    };
+    mgr.record_assessment("1", &input).unwrap();
+    assert!(storage.find_carryforward_vintage("CF-1").is_some());
+
+    mgr.revert(&["1"]).unwrap();
+
+    assert!(storage.find_carryforward_vintage("CF-1").is_none());
+    let saved = storage.get_declaration("1").unwrap();
+    assert_eq!(saved.status, DeclarationStatus::Draft);
+}
+
+#[test]
+fn test_revert_fails_if_carryforward_vintage_partially_consumed() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let storage = Storage::with_dir(tmp.path());
+    let decl = make_declaration(
+        &storage,
+        "1",
+        DeclarationType::Ppdg3r,
+        DeclarationStatus::Pending,
+    );
+
+    let mgr = DeclarationManager::new(&storage);
+    let input = AssessmentInput {
+        recognized_capital_loss_rsd: Some(dec!(1000)),
+        ..Default::default()
+    };
+    mgr.record_assessment("1", &input).unwrap();
+
+    // Simulate partial consumption.
+    storage
+        .upsert_carryforward_vintage(CarryforwardVintage {
+            id: "CF-1".into(),
+            origin_declaration_id: "1".into(),
+            assessment_reference: None,
+            origin_period_start: decl.period_start,
+            origin_period_end: decl.period_end,
+            recognized_loss_rsd: dec!(1000),
+            remaining_loss_rsd: dec!(400),
+            created_at: now(),
+            expiration_tax_year: decl.period_end.year() + 5,
+            notes: None,
+        })
+        .unwrap();
+
+    let result = mgr.revert(&["1"]);
+    assert!(result.is_err());
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("already been partially consumed")
+    );
+
+    // Declaration status must be unchanged since the revert was rejected.
+    let saved = storage.get_declaration("1").unwrap();
+    assert_eq!(saved.status, DeclarationStatus::Pending);
 }
 
 #[test]

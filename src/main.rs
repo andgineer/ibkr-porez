@@ -104,14 +104,32 @@ enum Commands {
         #[arg(long)]
         tax: Option<Decimal>,
     },
-    /// Set assessed tax on a declaration
+    /// Record a tax authority assessment for a declaration
     Assess {
         declaration_id: String,
+        /// Tax amount as determined by the tax authority
         #[arg(short = 't', long)]
-        tax_due: Decimal,
+        tax: Option<Decimal>,
+        /// Capital gain recognized by the tax authority (may differ from calculated)
+        #[arg(long)]
+        gain: Option<Decimal>,
+        /// Capital loss recognized by the tax authority (may differ from calculated)
+        #[arg(long)]
+        loss: Option<Decimal>,
+        /// Reference number of the assessment decision
+        #[arg(long)]
+        reference: Option<String>,
+        /// Date of the assessment decision
+        #[arg(long = "date")]
+        assessment_date: Option<NaiveDate>,
+        /// Free-form notes about the assessment
+        #[arg(long)]
+        notes: Option<String>,
         #[arg(long)]
         paid: bool,
     },
+    /// List recognized capital-loss carryforward vintages
+    Carryforward,
     /// Export declaration XML and attachments
     Export {
         declaration_id: String,
@@ -182,9 +200,24 @@ fn main() {
         }) => cli::pay::run(declaration_id, tax),
         Some(Commands::Assess {
             declaration_id,
-            tax_due,
+            tax,
+            gain,
+            loss,
+            reference,
+            assessment_date,
+            notes,
             paid,
-        }) => cli::assess::run(&declaration_id, tax_due, paid),
+        }) => cli::assess::run(
+            &declaration_id,
+            tax,
+            gain,
+            loss,
+            reference,
+            assessment_date,
+            notes,
+            paid,
+        ),
+        Some(Commands::Carryforward) => cli::carryforward::run(),
         Some(Commands::Export {
             declaration_id,
             output,
