@@ -5,7 +5,7 @@ use rust_decimal::Decimal;
 
 use crate::due_date::next_working_day;
 use crate::holidays::HolidayCalendar;
-use crate::models::{TaxReportEntry, UserConfig};
+use crate::models::{PriorRecognizedLoss, TaxReportEntry, UserConfig};
 
 #[must_use]
 #[allow(clippy::missing_panics_doc)]
@@ -14,6 +14,7 @@ pub fn generate_gains_xml(
     config: &UserConfig,
     period_end: NaiveDate,
     holidays: &HolidayCalendar,
+    prior_losses: &[PriorRecognizedLoss],
 ) -> String {
     let due_date = next_working_day(period_end, holidays);
     let today = Local::now().date_naive();
@@ -26,7 +27,10 @@ pub fn generate_gains_xml(
         .iter()
         .map(|e| e.capital_gain_rsd.min(Decimal::ZERO).abs())
         .sum();
-    let osnovica = (total_gain - total_loss).max(Decimal::ZERO);
+    let base = (total_gain - total_loss).max(Decimal::ZERO);
+    let prior_total: Decimal = prior_losses.iter().map(|p| p.remaining_loss_rsd).sum();
+    let prior_used = base.min(prior_total);
+    let osnovica = base - prior_used;
     let porez = (osnovica * Decimal::new(15, 2)).round_dp(2);
 
     let mut buf = Vec::new();
@@ -45,7 +49,16 @@ pub fn generate_gains_xml(
     write_section_podaci_o_prijavi(&mut w, period_end, due_date, today);
     write_section_poreski_obveznik(&mut w, config);
     write_section_deklarisano(&mut w, entries);
-    write_section_utvrdjivanje(&mut w, total_gain, total_loss, osnovica, porez);
+    write_section_kapitalni_gubici(&mut w, prior_losses);
+    write_section_utvrdjivanje(
+        &mut w,
+        total_gain,
+        total_loss,
+        prior_losses,
+        prior_used,
+        osnovica,
+        porez,
+    );
     write_section_prilozi(&mut w);
 
     w.write_event(Event::End(BytesEnd::new("ns1:PodaciPoreskeDeklaracije")))
@@ -146,16 +159,58 @@ fn write_section_deklarisano(w: &mut Writer<&mut Vec<u8>>, entries: &[TaxReportE
     end(w, "ns1:DeklarisanoPrenosHOVInvesticionihJed");
 }
 
+// Form part 7 element names verified against an XML saved from the ePorezi
+// portal with part 7 filled in manually (July 2026); the schema itself is not
+// published.
+fn write_section_kapitalni_gubici(
+    w: &mut Writer<&mut Vec<u8>>,
+    prior_losses: &[PriorRecognizedLoss],
+) {
+    if prior_losses.is_empty() {
+        return;
+    }
+    start(w, "ns1:DeklarisanoKapitalniGubiciRanijihGodina");
+    for (i, p) in prior_losses.iter().enumerate() {
+        let idx = i + 1;
+        start(w, "ns1:PodaciKapitalniGubiciRanijihGodina");
+
+        text_elem(w, "ns1:RedniBroj", &idx.to_string());
+        text_elem(
+            w,
+            "ns1:BrojResenjaOUtvrdjivanjuKapitalnogGubitka",
+            p.assessment_reference.as_deref().unwrap_or(""),
+        );
+        text_elem(
+            w,
+            "ns1:DatumDonosenjaResenjaOKapitalnomGubitku",
+            &p.assessment_date.map(fmt_date).unwrap_or_default(),
+        );
+        text_elem(
+            w,
+            "ns1:IznosUtvrdjenogKapitalnogGubitka",
+            &fmt2(p.remaining_loss_rsd),
+        );
+
+        end(w, "ns1:PodaciKapitalniGubiciRanijihGodina");
+    }
+    end(w, "ns1:DeklarisanoKapitalniGubiciRanijihGodina");
+}
+
 fn write_section_utvrdjivanje(
     w: &mut Writer<&mut Vec<u8>>,
     total_gain: Decimal,
     total_loss: Decimal,
+    prior_losses: &[PriorRecognizedLoss],
+    prior_used: Decimal,
     osnovica: Decimal,
     porez: Decimal,
 ) {
     start(w, "ns1:PodaciOUtvrđivanju");
     text_elem(w, "ns1:UkupanKapitalniDobitak", &fmt2(total_gain));
     text_elem(w, "ns1:UkupanKapitalniGubitak", &fmt2(total_loss));
+    if !prior_losses.is_empty() {
+        text_elem(w, "ns1:KapitalniGubitakIzRanijihGodina", &fmt2(prior_used));
+    }
     text_elem(w, "ns1:Osnovica", &fmt2(osnovica));
     text_elem(w, "ns1:PorezZaUplatu", &fmt2(porez));
     end(w, "ns1:PodaciOUtvrđivanju");

@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 use ibkr_porez::declaration_gains_xml::generate_gains_xml;
 use ibkr_porez::declaration_income_xml::generate_income_xml;
 use ibkr_porez::holidays::HolidayCalendar;
-use ibkr_porez::models::{IncomeDeclarationEntry, TaxReportEntry, UserConfig};
+use ibkr_porez::models::{IncomeDeclarationEntry, PriorRecognizedLoss, TaxReportEntry, UserConfig};
 use rust_decimal_macros::dec;
 
 fn test_config() -> UserConfig {
@@ -43,6 +43,7 @@ fn test_gains_xml_structure() {
         &test_config(),
         NaiveDate::from_ymd_opt(2023, 6, 30).unwrap(),
         &cal,
+        &[],
     );
 
     assert!(xml.contains("xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\""));
@@ -80,6 +81,7 @@ fn test_gains_xml_uppercases_name_and_address() {
         &test_config(),
         NaiveDate::from_ymd_opt(2023, 6, 30).unwrap(),
         &cal,
+        &[],
     );
     assert!(xml.contains("TEST USER"));
     assert!(xml.contains("TEST STREET 1"));
@@ -124,6 +126,7 @@ fn test_gains_xml_entry_with_id_attr() {
         &test_config(),
         NaiveDate::from_ymd_opt(2023, 6, 30).unwrap(),
         &cal,
+        &[],
     );
     assert!(xml.contains("id=\"1\""));
     assert!(xml.contains("id=\"2\""));
@@ -152,6 +155,7 @@ fn test_gains_xml_tax_exemption_marker() {
         &test_config(),
         NaiveDate::from_ymd_opt(2023, 6, 30).unwrap(),
         &cal,
+        &[],
     );
     assert!(xml.contains("<ns1:PoreskoOslobodjenje>DA</ns1:PoreskoOslobodjenje>"));
 }
@@ -179,9 +183,101 @@ fn test_gains_xml_gain_loss_split() {
         &test_config(),
         NaiveDate::from_ymd_opt(2023, 6, 30).unwrap(),
         &cal,
+        &[],
     );
     assert!(xml.contains("<ns1:KapitalniDobitak>0.00</ns1:KapitalniDobitak>"));
     assert!(xml.contains("<ns1:KapitalniGubitak>500.00</ns1:KapitalniGubitak>"));
+}
+
+#[test]
+fn test_gains_xml_prior_losses_section() {
+    let cal = HolidayCalendar::load_embedded();
+    let entries = vec![TaxReportEntry {
+        ticker: "A".into(),
+        quantity: dec!(1),
+        sale_date: NaiveDate::from_ymd_opt(2023, 6, 15).unwrap(),
+        sale_price: dec!(20),
+        sale_exchange_rate: dec!(100),
+        sale_value_rsd: dec!(2000),
+        purchase_date: NaiveDate::from_ymd_opt(2023, 1, 1).unwrap(),
+        purchase_price: dec!(10),
+        purchase_exchange_rate: dec!(100),
+        purchase_value_rsd: dec!(1000),
+        capital_gain_rsd: dec!(1000),
+        is_tax_exempt: false,
+    }];
+    let prior_losses = vec![
+        PriorRecognizedLoss {
+            assessment_reference: Some("435-01234/2023".into()),
+            assessment_date: NaiveDate::from_ymd_opt(2023, 3, 10),
+            remaining_loss_rsd: dec!(600),
+        },
+        PriorRecognizedLoss {
+            assessment_reference: None,
+            assessment_date: None,
+            remaining_loss_rsd: dec!(300),
+        },
+    ];
+
+    let xml = generate_gains_xml(
+        &entries,
+        &test_config(),
+        NaiveDate::from_ymd_opt(2023, 6, 30).unwrap(),
+        &cal,
+        &prior_losses,
+    );
+
+    assert!(xml.contains("<ns1:DeklarisanoKapitalniGubiciRanijihGodina>"));
+    assert!(xml.contains(
+        "<ns1:BrojResenjaOUtvrdjivanjuKapitalnogGubitka>435-01234/2023\
+         </ns1:BrojResenjaOUtvrdjivanjuKapitalnogGubitka>"
+    ));
+    assert!(xml.contains(
+        "<ns1:DatumDonosenjaResenjaOKapitalnomGubitku>2023-03-10\
+         </ns1:DatumDonosenjaResenjaOKapitalnomGubitku>"
+    ));
+    assert!(xml.contains(
+        "<ns1:IznosUtvrdjenogKapitalnogGubitka>600.00</ns1:IznosUtvrdjenogKapitalnogGubitka>"
+    ));
+    assert!(xml.contains(
+        "<ns1:IznosUtvrdjenogKapitalnogGubitka>300.00</ns1:IznosUtvrdjenogKapitalnogGubitka>"
+    ));
+    assert!(xml.contains(
+        "<ns1:KapitalniGubitakIzRanijihGodina>900.00</ns1:KapitalniGubitakIzRanijihGodina>"
+    ));
+    assert!(xml.contains("<ns1:Osnovica>100.00</ns1:Osnovica>"));
+    assert!(xml.contains("<ns1:PorezZaUplatu>15.00</ns1:PorezZaUplatu>"));
+}
+
+#[test]
+fn test_gains_xml_no_prior_losses_omits_section() {
+    let cal = HolidayCalendar::load_embedded();
+    let entries = vec![TaxReportEntry {
+        ticker: "A".into(),
+        quantity: dec!(1),
+        sale_date: NaiveDate::from_ymd_opt(2023, 6, 15).unwrap(),
+        sale_price: dec!(20),
+        sale_exchange_rate: dec!(100),
+        sale_value_rsd: dec!(2000),
+        purchase_date: NaiveDate::from_ymd_opt(2023, 1, 1).unwrap(),
+        purchase_price: dec!(10),
+        purchase_exchange_rate: dec!(100),
+        purchase_value_rsd: dec!(1000),
+        capital_gain_rsd: dec!(1000),
+        is_tax_exempt: false,
+    }];
+
+    let xml = generate_gains_xml(
+        &entries,
+        &test_config(),
+        NaiveDate::from_ymd_opt(2023, 6, 30).unwrap(),
+        &cal,
+        &[],
+    );
+
+    assert!(!xml.contains("DeklarisanoKapitalniGubici"));
+    assert!(!xml.contains("KapitalniGubitakIzRanijihGodina"));
+    assert!(xml.contains("<ns1:Osnovica>1000.00</ns1:Osnovica>"));
 }
 
 #[test]

@@ -245,8 +245,11 @@ vrednosti aplikacije i mogu se razlikovati od njih (zbog CPI korekcija ili
 metodologije poreske uprave). Jedno rešenje ne može istovremeno priznati i
 dobitak i gubitak.
 
-`--reference`, `--date` i `--notes` su opcioni podaci o rešenju (broj, datum,
-napomene), prikazuju se u [show](#pregled-detalja-prijave-show).
+`--reference`, `--date` i `--notes` su podaci o rešenju (broj, datum,
+napomene). Prikazuju se u [show](#pregled-detalja-prijave-show), a za
+priznati gubitak broj i datum rešenja se dodatno upisuju u deo 7 budućih
+PPDG-3R prijava (vidi [prenos kapitalnih gubitaka](#prenos-kapitalnih-gubitaka-carryforward)),
+pa ih vredi evidentirati.
 
 Ako rešenje priznaje gubitak (`--loss` veći od nule), kreira se (ili ažurira)
 zapis u registru [prenosa kapitalnih gubitaka](#prenos-kapitalnih-gubitaka-carryforward).
@@ -282,6 +285,19 @@ iscrpe. Pregled [report](#generisanje-poreskog-izveštaja-report)-a prikazuje
 iskorišćeni i preostali iznos prenosa nakon toga. Iznos se odbija iz registra
 samo jednom — prilikom čuvanja prijave; ponovni `sync` za isti period ga ne
 odbija ponovo.
+
+Preneti gubici se takođe prijavljuju u samoj prijavi: u PPDG-3R XML-u se
+popunjava deo 7 („Kapitalni gubici“) — po jedan red za svaki aktivan prenos,
+sa brojem i datumom rešenja poreske uprave (7.2/7.3) i preostalim iznosom
+gubitka (7.4). Konačni `Osnovica` i `PorezZaUplatu` u XML-u takođe uzimaju u
+obzir primenjeni prenos. Prijavljivanje gubitka u delu 7 je obaveza samog
+poreskog obveznika — bez toga ga poreska uprava neće primeniti u rešenju.
+
+Broj i datum rešenja se uzimaju iz
+[assess](#evidencija-iznosa-po-rešenju-poreske-assess) (`--reference` i
+`--date`). Ako nisu evidentirani, polja 7.2/7.3 u XML-u ostaju prazna, a
+`report` ispisuje upozorenje — evidentirajte ih kroz `assess` i ponovo
+generišite izveštaj, ili popunite ta polja ručno na portalu.
 
 ### Izvoz prijave (`export`)
 ```bash

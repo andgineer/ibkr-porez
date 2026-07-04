@@ -81,6 +81,20 @@ declaration currently being created. Re-running sync for a period that
 already has a saved declaration does not consume carryforward again
 (idempotent).
 
+## Declaring Carryforward in the PPDG-3R XML
+
+The official PPDG-3R form has a dedicated part 7 (kapitalni gubici) where the
+taxpayer declares losses recognized by prior tax-authority rulings — the
+authority does not apply them unless declared. The generated XML therefore
+includes one part-7 row per eligible vintage: the ruling reference and date
+(taken from the origin declaration's assessment, falling back to the vintage)
+and the vintage's remaining balance. The utvrđivanje section reports the
+applied prior-loss amount and the carryforward-adjusted tax base and tax.
+Declarations with no eligible vintages omit part 7 entirely.
+
+The ePorezi XML schema is not published; the part-7 element names were
+captured from an XML saved off the portal with part 7 filled in manually.
+
 ## Visibility
 
 - CLI: `ibkr-porez carryforward` lists all vintages with their recognized and

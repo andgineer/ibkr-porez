@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use chrono::{Datelike, NaiveDate};
+use chrono::NaiveDate;
 
 use super::{
     LibReportType, init_calendar, load_config_or_exit, make_nbs, make_storage, output,
@@ -11,7 +11,7 @@ use ibkr_porez::config as app_config;
 use ibkr_porez::holidays::HolidayCalendar;
 use ibkr_porez::models::UserConfig;
 use ibkr_porez::nbs::NBSClient;
-use ibkr_porez::report_gains::{compute_carryforward_application, generate_gains_report};
+use ibkr_porez::report_gains::generate_gains_report;
 use ibkr_porez::report_income::generate_income_reports;
 use ibkr_porez::storage::Storage;
 
@@ -97,8 +97,7 @@ fn run_gains(
     println!("{}", tables::render_gains_table(&report.entries));
     output::bold(&format!("Total Entries: {}", report.entries.len()));
 
-    let cf_app =
-        compute_carryforward_application(storage, report.tax_base(), report.period_end.year());
+    let cf_app = &report.carryforward;
     println!();
     output::bold(&format!(
         "Calculated tax base:  {}",
@@ -120,6 +119,18 @@ fn run_gains(
         "Closing carryforward: {}",
         output::format_thousands_2f(cf_app.closing_carryforward_rsd)
     ));
+
+    if report
+        .prior_losses
+        .iter()
+        .any(|p| p.assessment_reference.is_none())
+    {
+        output::attention(
+            "ATTENTION: a carried-forward loss has no tax-authority ruling reference, \
+             so part 7.2 (broj rešenja) is empty in the XML. Record it with: \
+             ibkr-porez assess <declaration-id> --reference <broj rešenja>",
+        );
+    }
 
     output::success(&format!("Report written to {}", dest.display()));
     output::attention(

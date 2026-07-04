@@ -13,7 +13,7 @@ use crate::models::CarryforwardSource;
 use crate::models::{CarryforwardVintage, Currency, Transaction, TransactionType};
 use crate::models::{Declaration, DeclarationStatus, DeclarationType, UserConfig};
 use crate::nbs::NBSClient;
-use crate::report_gains::{compute_carryforward_application, generate_gains_report};
+use crate::report_gains::generate_gains_report;
 use crate::report_income::generate_income_reports;
 use crate::storage::Storage;
 
@@ -246,8 +246,7 @@ fn generate_and_save_gains(
     }
 
     let mut metadata = report.metadata();
-    let current_tax_year = report.period_end.year();
-    let cf_app = compute_carryforward_application(storage, report.tax_base(), current_tax_year);
+    let cf_app = &report.carryforward;
     cf_app.apply_to_metadata(&mut metadata);
 
     // Consume the ledger *before* persisting the declaration: if saving the
@@ -834,6 +833,17 @@ mod tests {
 
         let vintage = storage.find_carryforward_vintage("CF-origin").unwrap();
         assert_eq!(vintage.remaining_loss_rsd, Decimal::ZERO);
+
+        let xml = decl.xml_content.as_deref().unwrap();
+        assert!(xml.contains("<ns1:DeklarisanoKapitalniGubiciRanijihGodina>"));
+        assert!(xml.contains(
+            "<ns1:IznosUtvrdjenogKapitalnogGubitka>50000.00</ns1:IznosUtvrdjenogKapitalnogGubitka>"
+        ));
+        assert!(xml.contains(
+            "<ns1:KapitalniGubitakIzRanijihGodina>50000.00</ns1:KapitalniGubitakIzRanijihGodina>"
+        ));
+        assert!(xml.contains("<ns1:Osnovica>15000.00</ns1:Osnovica>"));
+        assert!(xml.contains("<ns1:PorezZaUplatu>2250.00</ns1:PorezZaUplatu>"));
     }
 
     #[test]

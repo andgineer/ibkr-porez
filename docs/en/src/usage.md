@@ -246,9 +246,12 @@ application's calculated values and may differ from them (due to CPI
 adjustments or the tax authority's methodology). A single assessment cannot
 recognize both a gain and a loss.
 
-`--reference`, `--date`, and `--notes` are optional details about the
-assessment decision (reference number, date, notes), shown in
-[show](#view-declaration-details-show).
+`--reference`, `--date`, and `--notes` are details about the assessment
+decision (reference number, date, notes). They are shown in
+[show](#view-declaration-details-show), and for a recognized loss the ruling
+number and date are also filled into part 7 of future PPDG-3R declarations
+(see [capital loss carryforward](#capital-loss-carryforward-carryforward)),
+so it is worth recording them.
 
 If the assessment recognizes a loss (`--loss` greater than zero), an entry is
 created (or updated) in the
@@ -286,6 +289,20 @@ newer), until the base reaches zero or the carryforward is exhausted. The
 used and remaining afterwards. The amount is deducted from the registry once
 — when the declaration is saved; re-running `sync` for the same period does
 not deduct it again.
+
+Carried-forward losses are also declared in the declaration itself: the
+PPDG-3R XML fills in form part 7 ("Kapitalni gubici") — one row per active
+carryforward, with the tax authority's ruling number and date (7.2/7.3) and
+the remaining loss amount (7.4). The final `Osnovica` and `PorezZaUplatu` in
+the XML also reflect the applied carryforward. Declaring the loss in part 7
+is the taxpayer's responsibility — without it the tax authority will not
+apply it in the assessment.
+
+The ruling number and date come from
+[assess](#record-assessed-tax-assess) (`--reference` and `--date`). If they
+are not recorded, fields 7.2/7.3 stay empty in the XML and `report` prints a
+warning — record them with `assess` and regenerate the report, or fill in
+those fields manually on the portal.
 
 ### Export Declaration (`export`)
 ```bash

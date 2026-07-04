@@ -6,7 +6,8 @@ use rust_decimal::prelude::*;
 use crate::declaration_gains_xml::generate_gains_xml;
 use crate::holidays::HolidayCalendar;
 use crate::models::{
-    CarryforwardSource, CarryforwardVintage, TaxReportEntry, UserConfig, sort_oldest_origin_first,
+    CarryforwardSource, CarryforwardVintage, PriorRecognizedLoss, TaxReportEntry, UserConfig,
+    sort_oldest_origin_first,
 };
 use crate::nbs::NBSClient;
 use crate::storage::Storage;
@@ -18,6 +19,8 @@ pub struct GainsReport {
     pub entries: Vec<TaxReportEntry>,
     pub period_start: NaiveDate,
     pub period_end: NaiveDate,
+    pub carryforward: CarryforwardApplication,
+    pub prior_losses: Vec<PriorRecognizedLoss>,
 }
 
 impl GainsReport {
@@ -123,12 +126,7 @@ pub fn compute_carryforward_application(
     calculated_tax_base: Decimal,
     current_tax_year: i32,
 ) -> CarryforwardApplication {
-    let mut eligible: Vec<CarryforwardVintage> = storage
-        .get_carryforward_vintages()
-        .into_iter()
-        .filter(|v| v.is_eligible(current_tax_year))
-        .collect();
-    sort_oldest_origin_first(&mut eligible);
+    let eligible = eligible_vintages(storage, current_tax_year);
 
     let opening: Decimal = eligible.iter().map(|v| v.remaining_loss_rsd).sum();
 
@@ -164,6 +162,53 @@ pub fn compute_carryforward_application(
     }
 }
 
+fn eligible_vintages(storage: &Storage, current_tax_year: i32) -> Vec<CarryforwardVintage> {
+    let mut eligible: Vec<CarryforwardVintage> = storage
+        .get_carryforward_vintages()
+        .into_iter()
+        .filter(|v| v.is_eligible(current_tax_year))
+        .collect();
+    sort_oldest_origin_first(&mut eligible);
+    eligible
+}
+
+/// Rows for PPDG-3R form part 7: each eligible vintage with the ruling
+/// reference/date resolved from the origin declaration's assessment metadata
+/// (falling back to the vintage itself) and its remaining balance.
+#[must_use]
+pub fn prior_recognized_losses(
+    storage: &Storage,
+    current_tax_year: i32,
+) -> Vec<PriorRecognizedLoss> {
+    eligible_vintages(storage, current_tax_year)
+        .into_iter()
+        .map(|v| {
+            let origin = storage.get_declaration(&v.origin_declaration_id);
+            let reference = origin
+                .as_ref()
+                .and_then(|d| metadata_str(d, "assessment_reference"))
+                .or_else(|| v.assessment_reference.clone());
+            let date = origin
+                .as_ref()
+                .and_then(|d| metadata_str(d, "assessment_date"))
+                .and_then(|s| NaiveDate::parse_from_str(&s, "%Y-%m-%d").ok());
+            PriorRecognizedLoss {
+                assessment_reference: reference,
+                assessment_date: date,
+                remaining_loss_rsd: v.remaining_loss_rsd,
+            }
+        })
+        .collect()
+}
+
+fn metadata_str(decl: &crate::models::Declaration, key: &str) -> Option<String> {
+    decl.metadata
+        .get(key)
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
 /// Generate a PPDG-3R capital gains report for the given half-year period.
 ///
 /// Loads **all** transactions to build the FIFO chain, then filters entries
@@ -194,7 +239,19 @@ pub fn generate_gains_report(
     let year = period_end.year();
     let filename = format!("ppdg3r-{year}-H{half}.xml");
 
-    let xml = generate_gains_xml(&entries, config, period_end, holidays);
+    let gross: Decimal = entries
+        .iter()
+        .map(|e| e.capital_gain_rsd.max(Decimal::ZERO))
+        .sum();
+    let losses: Decimal = entries
+        .iter()
+        .map(|e| e.capital_gain_rsd.min(Decimal::ZERO).abs())
+        .sum();
+    let tax_base = (gross - losses).max(Decimal::ZERO);
+    let carryforward = compute_carryforward_application(storage, tax_base, year);
+    let prior_losses = prior_recognized_losses(storage, year);
+
+    let xml = generate_gains_xml(&entries, config, period_end, holidays, &prior_losses);
 
     Ok(GainsReport {
         filename,
@@ -202,6 +259,8 @@ pub fn generate_gains_report(
         entries,
         period_start,
         period_end,
+        carryforward,
+        prior_losses,
     })
 }
 

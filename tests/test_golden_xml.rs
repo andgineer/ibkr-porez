@@ -349,7 +349,7 @@ fn test_ppdg3r_rust_xml_matches_golden_structure() {
     }];
 
     let period_end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
-    let rust_xml = generate_gains_xml(&entries, &golden_config(), period_end, &holidays());
+    let rust_xml = generate_gains_xml(&entries, &golden_config(), period_end, &holidays(), &[]);
     let rust_children = extract_top_level_children(&rust_xml);
 
     assert_eq!(
@@ -380,7 +380,7 @@ fn test_ppdg3r_rust_entry_values_match_golden_first_entry() {
     }];
 
     let period_end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
-    let rust_xml = generate_gains_xml(&entries, &golden_config(), period_end, &holidays());
+    let rust_xml = generate_gains_xml(&entries, &golden_config(), period_end, &holidays(), &[]);
     let rust_entries = extract_gains_entries(&rust_xml);
     let first_rust = &rust_entries[0];
 

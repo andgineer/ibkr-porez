@@ -576,6 +576,15 @@ pub struct CarryforwardSource {
     pub amount_used: Decimal,
 }
 
+/// One row of PPDG-3R form part 7 (kapitalni gubici iz ranijih godina):
+/// a prior recognized loss declared with its tax-authority ruling details.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PriorRecognizedLoss {
+    pub assessment_reference: Option<String>,
+    pub assessment_date: Option<NaiveDate>,
+    pub remaining_loss_rsd: Decimal,
+}
+
 /// Top-level structure of `capital_losses.json`.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct CarryforwardLedger {
