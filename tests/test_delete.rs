@@ -322,3 +322,63 @@ fn seeded_vintage_has_expected_expiry() {
     let v = env.storage.find_carryforward_vintage("CF-x").unwrap();
     assert_eq!(v.origin_period_end.year() + 5, v.expiration_tax_year);
 }
+
+/// Deleting a later gains declaration that consumed carryforward must leave the
+/// earlier declaration it drew the loss from completely untouched — in
+/// particular its recognized capital loss must not be cleared.
+#[test]
+fn delete_preserves_prior_declaration_capital_loss() {
+    let env = setup();
+    let h2_2025 = (d(2025, 7, 1), d(2025, 12, 31));
+    let h1_2026 = (d(2026, 1, 1), d(2026, 6, 30));
+
+    // Earlier declaration (H2 2025): recognized a 50 000 capital loss.
+    let mut prev_meta = indexmap::IndexMap::new();
+    prev_meta.insert("recognized_capital_loss_rsd".to_string(), "50000.00".into());
+    seed_decl(
+        &env.storage,
+        "1",
+        DeclarationType::Ppdg3r,
+        h2_2025,
+        prev_meta,
+        None,
+    );
+    // Its vintage: 50 000 recognized, 30 000 already consumed by the later one.
+    seed_vintage(&env.storage, "CF-1", dec!(50000), dec!(20000));
+
+    // Later declaration (H1 2026): a gain that used 30 000 of that loss.
+    seed_decl(
+        &env.storage,
+        "2",
+        DeclarationType::Ppdg3r,
+        h1_2026,
+        consumed_meta("CF-1", "30000.00"),
+        None,
+    );
+
+    let before = env.storage.get_declaration("1").unwrap().metadata.clone();
+
+    let plan = plan_deletion(&env.storage, "2").unwrap();
+    execute_deletion(&env.storage, &env.cfg, &plan).unwrap();
+
+    let prev = env
+        .storage
+        .get_declaration("1")
+        .expect("earlier declaration must survive deletion of the later one");
+    assert_eq!(
+        prev.metadata
+            .get("recognized_capital_loss_rsd")
+            .and_then(serde_json::Value::as_str),
+        Some("50000.00"),
+        "deleting the later declaration cleared the earlier declaration's capital loss"
+    );
+    assert_eq!(
+        prev.metadata, before,
+        "no field of the earlier declaration may change when a later one is deleted"
+    );
+
+    // The vintage's recognized loss is untouched and the consumed balance returns.
+    let v = env.storage.find_carryforward_vintage("CF-1").unwrap();
+    assert_eq!(v.recognized_loss_rsd, dec!(50000));
+    assert_eq!(v.remaining_loss_rsd, dec!(50000));
+}
