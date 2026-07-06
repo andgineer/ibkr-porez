@@ -78,6 +78,8 @@ Radi sve isto što i [fetch](#preuzimanje-podataka-fetch):
 
 Nakon toga kreira sve potrebne prijave za poslednjih 45 dana (ako već nisu kreirane).
 
+> 💡 Ako veza sa IBKR-om ne uspe, `sync` i dalje kreira prijave iz već lokalno sačuvanih transakcija i ispisuje upozorenje; komanda se završava uspešno, a u GUI-ju se ponovni pokušaji za svežim podacima nastavljaju automatski u sledećem ciklusu.
+
 Zatim možete [Upravljati kreiranim prijavama](#upravljanje-prijavama).
 
 > 💡 Ako ste pokrenuli `sync` prvi put i ona je kreirala prijave koje ste već podali pre početka korišćenja aplikacije,
@@ -318,21 +320,25 @@ ibkr-porez revert <id> [<id> ...] --to submitted
 
 Vraća status prijave.
 
-### Ponovno kreiranje prijave (`regenerate`)
+### Brisanje prijave (`delete`)
 ```bash
 # Pregled plana (ništa se ne menja)
-ibkr-porez regenerate <id>
+ibkr-porez delete <id>
 
-# Obriši i ponovo napravi iz sačuvanih transakcija
-ibkr-porez regenerate <id> --yes
+# Obriši prijavu
+ibkr-porez delete <id> --yes
 
 # Dozvoli brisanje prijave koja nije nacrt
-ibkr-porez regenerate <id> --yes --force
+ibkr-porez delete <id> --yes --force
 ```
 
-Briše pogrešnu prijavu i ponovo je pravi za isti period iz lokalno sačuvanih transakcija — na primer nakon ispravke obračuna ili nakon unosa `assess` na prethodnoj prijavi koji je kasniji PPDG-3R trebalo da uzme u obzir.
+Briše prijavu i poništava njen uticaj na knjigu prenosa: prenos gubitka koji je iskoristila vraća se izvornim „tranšama”, a njena sopstvena tranša priznatog gubitka (napravljena preko `assess`) se uklanja. Ako ste je obrisali da biste ispravili grešku, zatim pokrenite `sync` da ponovo napravite period iz sačuvanih transakcija.
 
-Bez `--yes` samo ispisuje šta bi bilo obrisano i period za ponovno kreiranje. `--force` je neophodan za brisanje prijave koja nije nacrt. Ponovo se može napraviti samo najnoviji PPDG-3R; PP OPO prijave se mogu ponovo praviti u bilo kom trenutku. Ponovo napravljena prijava se vraća kao novi nacrt i mora ponovo da se podnese (i, ako je imala priznati gubitak, ponovo evidentira rešenje).
+Bez `--yes` samo ispisuje šta bi bilo obrisano. `--force` je neophodan za brisanje prijave koja nije nacrt. Može se obrisati samo najnoviji PPDG-3R — brisanje starijeg ostavilo bi „viseći” prenos kod kasnijih prijava; PP OPO prijave se mogu brisati u bilo kom trenutku.
+
+Tako se ispravlja i priznati gubitak prethodne prijave koji je kasnija već iskoristila: obrišite kasniju prijavu (oslobađajući prenos), ponovo pokrenite `assess` na ranijoj, pa `sync` za ponovno pravljenje.
+
+U GUI-ju je ista radnja dostupna dugmetom **Delete** u redu prijave: otvara dijalog za potvrdu (umesto `--yes`) sa poljem **Force** za prijave koje nisu nacrt.
 
 ### Priložavanje fajla uz prijavu (`attach`)
 ```bash

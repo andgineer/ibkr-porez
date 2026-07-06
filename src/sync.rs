@@ -31,6 +31,9 @@ pub struct SyncResult {
     pub gains_skipped: bool,
     pub income_skipped: bool,
     pub income_error: Option<String>,
+    /// Set when the IBKR fetch failed but declarations were still generated
+    /// from already-stored transactions.
+    pub fetch_error: Option<String>,
     pub end_period: NaiveDate,
 }
 
@@ -44,15 +47,29 @@ pub fn run_sync(
 ) -> Result<SyncResult> {
     validate_config_or_bail(config)?;
 
-    let fetch_result = fetch::fetch_and_import(storage, nbs, config, ibkr)?;
-    info!(
-        inserted = fetch_result.inserted,
-        updated = fetch_result.updated,
-        total = fetch_result.transactions.len(),
-        "fetch complete"
-    );
+    // A flaky IBKR connection must not block declaration generation: if the
+    // fetch fails we still generate from already-stored transactions and
+    // surface the failure so the daily auto-sync keeps retrying for fresh data.
+    let fetch_error = match fetch::fetch_and_import(storage, nbs, config, ibkr) {
+        Ok(fetch_result) => {
+            info!(
+                inserted = fetch_result.inserted,
+                updated = fetch_result.updated,
+                total = fetch_result.transactions.len(),
+                "fetch complete"
+            );
+            None
+        }
+        Err(e) => {
+            let msg = format!("{e:#}");
+            warn!(error = %msg, "IBKR fetch failed; generating from stored transactions");
+            Some(msg)
+        }
+    };
 
-    generate_declarations(storage, nbs, config, holidays, options)
+    let mut result = generate_declarations(storage, nbs, config, holidays, options)?;
+    result.fetch_error = fetch_error;
+    Ok(result)
 }
 
 pub fn run_sync_from_xml(
@@ -168,6 +185,7 @@ fn generate_declarations(
         gains_skipped,
         income_skipped,
         income_error,
+        fetch_error: None,
         end_period,
     })
 }
@@ -229,32 +247,7 @@ fn generate_and_save_gains(
     options: &SyncOptions,
 ) -> Result<Vec<Declaration>> {
     let (period_start, period_end) = determine_gains_period(end_period);
-    generate_and_save_gains_for_period(
-        storage,
-        nbs,
-        config,
-        holidays,
-        period_start,
-        period_end,
-        output_dir,
-        options.force,
-    )
-}
 
-/// Generate and save a PPDG-3R declaration for an explicit period. Unlike
-/// [`generate_and_save_gains`], the period is given directly rather than
-/// derived from the current date — used by `regenerate`.
-#[allow(clippy::too_many_arguments)]
-pub fn generate_and_save_gains_for_period(
-    storage: &Storage,
-    nbs: &NBSClient,
-    config: &UserConfig,
-    holidays: &HolidayCalendar,
-    period_start: NaiveDate,
-    period_end: NaiveDate,
-    output_dir: &Path,
-    force: bool,
-) -> Result<Vec<Declaration>> {
     let report = generate_gains_report(
         storage,
         nbs,
@@ -262,7 +255,7 @@ pub fn generate_and_save_gains_for_period(
         holidays,
         period_start,
         period_end,
-        force,
+        options.force,
     )?;
 
     if is_duplicate(storage, &report.filename, &DeclarationType::Ppdg3r) {
@@ -349,36 +342,8 @@ fn generate_and_save_income(
         return Ok(IncomeOutcome::NoIncome);
     }
 
-    let created = save_income_reports(storage, &reports, output_dir)?;
-    Ok(IncomeOutcome::Created(created))
-}
-
-/// Generate and save PP-OPO declarations for an explicit period. Unlike
-/// [`generate_and_save_income`], the period is given directly and there is no
-/// `NoIncome` distinction — an empty period simply yields no declarations.
-/// Used by `regenerate`.
-#[allow(clippy::too_many_arguments)]
-pub fn generate_and_save_income_for_period(
-    storage: &Storage,
-    nbs: &NBSClient,
-    config: &UserConfig,
-    holidays: &HolidayCalendar,
-    start: NaiveDate,
-    end: NaiveDate,
-    output_dir: &Path,
-    force: bool,
-) -> Result<Vec<Declaration>> {
-    let reports = generate_income_reports(storage, nbs, config, holidays, start, end, force)?;
-    save_income_reports(storage, &reports, output_dir)
-}
-
-fn save_income_reports(
-    storage: &Storage,
-    reports: &[crate::report_income::IncomeReport],
-    output_dir: &Path,
-) -> Result<Vec<Declaration>> {
     let mut created = Vec::new();
-    for report in reports {
+    for report in &reports {
         if is_duplicate(storage, &report.filename, &DeclarationType::Ppo) {
             debug!(filename = %report.filename, "income declaration already exists, skipping");
             continue;
@@ -403,7 +368,7 @@ fn save_income_reports(
         created.push(decl);
     }
 
-    Ok(created)
+    Ok(IncomeOutcome::Created(created))
 }
 
 fn is_duplicate(storage: &Storage, generator_filename: &str, decl_type: &DeclarationType) -> bool {
@@ -438,7 +403,7 @@ fn save_declaration<T: serde::Serialize>(
 ) -> Result<Declaration> {
     let existing = storage.get_declarations(None, None);
     // max+1, not len+1: after a declaration is deleted from the middle of the
-    // list (regenerate PP-OPO case) len+1 could collide with a surviving id and
+    // list (delete PP-OPO case) len+1 could collide with a surviving id and
     // silently overwrite it in `storage.save_declaration`.
     let next_id = existing
         .iter()
@@ -729,7 +694,7 @@ mod tests {
     }
 
     #[test]
-    fn run_sync_ibkr_error_propagates() {
+    fn run_sync_ibkr_failure_still_generates() {
         let tmp = tempfile::TempDir::new().unwrap();
         let storage = Storage::with_dir(tmp.path());
         let cal = crate::holidays::HolidayCalendar::load_embedded();
@@ -747,8 +712,11 @@ mod tests {
         let nbs = crate::nbs::NBSClient::with_base_url(&storage, &cal, "http://127.0.0.1:1");
 
         let opts = SyncOptions::default();
-        let result = run_sync(&storage, &nbs, &cfg, &cal, &opts, &ibkr);
-        assert!(result.is_err());
+        // A failed IBKR fetch must not abort generation: run_sync still returns
+        // Ok, surfaces the fetch failure, and generates from stored data.
+        let result = run_sync(&storage, &nbs, &cfg, &cal, &opts, &ibkr).unwrap();
+        assert!(result.fetch_error.is_some());
+        assert!(result.created_declarations.is_empty());
         mock.assert();
     }
 

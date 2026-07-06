@@ -421,6 +421,12 @@ fn declaration_table(ui: &mut egui::Ui, app: &mut App) {
                 ));
             }
             RowAction::Export(id) => app.row_export(id),
+            RowAction::Delete(id) => match crate::delete::plan_deletion(&app.storage, &id) {
+                Ok(plan) => {
+                    app.delete_dialog = Some(super::delete_dialog::DeleteDialog::new(plan));
+                }
+                Err(e) => app.set_error(format!("{e:#}")),
+            },
         }
     }
 }
@@ -431,6 +437,7 @@ enum RowAction {
     Revert(String),
     SetTax(String),
     Export(String),
+    Delete(String),
 }
 
 fn row_actions(
@@ -476,6 +483,12 @@ fn row_actions(
         };
         if ui.small_button(label).clicked() {
             *action = Some(RowAction::Export(id.clone()));
+        }
+    });
+
+    ui.add_enabled_ui(!app.bg_busy, |ui| {
+        if ui.small_button("Delete").clicked() {
+            *action = Some(RowAction::Delete(id.clone()));
         }
     });
 }

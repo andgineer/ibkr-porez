@@ -1,26 +1,21 @@
 use anyhow::{Context, Result, bail};
-use chrono::NaiveDate;
 use rust_decimal::Decimal;
-use tracing::debug;
 
 use crate::config;
-use crate::holidays::HolidayCalendar;
 use crate::models::{CarryforwardSource, Declaration, DeclarationType, UserConfig};
-use crate::nbs::NBSClient;
 use crate::storage::Storage;
-use crate::sync::{generate_and_save_gains_for_period, generate_and_save_income_for_period};
 
 #[derive(Debug)]
-pub struct RegenerationPlan {
+pub struct DeletePlan {
     pub to_delete: Declaration,
-    pub period_to_generate: (NaiveDate, NaiveDate),
     /// `CF-{id}` exists and will be removed from the ledger.
     pub deletes_vintage: bool,
 }
 
-/// Build a regeneration plan without mutating anything. Validates that the
-/// declaration exists and that regenerating it is safe (see the guards).
-pub fn plan_regeneration(storage: &Storage, declaration_id: &str) -> Result<RegenerationPlan> {
+/// Build a deletion plan without mutating anything. Validates that the
+/// declaration exists and that deleting it keeps the carryforward ledger
+/// consistent (see the guards).
+pub fn plan_deletion(storage: &Storage, declaration_id: &str) -> Result<DeletePlan> {
     let to_delete = storage
         .get_declaration(declaration_id)
         .ok_or_else(|| anyhow::anyhow!("declaration {declaration_id} not found"))?;
@@ -35,7 +30,7 @@ pub fn plan_regeneration(storage: &Storage, declaration_id: &str) -> Result<Rege
             });
         if has_later {
             bail!(
-                "later PPDG-3R declarations exist; regenerating {declaration_id} would invalidate them — not supported"
+                "later PPDG-3R declarations exist; delete the newer ones first (deleting {declaration_id} would leave their carryforward dangling)"
             );
         }
     }
@@ -53,28 +48,20 @@ pub fn plan_regeneration(storage: &Storage, declaration_id: &str) -> Result<Rege
         None => false,
     };
 
-    Ok(RegenerationPlan {
-        period_to_generate: (to_delete.period_start, to_delete.period_end),
+    Ok(DeletePlan {
         to_delete,
         deletes_vintage,
     })
 }
 
-/// Execute the plan: undo the target's ledger effects, delete it (records and
-/// files), then regenerate its period from stored transactions. Returns the
-/// newly created declarations.
-pub fn execute_regeneration(
-    storage: &Storage,
-    nbs: &NBSClient,
-    config: &UserConfig,
-    holidays: &HolidayCalendar,
-    plan: &RegenerationPlan,
-    force: bool,
-) -> Result<Vec<Declaration>> {
+/// Execute the plan: undo the target's ledger effects, then remove it (records
+/// and files). The declaration's period is *not* regenerated — run `sync` to
+/// rebuild it if needed.
+pub fn execute_deletion(storage: &Storage, config: &UserConfig, plan: &DeletePlan) -> Result<()> {
     let decl = &plan.to_delete;
 
     // 1. Reverse the carryforward this declaration consumed from other vintages.
-    let reversal = reversed_consumption(decl);
+    let reversal = reversed_consumption(decl)?;
     storage
         .apply_carryforward_consumption(&reversal)
         .with_context(|| storage.io_error_hint())?;
@@ -100,64 +87,38 @@ pub fn execute_regeneration(
     // 4. Delete the declaration record.
     storage.delete_declaration(&decl.declaration_id)?;
 
-    // 5. Regenerate the period from stored transactions.
-    let output_dir = config::get_effective_output_dir_path(config);
-    std::fs::create_dir_all(&output_dir)?;
-    let (start, end) = plan.period_to_generate;
-
-    match decl.r#type {
-        DeclarationType::Ppdg3r => {
-            match generate_and_save_gains_for_period(
-                storage,
-                nbs,
-                config,
-                holidays,
-                start,
-                end,
-                &output_dir,
-                force,
-            ) {
-                Ok(decls) => Ok(decls),
-                Err(e) => {
-                    // After the bug fix the period may genuinely have nothing to
-                    // declare; treat that as a clean rebuild with no output.
-                    if e.to_string().contains("no taxable sales") {
-                        debug!("no taxable sales in regenerated period, nothing to declare");
-                        Ok(Vec::new())
-                    } else {
-                        Err(e)
-                    }
-                }
-            }
-        }
-        DeclarationType::Ppo => generate_and_save_income_for_period(
-            storage,
-            nbs,
-            config,
-            holidays,
-            start,
-            end,
-            &output_dir,
-            force,
-        ),
-    }
+    Ok(())
 }
 
 /// Parse the target's `carryforward_sources` metadata and negate each
 /// `amount_used`, producing the reversal to feed to
-/// `apply_carryforward_consumption`. Absent/empty metadata yields no reversal.
-fn reversed_consumption(decl: &Declaration) -> Vec<CarryforwardSource> {
+/// `apply_carryforward_consumption`. Absent metadata yields no reversal;
+/// malformed metadata bails before any ledger mutation, since silently
+/// dropping an entry would leave the ledger under-restored.
+fn reversed_consumption(decl: &Declaration) -> Result<Vec<CarryforwardSource>> {
     let Some(sources) = decl.metadata.get("carryforward_sources") else {
-        return Vec::new();
+        return Ok(Vec::new());
     };
     let Some(arr) = sources.as_array() else {
-        return Vec::new();
+        bail!(
+            "declaration {} has malformed carryforward_sources metadata (expected an array)",
+            decl.declaration_id
+        );
     };
     arr.iter()
-        .filter_map(|s| {
-            let vintage_id = s.get("vintage_id")?.as_str()?.to_string();
-            let amount = s.get("amount_used")?.as_str()?.parse::<Decimal>().ok()?;
-            Some(CarryforwardSource {
+        .map(|s| {
+            let vintage_id = s
+                .get("vintage_id")
+                .and_then(serde_json::Value::as_str)
+                .ok_or_else(|| anyhow::anyhow!("carryforward_sources entry missing vintage_id"))?
+                .to_string();
+            let amount = s
+                .get("amount_used")
+                .and_then(serde_json::Value::as_str)
+                .ok_or_else(|| anyhow::anyhow!("carryforward_sources entry missing amount_used"))?
+                .parse::<Decimal>()
+                .with_context(|| "carryforward_sources amount_used is not a decimal")?;
+            Ok(CarryforwardSource {
                 vintage_id,
                 amount_used: -amount,
             })

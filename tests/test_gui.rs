@@ -3,9 +3,11 @@
 use std::sync::mpsc;
 
 use chrono::NaiveDate;
+use ibkr_porez::delete::DeletePlan;
 use ibkr_porez::gui::app::{App, BackgroundResult, BulkAction, FilterScope, SortColumn};
 use ibkr_porez::gui::assessment_dialog::AssessmentDialog;
 use ibkr_porez::gui::config_dialog::ConfigDialog;
+use ibkr_porez::gui::delete_dialog::DeleteDialog;
 use ibkr_porez::gui::details_dialog::{self, DetailsDialog};
 use ibkr_porez::gui::import_dialog::ImportDialog;
 use ibkr_porez::gui::styles;
@@ -56,6 +58,7 @@ fn sync_result(created: Vec<Declaration>, income_error: Option<String>) -> SyncR
         gains_skipped: false,
         income_skipped: false,
         income_error,
+        fetch_error: None,
         end_period: NaiveDate::from_ymd_opt(2024, 6, 30).unwrap(),
     }
 }
@@ -937,6 +940,48 @@ fn assessment_dialog_new() {
     assert_eq!(dialog.decl_type, DeclarationType::Ppdg3r);
     assert!(dialog.tax_input.is_empty());
     assert!(!dialog.mark_paid);
+}
+
+// ── delete ──────────────────────────────────────────────────
+
+fn del_plan(id: &str, deletes_vintage: bool) -> DeletePlan {
+    DeletePlan {
+        to_delete: make_typed_decl(id, DeclarationType::Ppdg3r, DeclarationStatus::Draft),
+        deletes_vintage,
+    }
+}
+
+#[test]
+fn delete_dialog_new_defaults_force_false() {
+    let dialog = DeleteDialog::new(del_plan("1", false));
+    assert!(!dialog.force);
+    assert_eq!(dialog.plan.to_delete.declaration_id, "1");
+    assert!(!dialog.plan.deletes_vintage);
+}
+
+// ── sync: IBKR fetch failure still generates ────────────────
+
+#[test]
+fn poll_sync_fetch_error_keeps_retrying_but_surfaces_declarations() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    let (tx, rx) = mpsc::channel();
+    app.bg_receiver = Some(rx);
+    app.bg_busy = true;
+
+    let mut result = sync_result(vec![make_decl("1", DeclarationStatus::Draft)], None);
+    result.fetch_error = Some("IBKR SendRequest failed: connection reset".into());
+    tx.send(BackgroundResult::SyncDone(Ok(result))).unwrap();
+    app.poll_background();
+
+    assert!(!app.bg_busy);
+    // Declarations generated from stored data are still surfaced.
+    assert!(app.pending_new_declarations >= 1);
+    // Fetch failed → not marked a success, and an issue is shown so it retries.
+    assert!(
+        app.last_sync_success.is_none(),
+        "fetch failure must not count as a successful sync"
+    );
+    assert!(app.last_sync_issue.is_some());
 }
 
 // ── Config reload from disk ─────────────────────────────────

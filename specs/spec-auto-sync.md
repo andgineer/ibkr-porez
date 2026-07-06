@@ -18,6 +18,12 @@ an issue.
 
 This is GUI-only; the CLI remains a one-shot command, unaffected.
 
+A failed IBKR fetch never blocks declaration generation: `sync` still generates
+declarations from the transactions already stored locally and records the fetch
+failure as an issue, so the daily cycle keeps retrying for fresh data instead of
+counting the run as a clean success. This resilience is part of every `sync`
+(CLI and GUI); only the automatic retry loop is GUI-only.
+
 ## Trigger condition
 
 The cycle starts once there is no successful sync recorded for the current

@@ -194,12 +194,14 @@ fn sync_with_invalid_credentials() {
     });
     std::fs::write(tmp.path().join("config.json"), config.to_string()).unwrap();
 
+    // A failed IBKR fetch no longer aborts sync: it exits success, warns about
+    // the connection, and generates from whatever is stored locally.
     cmd()
         .args(["sync"])
         .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
         .assert()
         .success()
-        .stderr(predicate::str::is_empty().not());
+        .stdout(predicate::str::contains("IBKR fetch failed"));
 }
 
 #[test]
@@ -1544,45 +1546,61 @@ fn full_lifecycle_submit_pay_revert() {
     );
 }
 
-// ── regenerate ──────────────────────────────────────────────
+// ── delete ──────────────────────────────────────────────────
 
 #[test]
-fn regenerate_dry_run_changes_nothing() {
+fn delete_dry_run_changes_nothing() {
     let (tmp, data_dir) = setup_env();
     let storage = Storage::with_dir(&data_dir);
-    make_draft(&storage, "regen-1");
+    make_draft(&storage, "del-1");
 
     cmd()
-        .args(["regenerate", "regen-1"])
+        .args(["delete", "del-1"])
         .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
         .assert()
         .success()
         .stdout(predicate::str::contains("Dry run"));
 
     // Untouched: still present, still a draft.
-    let decl = storage.get_declaration("regen-1").unwrap();
+    let decl = storage.get_declaration("del-1").unwrap();
     assert_eq!(decl.status, DeclarationStatus::Draft);
 }
 
 #[test]
-fn regenerate_non_draft_without_force_fails() {
+fn delete_yes_removes_declaration() {
+    let (tmp, data_dir) = setup_env();
+    let storage = Storage::with_dir(&data_dir);
+    make_draft(&storage, "del-1");
+
+    cmd()
+        .args(["delete", "del-1", "--yes"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Deleted declaration del-1"));
+
+    assert!(storage.get_declaration("del-1").is_none());
+}
+
+#[test]
+fn delete_non_draft_without_force_fails() {
     let (tmp, data_dir) = setup_env();
     let storage = Storage::with_dir(&data_dir);
     make_declaration(
         &storage,
-        "regen-sub",
+        "del-sub",
         DeclarationType::Ppdg3r,
         DeclarationStatus::Submitted,
         None,
     );
 
     cmd()
-        .args(["regenerate", "regen-sub", "--yes"])
+        .args(["delete", "del-sub", "--yes"])
         .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
         .assert()
         .failure()
         .stderr(predicate::str::contains("--force"));
 
     // Not deleted.
-    assert!(storage.get_declaration("regen-sub").is_some());
+    assert!(storage.get_declaration("del-sub").is_some());
 }

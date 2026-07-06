@@ -14,6 +14,7 @@ use eframe::egui;
 use super::assessment_dialog::AssessmentDialog;
 use super::carryforward_dialog::CarryforwardDialog;
 use super::config_dialog::ConfigDialog;
+use super::delete_dialog::DeleteDialog;
 use super::details_dialog::DetailsDialog;
 use super::import_dialog::ImportDialog;
 use super::main_window;
@@ -153,6 +154,7 @@ pub struct App {
     pub details_dialog: Option<DetailsDialog>,
     pub assessment_dialog: Option<AssessmentDialog>,
     pub carryforward_dialog: Option<CarryforwardDialog>,
+    pub delete_dialog: Option<DeleteDialog>,
     pub error_dialog: Option<String>,
     pub show_import_hint: bool,
     pub confirm_discard_config: bool,
@@ -213,6 +215,7 @@ impl App {
             details_dialog: None,
             assessment_dialog: None,
             carryforward_dialog: None,
+            delete_dialog: None,
             error_dialog: None,
             show_import_hint,
             confirm_discard_config: false,
@@ -548,18 +551,8 @@ impl App {
         let now = chrono::Local::now().naive_local();
         match result {
             Ok(r) => {
-                let _ = self.storage.set_last_sync_success(now);
-                self.last_sync_success = Some(now);
-                self.last_sync_fatal = false;
-                if let Some(msg) = &r.income_error {
-                    let _ = self.storage.set_last_sync_issue(now, msg);
-                    self.last_sync_issue = Some((now, msg.clone()));
-                } else {
-                    let _ = self.storage.clear_last_sync_issue();
-                    self.last_sync_issue = None;
-                }
-                self.warning_banner = check_holiday_warning(&self.config);
-
+                // Declarations were generated and persisted regardless of the
+                // fetch outcome; surface them either way.
                 let count = r.created_declarations.len();
                 if count > 0 {
                     let count_u32 = u32::try_from(count).unwrap_or(u32::MAX);
@@ -567,6 +560,29 @@ impl App {
                     self.pending_new_declarations = self.storage.get_pending_new_declarations();
                     notify_new_declarations(count);
                 }
+
+                if let Some(fetch_err) = &r.fetch_error {
+                    // Generation ran from stored transactions, but the IBKR
+                    // fetch failed — keep the daily auto-sync retrying for fresh
+                    // data instead of marking today a success.
+                    let (display_message, should_retry) =
+                        classify_sync_error(fetch_err, self.synced_today());
+                    let _ = self.storage.set_last_sync_issue(now, &display_message);
+                    self.last_sync_issue = Some((now, display_message));
+                    self.last_sync_fatal = !should_retry;
+                } else {
+                    let _ = self.storage.set_last_sync_success(now);
+                    self.last_sync_success = Some(now);
+                    self.last_sync_fatal = false;
+                    if let Some(msg) = &r.income_error {
+                        let _ = self.storage.set_last_sync_issue(now, msg);
+                        self.last_sync_issue = Some((now, msg.clone()));
+                    } else {
+                        let _ = self.storage.clear_last_sync_issue();
+                        self.last_sync_issue = None;
+                    }
+                }
+                self.warning_banner = check_holiday_warning(&self.config);
             }
             Err(e) => {
                 let (display_message, should_retry) = classify_sync_error(&e, self.synced_today());
@@ -643,6 +659,7 @@ impl App {
             details_dialog: None,
             assessment_dialog: None,
             carryforward_dialog: None,
+            delete_dialog: None,
             error_dialog: None,
             show_import_hint: false,
             confirm_discard_config: false,
@@ -772,6 +789,7 @@ impl App {
             || self.details_dialog.is_some()
             || self.assessment_dialog.is_some()
             || self.carryforward_dialog.is_some()
+            || self.delete_dialog.is_some()
             || self.error_dialog.is_some()
             || self.confirm_force_sync
             || self.confirm_discard_config;
@@ -804,6 +822,8 @@ impl App {
                 self.assessment_dialog = None;
             } else if self.carryforward_dialog.is_some() {
                 self.carryforward_dialog = None;
+            } else if self.delete_dialog.is_some() {
+                self.delete_dialog = None;
             } else if self.details_dialog.is_some() {
                 self.details_dialog = None;
             } else if self.sync_file_dialog.is_some() {
@@ -825,6 +845,7 @@ impl App {
         super::details_dialog::show(ctx, self);
         super::assessment_dialog::show(ctx, self);
         super::carryforward_dialog::show(ctx, self);
+        super::delete_dialog::show(ctx, self);
 
         self.show_modal_dialogs(ctx);
     }

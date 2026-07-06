@@ -78,6 +78,8 @@ Does the same as [fetch](#fetch-data-fetch):
 
 Then creates all necessary declarations for the last 45 days (if they haven't been created already).
 
+> 💡 If the connection to IBKR fails, `sync` still creates declarations from the transactions already stored locally and prints a warning; it exits successfully, and in the GUI keeps retrying for fresh data on the next cycle.
+
 You can then [Manage created declarations](#declaration-management).
 
 > 💡 If you ran `sync` for the first time and it created declarations that you already submitted before starting to use the application,
@@ -323,21 +325,25 @@ ibkr-porez revert <id> [<id> ...] --to submitted
 
 Reverts declaration status.
 
-### Regenerate Declaration (`regenerate`)
+### Delete Declaration (`delete`)
 ```bash
 # Preview the plan (changes nothing)
-ibkr-porez regenerate <id>
+ibkr-porez delete <id>
 
-# Delete and rebuild from stored transactions
-ibkr-porez regenerate <id> --yes
+# Delete the declaration
+ibkr-porez delete <id> --yes
 
 # Allow deleting a non-draft declaration
-ibkr-porez regenerate <id> --yes --force
+ibkr-porez delete <id> --yes --force
 ```
 
-Deletes an erroneous declaration and rebuilds it for the same period from locally stored transactions — for example after fixing a calculation, or after recording an `assess` on a prior declaration that a later PPDG-3R should have accounted for.
+Deletes a declaration and undoes its carryforward-ledger effects: any carryforward it consumed is returned to the source vintages, and its own recognized-loss vintage (created by `assess`) is removed. If you deleted it to fix an error, run `sync` afterwards to rebuild the period from stored transactions.
 
-Without `--yes` it only prints what would be deleted and the period to rebuild. `--force` is required to delete a declaration that is not a draft. Only the most recent PPDG-3R can be regenerated; PP OPO declarations can be regenerated at any time. The rebuilt declaration comes back as a new draft and must be submitted again (and re-assessed if it had a recognized loss).
+Without `--yes` it only prints what would be deleted. `--force` is required to delete a declaration that is not a draft. Only the most recent PPDG-3R can be deleted — deleting an earlier one would leave later declarations' carryforward dangling; PP OPO declarations can be deleted at any time.
+
+This is also how you correct a prior declaration's assessment that a later one already consumed: delete the later declaration (freeing the carryforward), re-run `assess` on the earlier one, then `sync` to rebuild.
+
+In the GUI the same action is available as the **Delete** button in the declaration's row: it opens a confirmation dialog (replacing `--yes`) with a **Force** checkbox for non-draft declarations.
 
 ### Attach File to Declaration (`attach`)
 ```bash

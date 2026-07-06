@@ -107,26 +107,29 @@ captured from an XML saved off the portal with part 7 filled in manually.
 - GUI: the burger menu has a read-only "Capital loss carryforward..." view
   showing the same vintage list and statuses as the CLI command.
 
-## Regeneration
+## Deletion
 
-An erroneous declaration can be deleted and rebuilt from the locally stored
-transactions (for example after a calculation bug is fixed, or after a prior
-declaration's assessment was recorded only later). Regeneration always yields a
-new draft declaration whose submission and assessment must be entered again.
+A declaration can be deleted, which restores the ledger to the state before it
+existed. Deleting a PPDG-3R returns the carryforward balances it consumed to
+their vintages, and removes its own recognized-loss vintage (if any). To rebuild
+a deleted declaration, `sync` regenerates it from the locally stored
+transactions.
 
-For a PPDG-3R this is allowed only when no PPDG-3R for a later period exists,
-because carryforward flows forward in time and an error in one gains
-declaration contaminates every later one through the ledger. PP-OPO income
-declarations are independent of one another and may be regenerated regardless
-of age.
+For a PPDG-3R deletion is allowed only when no PPDG-3R for a later period
+exists, because carryforward flows forward in time: deleting an earlier gains
+declaration would leave every later one referencing carryforward that no longer
+matches the ledger. PP-OPO income declarations are independent of one another
+and may be deleted regardless of age.
 
-Regenerating a PPDG-3R restores the ledger to the state before that
-declaration existed: the carryforward balances it consumed are returned to
-their vintages, and its own recognized-loss vintage (if any) is removed —
-since no later declaration can have consumed it, and if the ledger says
-otherwise regeneration refuses to proceed. Because removing that vintage drops
-the recognized-loss record, the assessment must be re-entered on the rebuilt
-declaration.
+A declaration's own recognized-loss vintage can only be removed while unconsumed
+— since no later PPDG-3R exists it cannot have been consumed, and if the ledger
+says otherwise deletion refuses to proceed. Removing that vintage drops the
+recognized-loss record, so the assessment must be re-entered if the declaration
+is rebuilt.
+
+This is also the mechanism for correcting an already-consumed prior assessment:
+deleting the later declaration frees the carryforward, after which the earlier
+declaration's assessment can be re-entered and the later one rebuilt via `sync`.
 
 ## Out of Scope
 

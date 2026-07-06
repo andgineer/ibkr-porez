@@ -74,6 +74,12 @@ pub fn run(
 }
 
 fn print_sync_result(result: &SyncResult) {
+    if let Some(ref err_msg) = result.fetch_error {
+        output::warning(&format!(
+            "IBKR fetch failed ({err_msg}); generated declarations from stored transactions. Re-run `sync` later for fresh data."
+        ));
+    }
+
     if result.created_declarations.is_empty() {
         output::warning("No new declarations created.");
     } else {
@@ -145,6 +151,7 @@ mod tests {
             gains_skipped,
             income_skipped,
             income_error,
+            fetch_error: None,
             end_period: NaiveDate::from_ymd_opt(2025, 6, 30).unwrap(),
         }
     }
