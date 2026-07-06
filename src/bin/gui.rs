@@ -85,6 +85,9 @@ fn main() {
     setup_panic_hook();
     let _log_guard = ibkr_porez::logging::init(false);
 
+    #[cfg(target_os = "macos")]
+    ibkr_porez::gui::init_notifications();
+
     let title = window_title();
     let options = make_native_options(&title);
 
