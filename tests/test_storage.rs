@@ -206,6 +206,53 @@ fn test_storage_declarations_roundtrip() {
     assert!(!storage.declaration_exists("NONEXISTENT"));
 }
 
+fn make_decl(id: &str) -> Declaration {
+    Declaration {
+        declaration_id: id.into(),
+        r#type: DeclarationType::Ppo,
+        status: DeclarationStatus::Draft,
+        period_start: d(2025, 3, 10),
+        period_end: d(2025, 3, 10),
+        created_at: chrono::NaiveDateTime::default(),
+        submitted_at: None,
+        paid_at: None,
+        file_path: None,
+        xml_content: None,
+        report_data: None,
+        metadata: indexmap::IndexMap::new(),
+        attached_files: indexmap::IndexMap::new(),
+    }
+}
+
+#[test]
+fn test_delete_declaration_removes_target_keeps_others() {
+    let dir = TempDir::new().unwrap();
+    let storage = Storage::with_dir(dir.path());
+
+    storage.save_declaration(&make_decl("1")).unwrap();
+    storage.save_declaration(&make_decl("2")).unwrap();
+    storage.save_declaration(&make_decl("3")).unwrap();
+
+    storage.delete_declaration("2").unwrap();
+
+    assert!(storage.get_declaration("2").is_none());
+    assert!(storage.get_declaration("1").is_some());
+    assert!(storage.get_declaration("3").is_some());
+    assert_eq!(storage.get_declarations(None, None).len(), 2);
+}
+
+#[test]
+fn test_delete_declaration_unknown_id_errors() {
+    let dir = TempDir::new().unwrap();
+    let storage = Storage::with_dir(dir.path());
+
+    storage.save_declaration(&make_decl("1")).unwrap();
+
+    let err = storage.delete_declaration("99").unwrap_err();
+    assert!(err.to_string().contains("not found"));
+    assert_eq!(storage.get_declarations(None, None).len(), 1);
+}
+
 #[test]
 fn test_storage_last_declaration_date() {
     let dir = TempDir::new().unwrap();

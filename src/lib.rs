@@ -16,6 +16,7 @@ pub mod logging;
 pub mod models;
 pub mod nbs;
 pub mod openholiday;
+pub mod regenerate;
 pub mod report_gains;
 pub mod report_income;
 pub mod stat;

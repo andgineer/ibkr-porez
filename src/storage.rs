@@ -312,6 +312,29 @@ impl Storage {
         self.save_declarations_file(&file)
     }
 
+    pub fn delete_declaration(&self, declaration_id: &str) -> Result<()> {
+        let mut file = self.load_declarations_file();
+
+        let mut declarations: Vec<Declaration> = file
+            .declarations
+            .iter()
+            .filter_map(|v| serde_json::from_value(v.clone()).ok())
+            .collect();
+
+        let before = declarations.len();
+        declarations.retain(|d| d.declaration_id != declaration_id);
+        if declarations.len() == before {
+            anyhow::bail!("declaration {declaration_id} not found");
+        }
+
+        file.declarations = declarations
+            .iter()
+            .filter_map(|d| serde_json::to_value(d).ok())
+            .collect();
+
+        self.save_declarations_file(&file)
+    }
+
     #[must_use]
     pub fn get_declarations(
         &self,

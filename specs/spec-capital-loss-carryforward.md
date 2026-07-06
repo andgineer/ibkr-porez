@@ -107,6 +107,27 @@ captured from an XML saved off the portal with part 7 filled in manually.
 - GUI: the burger menu has a read-only "Capital loss carryforward..." view
   showing the same vintage list and statuses as the CLI command.
 
+## Regeneration
+
+An erroneous declaration can be deleted and rebuilt from the locally stored
+transactions (for example after a calculation bug is fixed, or after a prior
+declaration's assessment was recorded only later). Regeneration always yields a
+new draft declaration whose submission and assessment must be entered again.
+
+For a PPDG-3R this is allowed only when no PPDG-3R for a later period exists,
+because carryforward flows forward in time and an error in one gains
+declaration contaminates every later one through the ledger. PP-OPO income
+declarations are independent of one another and may be regenerated regardless
+of age.
+
+Regenerating a PPDG-3R restores the ledger to the state before that
+declaration existed: the carryforward balances it consumed are returned to
+their vintages, and its own recognized-loss vintage (if any) is removed —
+since no later declaration can have consumed it, and if the ledger says
+otherwise regeneration refuses to proceed. Because removing that vintage drops
+the recognized-loss record, the assessment must be re-entered on the rebuilt
+declaration.
+
 ## Out of Scope
 
 - Changes to FIFO lot-matching for gains/losses.

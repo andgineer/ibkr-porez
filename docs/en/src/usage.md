@@ -323,6 +323,22 @@ ibkr-porez revert <id> [<id> ...] --to submitted
 
 Reverts declaration status.
 
+### Regenerate Declaration (`regenerate`)
+```bash
+# Preview the plan (changes nothing)
+ibkr-porez regenerate <id>
+
+# Delete and rebuild from stored transactions
+ibkr-porez regenerate <id> --yes
+
+# Allow deleting a non-draft declaration
+ibkr-porez regenerate <id> --yes --force
+```
+
+Deletes an erroneous declaration and rebuilds it for the same period from locally stored transactions — for example after fixing a calculation, or after recording an `assess` on a prior declaration that a later PPDG-3R should have accounted for.
+
+Without `--yes` it only prints what would be deleted and the period to rebuild. `--force` is required to delete a declaration that is not a draft. Only the most recent PPDG-3R can be regenerated; PP OPO declarations can be regenerated at any time. The rebuilt declaration comes back as a new draft and must be submitted again (and re-assessed if it had a recognized loss).
+
 ### Attach File to Declaration (`attach`)
 ```bash
 # Attach file

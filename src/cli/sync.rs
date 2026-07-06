@@ -1,16 +1,11 @@
-use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::{self, IsTerminal, Read};
 use std::path::PathBuf;
 
 use anyhow::{Result, bail};
-use chrono::{Datelike, Local};
 
-use super::{load_config_or_exit, make_nbs, make_storage, output, tables};
-use ibkr_porez::config as app_config;
-use ibkr_porez::holidays::HolidayCalendar;
+use super::{init_calendar_with_sync, load_config_or_exit, make_nbs, make_storage, output, tables};
 use ibkr_porez::ibkr_flex::IBKRClient;
-use ibkr_porez::models::{DeclarationType, IncomeDeclarationEntry, TaxReportEntry, UserConfig};
-use ibkr_porez::openholiday::OpenHolidayClient;
+use ibkr_porez::models::{DeclarationType, IncomeDeclarationEntry, TaxReportEntry};
 use ibkr_porez::sync::SyncResult;
 use ibkr_porez::sync::{SyncOptions, run_sync, run_sync_from_file, run_sync_from_xml};
 
@@ -132,85 +127,9 @@ fn print_sync_result(result: &SyncResult) {
     output::dim("Use `ibkr-porez pay <ID> [<ID> ...]` to mark as paid.");
 }
 
-fn init_calendar_with_sync(cfg: &UserConfig) -> HolidayCalendar {
-    let mut cal = HolidayCalendar::load_embedded();
-    let data_dir = app_config::get_effective_data_dir_path(cfg);
-    cal.merge_file(&data_dir);
-
-    let current_year = Local::now().year();
-    let mut years_to_fetch = Vec::new();
-    if !cal.is_year_loaded(current_year) {
-        years_to_fetch.push(current_year);
-    }
-
-    let threshold_day = next_year_fetch_threshold(current_year);
-    let now = Local::now();
-    if now.ordinal() >= threshold_day && !cal.is_year_loaded(current_year + 1) {
-        years_to_fetch.push(current_year + 1);
-    }
-
-    if !years_to_fetch.is_empty() {
-        let from = *years_to_fetch.iter().min().unwrap();
-        let to = *years_to_fetch.iter().max().unwrap();
-        let client = OpenHolidayClient::new();
-        match client.fetch_years(from, to) {
-            Ok(year_map) => {
-                for (year, dates) in year_map {
-                    cal.add_year(year, dates);
-                    output::dim(&format!("Fetched holidays for {year}."));
-                }
-            }
-            Err(e) => {
-                output::warning(&format!("Failed to fetch holidays: {e}"));
-            }
-        }
-        if let Err(e) = cal.save_overlay(&data_dir) {
-            output::warning(&format!("Failed to save holiday overlay: {e}"));
-        }
-    }
-
-    cal
-}
-
-fn next_year_fetch_threshold(year: i32) -> u32 {
-    let mut hasher = DefaultHasher::new();
-    year.hash(&mut hasher);
-    let h = hasher.finish();
-    let offset = (h % 6) as u32;
-    349 + offset
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn threshold_within_expected_range() {
-        for year in 2020..=2035 {
-            let t = next_year_fetch_threshold(year);
-            assert!(
-                (349..=354).contains(&t),
-                "threshold {t} for year {year} out of range 349..=354"
-            );
-        }
-    }
-
-    #[test]
-    fn threshold_deterministic() {
-        let a = next_year_fetch_threshold(2026);
-        let b = next_year_fetch_threshold(2026);
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn threshold_varies_across_years() {
-        let values: std::collections::HashSet<u32> =
-            (2020..=2035).map(next_year_fetch_threshold).collect();
-        assert!(
-            values.len() > 1,
-            "threshold should vary across years, got single value"
-        );
-    }
 
     use chrono::NaiveDate;
     use ibkr_porez::models::{Declaration, DeclarationStatus};
@@ -330,25 +249,5 @@ mod tests {
         decl.report_data = Some(vec![serde_json::to_value(entry).unwrap()]);
         let result = make_sync_result(vec![decl], false, false, None);
         print_sync_result(&result);
-    }
-
-    #[test]
-    fn init_calendar_returns_loaded_calendar() {
-        let cfg = UserConfig {
-            data_dir: Some(
-                tempfile::TempDir::new()
-                    .unwrap()
-                    .path()
-                    .display()
-                    .to_string(),
-            ),
-            ..UserConfig::default()
-        };
-        let cal = init_calendar_with_sync(&cfg);
-        let current_year = Local::now().year();
-        assert!(
-            cal.is_year_loaded(current_year),
-            "calendar should have current year after sync"
-        );
     }
 }

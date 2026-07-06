@@ -318,6 +318,22 @@ ibkr-porez revert <id> [<id> ...] --to submitted
 
 Vraća status prijave.
 
+### Ponovno kreiranje prijave (`regenerate`)
+```bash
+# Pregled plana (ništa se ne menja)
+ibkr-porez regenerate <id>
+
+# Obriši i ponovo napravi iz sačuvanih transakcija
+ibkr-porez regenerate <id> --yes
+
+# Dozvoli brisanje prijave koja nije nacrt
+ibkr-porez regenerate <id> --yes --force
+```
+
+Briše pogrešnu prijavu i ponovo je pravi za isti period iz lokalno sačuvanih transakcija — na primer nakon ispravke obračuna ili nakon unosa `assess` na prethodnoj prijavi koji je kasniji PPDG-3R trebalo da uzme u obzir.
+
+Bez `--yes` samo ispisuje šta bi bilo obrisano i period za ponovno kreiranje. `--force` je neophodan za brisanje prijave koja nije nacrt. Ponovo se može napraviti samo najnoviji PPDG-3R; PP OPO prijave se mogu ponovo praviti u bilo kom trenutku. Ponovo napravljena prijava se vraća kao novi nacrt i mora ponovo da se podnese (i, ako je imala priznati gubitak, ponovo evidentira rešenje).
+
 ### Priložavanje fajla uz prijavu (`attach`)
 ```bash
 # Priložiti fajl

@@ -229,7 +229,32 @@ fn generate_and_save_gains(
     options: &SyncOptions,
 ) -> Result<Vec<Declaration>> {
     let (period_start, period_end) = determine_gains_period(end_period);
+    generate_and_save_gains_for_period(
+        storage,
+        nbs,
+        config,
+        holidays,
+        period_start,
+        period_end,
+        output_dir,
+        options.force,
+    )
+}
 
+/// Generate and save a PPDG-3R declaration for an explicit period. Unlike
+/// [`generate_and_save_gains`], the period is given directly rather than
+/// derived from the current date — used by `regenerate`.
+#[allow(clippy::too_many_arguments)]
+pub fn generate_and_save_gains_for_period(
+    storage: &Storage,
+    nbs: &NBSClient,
+    config: &UserConfig,
+    holidays: &HolidayCalendar,
+    period_start: NaiveDate,
+    period_end: NaiveDate,
+    output_dir: &Path,
+    force: bool,
+) -> Result<Vec<Declaration>> {
     let report = generate_gains_report(
         storage,
         nbs,
@@ -237,7 +262,7 @@ fn generate_and_save_gains(
         holidays,
         period_start,
         period_end,
-        options.force,
+        force,
     )?;
 
     if is_duplicate(storage, &report.filename, &DeclarationType::Ppdg3r) {
@@ -324,8 +349,36 @@ fn generate_and_save_income(
         return Ok(IncomeOutcome::NoIncome);
     }
 
+    let created = save_income_reports(storage, &reports, output_dir)?;
+    Ok(IncomeOutcome::Created(created))
+}
+
+/// Generate and save PP-OPO declarations for an explicit period. Unlike
+/// [`generate_and_save_income`], the period is given directly and there is no
+/// `NoIncome` distinction — an empty period simply yields no declarations.
+/// Used by `regenerate`.
+#[allow(clippy::too_many_arguments)]
+pub fn generate_and_save_income_for_period(
+    storage: &Storage,
+    nbs: &NBSClient,
+    config: &UserConfig,
+    holidays: &HolidayCalendar,
+    start: NaiveDate,
+    end: NaiveDate,
+    output_dir: &Path,
+    force: bool,
+) -> Result<Vec<Declaration>> {
+    let reports = generate_income_reports(storage, nbs, config, holidays, start, end, force)?;
+    save_income_reports(storage, &reports, output_dir)
+}
+
+fn save_income_reports(
+    storage: &Storage,
+    reports: &[crate::report_income::IncomeReport],
+    output_dir: &Path,
+) -> Result<Vec<Declaration>> {
     let mut created = Vec::new();
-    for report in &reports {
+    for report in reports {
         if is_duplicate(storage, &report.filename, &DeclarationType::Ppo) {
             debug!(filename = %report.filename, "income declaration already exists, skipping");
             continue;
@@ -350,7 +403,7 @@ fn generate_and_save_income(
         created.push(decl);
     }
 
-    Ok(IncomeOutcome::Created(created))
+    Ok(created)
 }
 
 fn is_duplicate(storage: &Storage, generator_filename: &str, decl_type: &DeclarationType) -> bool {
@@ -384,7 +437,15 @@ fn save_declaration<T: serde::Serialize>(
     output_dir: &Path,
 ) -> Result<Declaration> {
     let existing = storage.get_declarations(None, None);
-    let next_id = existing.len() + 1;
+    // max+1, not len+1: after a declaration is deleted from the middle of the
+    // list (regenerate PP-OPO case) len+1 could collide with a surviving id and
+    // silently overwrite it in `storage.save_declaration`.
+    let next_id = existing
+        .iter()
+        .filter_map(|d| d.declaration_id.parse::<usize>().ok())
+        .max()
+        .unwrap_or(0)
+        + 1;
     let id_str = next_id.to_string();
     let proper_filename = format!("{next_id:03}-{generator_filename}");
 
@@ -932,6 +993,55 @@ mod tests {
         // The second declaration sees no remaining carryforward.
         assert_eq!(second[0].metadata["opening_carryforward_rsd"], "0.00");
         assert_eq!(second[0].metadata["carryforward_used_rsd"], "0.00");
+    }
+
+    #[test]
+    fn save_declaration_uses_max_id_plus_one_after_delete() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let storage = Storage::with_dir(tmp.path());
+        let output_dir = tmp.path().join("output");
+        std::fs::create_dir_all(&output_dir).unwrap();
+
+        let seed = |id: &str| Declaration {
+            declaration_id: id.into(),
+            r#type: DeclarationType::Ppo,
+            status: DeclarationStatus::Draft,
+            period_start: NaiveDate::from_ymd_opt(2025, 3, 10).unwrap(),
+            period_end: NaiveDate::from_ymd_opt(2025, 3, 10).unwrap(),
+            created_at: Local::now().naive_local(),
+            submitted_at: None,
+            paid_at: None,
+            file_path: None,
+            xml_content: None,
+            report_data: None,
+            metadata: indexmap::IndexMap::new(),
+            attached_files: indexmap::IndexMap::new(),
+        };
+        storage.save_declaration(&seed("1")).unwrap();
+        storage.save_declaration(&seed("2")).unwrap();
+        storage.save_declaration(&seed("3")).unwrap();
+
+        storage.delete_declaration("2").unwrap();
+
+        let entries: Vec<serde_json::Value> = Vec::new();
+        let new = save_declaration(
+            &storage,
+            "ppo-2025-03-10.xml",
+            "<xml/>",
+            DeclarationType::Ppo,
+            NaiveDate::from_ymd_opt(2025, 3, 10).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 3, 10).unwrap(),
+            &entries,
+            &indexmap::IndexMap::new(),
+            &output_dir,
+        )
+        .unwrap();
+
+        assert_eq!(new.declaration_id, "4", "new id must be max+1, not len+1");
+        // declaration "3" must be untouched by the len+1 collision that would
+        // otherwise overwrite it.
+        assert!(storage.get_declaration("3").is_some());
+        assert_eq!(storage.get_declarations(None, None).len(), 3);
     }
 
     #[test]

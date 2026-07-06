@@ -9,6 +9,7 @@ pub mod import;
 pub mod list;
 pub mod output;
 pub mod pay;
+pub mod regenerate;
 pub mod report;
 pub mod revert;
 pub mod show;
@@ -17,6 +18,7 @@ pub mod submit;
 pub mod sync;
 pub mod tables;
 
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::{BufRead, IsTerminal};
 
 use anyhow::{Result, bail};
@@ -28,6 +30,7 @@ use ibkr_porez::declaration_manager::{BulkResult, DeclarationManager};
 use ibkr_porez::holidays::HolidayCalendar;
 use ibkr_porez::models::UserConfig;
 use ibkr_porez::nbs::NBSClient;
+use ibkr_porez::openholiday::OpenHolidayClient;
 use ibkr_porez::storage::Storage;
 
 #[derive(Clone, clap::ValueEnum)]
@@ -89,6 +92,54 @@ fn init_calendar(cfg: &UserConfig) -> HolidayCalendar {
 
 fn make_nbs<'a>(storage: &'a Storage, cal: &'a HolidayCalendar) -> NBSClient<'a> {
     NBSClient::new(storage, cal)
+}
+
+pub(crate) fn init_calendar_with_sync(cfg: &UserConfig) -> HolidayCalendar {
+    let mut cal = HolidayCalendar::load_embedded();
+    let data_dir = app_config::get_effective_data_dir_path(cfg);
+    cal.merge_file(&data_dir);
+
+    let current_year = Local::now().year();
+    let mut years_to_fetch = Vec::new();
+    if !cal.is_year_loaded(current_year) {
+        years_to_fetch.push(current_year);
+    }
+
+    let threshold_day = next_year_fetch_threshold(current_year);
+    let now = Local::now();
+    if now.ordinal() >= threshold_day && !cal.is_year_loaded(current_year + 1) {
+        years_to_fetch.push(current_year + 1);
+    }
+
+    if !years_to_fetch.is_empty() {
+        let from = *years_to_fetch.iter().min().unwrap();
+        let to = *years_to_fetch.iter().max().unwrap();
+        let client = OpenHolidayClient::new();
+        match client.fetch_years(from, to) {
+            Ok(year_map) => {
+                for (year, dates) in year_map {
+                    cal.add_year(year, dates);
+                    output::dim(&format!("Fetched holidays for {year}."));
+                }
+            }
+            Err(e) => {
+                output::warning(&format!("Failed to fetch holidays: {e}"));
+            }
+        }
+        if let Err(e) = cal.save_overlay(&data_dir) {
+            output::warning(&format!("Failed to save holiday overlay: {e}"));
+        }
+    }
+
+    cal
+}
+
+fn next_year_fetch_threshold(year: i32) -> u32 {
+    let mut hasher = DefaultHasher::new();
+    year.hash(&mut hasher);
+    let h = hasher.finish();
+    let offset = (h % 6) as u32;
+    349 + offset
 }
 
 pub(crate) fn resolve_ids(args: Vec<String>) -> Vec<String> {
@@ -383,5 +434,53 @@ mod tests {
     fn validate_non_negative_accepts_zero() {
         let result = validate_non_negative_decimal(dec!(0)).unwrap();
         assert_eq!(result, dec!(0.00));
+    }
+
+    #[test]
+    fn threshold_within_expected_range() {
+        for year in 2020..=2035 {
+            let t = next_year_fetch_threshold(year);
+            assert!(
+                (349..=354).contains(&t),
+                "threshold {t} for year {year} out of range 349..=354"
+            );
+        }
+    }
+
+    #[test]
+    fn threshold_deterministic() {
+        let a = next_year_fetch_threshold(2026);
+        let b = next_year_fetch_threshold(2026);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn threshold_varies_across_years() {
+        let values: std::collections::HashSet<u32> =
+            (2020..=2035).map(next_year_fetch_threshold).collect();
+        assert!(
+            values.len() > 1,
+            "threshold should vary across years, got single value"
+        );
+    }
+
+    #[test]
+    fn init_calendar_returns_loaded_calendar() {
+        let cfg = UserConfig {
+            data_dir: Some(
+                tempfile::TempDir::new()
+                    .unwrap()
+                    .path()
+                    .display()
+                    .to_string(),
+            ),
+            ..UserConfig::default()
+        };
+        let cal = init_calendar_with_sync(&cfg);
+        let current_year = Local::now().year();
+        assert!(
+            cal.is_year_loaded(current_year),
+            "calendar should have current year after sync"
+        );
     }
 }

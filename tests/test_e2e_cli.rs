@@ -1543,3 +1543,46 @@ fn full_lifecycle_submit_pay_revert() {
         DeclarationStatus::Draft,
     );
 }
+
+// ── regenerate ──────────────────────────────────────────────
+
+#[test]
+fn regenerate_dry_run_changes_nothing() {
+    let (tmp, data_dir) = setup_env();
+    let storage = Storage::with_dir(&data_dir);
+    make_draft(&storage, "regen-1");
+
+    cmd()
+        .args(["regenerate", "regen-1"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Dry run"));
+
+    // Untouched: still present, still a draft.
+    let decl = storage.get_declaration("regen-1").unwrap();
+    assert_eq!(decl.status, DeclarationStatus::Draft);
+}
+
+#[test]
+fn regenerate_non_draft_without_force_fails() {
+    let (tmp, data_dir) = setup_env();
+    let storage = Storage::with_dir(&data_dir);
+    make_declaration(
+        &storage,
+        "regen-sub",
+        DeclarationType::Ppdg3r,
+        DeclarationStatus::Submitted,
+        None,
+    );
+
+    cmd()
+        .args(["regenerate", "regen-sub", "--yes"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--force"));
+
+    // Not deleted.
+    assert!(storage.get_declaration("regen-sub").is_some());
+}

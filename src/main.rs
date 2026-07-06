@@ -159,6 +159,16 @@ enum Commands {
         #[arg(long)]
         file_id: Option<String>,
     },
+    /// Delete an erroneous declaration and regenerate it from stored data
+    Regenerate {
+        declaration_id: String,
+        /// Actually execute (without this flag only prints the plan)
+        #[arg(long)]
+        yes: bool,
+        /// Allow deleting a non-Draft declaration; also passed to report generation
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 fn main() {
@@ -230,6 +240,11 @@ fn main() {
             delete,
             file_id,
         }) => cli::attach::run(&declaration_id, file_path, delete, file_id),
+        Some(Commands::Regenerate {
+            declaration_id,
+            yes,
+            force,
+        }) => cli::regenerate::run(&declaration_id, yes, force),
         None => launch_gui(),
     };
 
