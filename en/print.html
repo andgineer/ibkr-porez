@@ -1,0 +1,721 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ibkr-porez</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-0392ca55.css">
+        <link rel="stylesheet" href="css/chrome-fc474251.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-1da5652e.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-073b5bfb.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">ibkr-porez</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/andgineer/ibkr-porez" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="quick-start-1"><a href="#quick-start-1" class="header">Quick Start</a></h1>
+<blockquote>
+<p><strong>English</strong> | <a href="../ru">Русский</a> | <a href="../uk">Українська</a> | <a href="../rs">Srpski</a> | <a href="../rs-cyr">Српски</a></p>
+</blockquote>
+<p>Automated generation of PPDG-3R (Capital Gains Tax) and PP OPO (Capital Income Tax) declarations
+for Interactive Brokers users in Serbia.</p>
+<p>The app downloads your trades from Interactive Brokers and creates a ready-to-upload XML file for ePorezi.
+It tracks the full chain of purchases and sales for each security, calculates profit and loss,
+and converts all amounts to dinars at the official NBS exchange rate on the date of each transaction —
+exactly as required by the declaration.</p>
+<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
+<blockquote>
+<p>⚠️ <strong>Windows and macOS will block the download or launch</strong> — the app is distributed for free,
+and paying ~€100/year for a developer certificate is not an option.
+The installation guide explains how to work around this —
+<strong>read it before downloading.</strong></p>
+</blockquote>
+<p><a href="#installation-1">Installation guide ↗</a></p>
+<h2 id="how-to-use"><a class="header" href="#how-to-use">How to use</a></h2>
+<ol>
+<li>Open the app — it will launch with a graphical interface.</li>
+<li>Click <strong>Config</strong> and enter your Interactive Brokers credentials.</li>
+<li>Click <strong>Sync now</strong> — the app will download your latest trades and create declarations.</li>
+<li>Upload the generated XML file to the <strong>ePorezi</strong> portal (PPDG-3R section).</li>
+</ol>
+<p><img src="images/ppdg-3r.png" alt="PPDG-3R"></p>
+<blockquote>
+<p>💡 From then on, while the app is running it keeps checking for new data
+automatically — once a day, in the background, retrying until it succeeds.
+The status of the last attempt is always shown at the top of the window.</p>
+</blockquote>
+<blockquote>
+<p>ℹ️ If you have <strong>more than one year of trade history</strong> in Interactive Brokers —
+you need to load the older data manually before the first Sync.
+<a href="#export-full-history-for-import-command">How to do this ↗</a></p>
+</blockquote>
+<hr>
+<p>Full documentation for the command line and other features — see <a href="#usage">Usage ↗</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<blockquote>
+<p><strong>English</strong> | <a href="../ru/installation.html">Русский</a> | <a href="../uk/installation.html">Українська</a> | <a href="../rs/installation.html">Srpski</a> | <a href="../rs-cyr/installation.html">Српски</a></p>
+</blockquote>
+<h1 id="installation-1"><a class="header" href="#installation-1">Installation</a></h1>
+<h2 id="installer"><a class="header" href="#installer">Installer</a></h2>
+<p>Download the installer from the releases page:</p>
+<p><strong><a href="https://github.com/andgineer/ibkr-porez/releases">https://github.com/andgineer/ibkr-porez/releases</a></strong></p>
+<h3 id="macos"><a class="header" href="#macos">macOS</a></h3>
+<p>Download the latest <code>.pkg</code> file.
+Because the installer is not signed with an Apple certificate, macOS will block it when you try to open it.</p>
+<blockquote>
+<p><em>“IBKR Porez” is damaged and can’t be opened. You should move it to the Bin.</em></p>
+</blockquote>
+<p><strong>Do not move it to the Bin.</strong> Instead:</p>
+<ol>
+<li>Open <strong>System Settings → Privacy &amp; Security</strong></li>
+<li>At the bottom of the Security section, you will see a blocked-app message. Click <strong>Open Anyway</strong></li>
+<li>Confirm opening in the next dialog</li>
+</ol>
+<p>You may need to repeat the same steps <strong>twice</strong>:</p>
+<ul>
+<li>first when opening the downloaded installer (<code>.dmg</code>)</li>
+<li>and again when launching the installed app from <code>/Applications</code> for the first time</li>
+</ul>
+<p>After that, the app should launch without warnings.</p>
+<h3 id="windows"><a class="header" href="#windows">Windows</a></h3>
+<p>Download the latest <code>.msi</code> file.
+Because the installer is not code-signed, Windows may show security warnings.</p>
+<p>If your browser blocks the download (for example in Microsoft Edge):</p>
+<ol>
+<li>Open the browser downloads panel (<code>Ctrl+J</code>)</li>
+<li>Find the blocked <code>.msi</code> download</li>
+<li>Click <strong>Keep</strong> → <strong>Show more</strong> → <strong>Keep anyway</strong></li>
+</ol>
+<p>When launching the installer, Windows may show <strong>Windows protected your PC</strong>:</p>
+<ol>
+<li>Click <strong>More info</strong></li>
+<li>Click <strong>Run anyway</strong></li>
+</ol>
+<p>You may also see a User Account Control dialog with <strong>Unknown publisher</strong>.
+If the file came from the official releases page, click <strong>Yes</strong> to continue.</p>
+<p>After installation, <strong>IBKR Porez</strong> will appear in the Start Menu.</p>
+<hr>
+<h2 id="for-advanced-users"><a class="header" href="#for-advanced-users">For Advanced Users</a></h2>
+<p>The installer also sets up the <code>ibkr-porez</code> command for the terminal
+(you may need to restart the terminal after installation).</p>
+<h3 id="download-prebuilt-binary"><a class="header" href="#download-prebuilt-binary">Download Prebuilt Binary</a></h3>
+<p>You can also download binaries for your platform from the releases page:</p>
+<p><strong><a href="https://github.com/andgineer/ibkr-porez/releases">https://github.com/andgineer/ibkr-porez/releases</a></strong></p>
+<p>The archive contains both binaries: <code>ibkr-porez</code> (CLI) and <code>ibkr-porez-gui</code> (GUI).
+Extract the archive and place the files somewhere in your <code>PATH</code>.</p>
+<h3 id="install-from-source"><a class="header" href="#install-from-source">Install from Source</a></h3>
+<p>If you have the Rust toolchain installed:</p>
+<pre><code class="language-bash">cargo install ibkr-porez
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<blockquote>
+<p><strong>English</strong> | <a href="../ru/usage.html">Русский</a> | <a href="../uk/usage.html">Українська</a> | <a href="../rs/usage.html">Srpski</a> | <a href="../rs-cyr/usage.html">Српски</a></p>
+</blockquote>
+<h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
+<h2 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h2>
+<p>If you want to quickly create a specific declaration:</p>
+<ol>
+<li><a href="#configuration-config">Configure settings (config) ↗</a> — once on first run</li>
+<li><a href="#fetch-data-fetch">Fetch latest data (fetch) ↗</a></li>
+<li><a href="#generate-tax-report-report">Generate report (report) ↗</a></li>
+<li>Upload the generated XML to the <strong>ePorezi</strong> portal (PPDG-3R section)</li>
+</ol>
+<p>To automatically receive all declarations and track their statuses —
+use <a href="#sync-data-and-create-declarations-sync">sync</a> instead of steps 2–3.</p>
+<hr>
+<h2 id="configuration-config"><a class="header" href="#configuration-config">Configuration (config)</a></h2>
+<pre><code class="language-bash">ibkr-porez config
+</code></pre>
+<p>Creating or modifying personal data and IBKR access settings.</p>
+<p>You will be prompted for:</p>
+<ul>
+<li><strong>IBKR Flex Token</strong>: <a href="#flex-web-service">Get Token ↗</a></li>
+<li><strong>IBKR Query ID</strong>: <a href="#flex-query">Create Flex Query ↗</a></li>
+<li><strong>Personal ID</strong>: JMBG / EBS</li>
+<li><strong>Full Name</strong>: First and Last Name</li>
+<li><strong>Address</strong>: Registered Address</li>
+<li><strong>City Code</strong>: 3-digit municipality code. Example: <code>223</code> (Novi Sad). Code can be found in the <a href="https://www.apml.gov.rs/uploads/useruploads/Documents/1533_1_pravilnik-javni_prihodi_prilog-3.pdf">list</a> (see column “Šifra”). Also available in the dropdown on the ePorezi portal.</li>
+<li><strong>Phone</strong>: Phone</li>
+<li><strong>Email</strong>: Email</li>
+<li><strong>Data Directory</strong>: Absolute path to folder with data files (<code>transactions.json</code>, <code>declarations.json</code>, <code>rates.json</code>, etc.). Default: <code>ibkr-porez-data</code> in the application folder.</li>
+<li><strong>Output Folder</strong>: Absolute path to folder for saving files from <code>sync</code>, <code>export</code>, <code>export-flex</code>, <code>report</code> commands. Default: your system’s Downloads folder.</li>
+</ul>
+<h2 id="fetch-data-fetch"><a class="header" href="#fetch-data-fetch">Fetch Data (<code>fetch</code>)</a></h2>
+<pre><code class="language-bash">ibkr-porez fetch
+</code></pre>
+<p>Downloads latest data from IBKR and syncs exchange rates from NBS (National Bank of Serbia).</p>
+<p>Saves them to local storage.</p>
+<h2 id="import-historical-data-import"><a class="header" href="#import-historical-data-import">Import Historical Data (<code>import</code>)</a></h2>
+<pre><code class="language-bash">ibkr-porez import /path/to/activity_statement.csv
+</code></pre>
+<p>Loading transaction history older than 365 days, which cannot be retrieved via Flex Query (<code>fetch</code>).</p>
+<p>To create a file with transactions on the Interactive Brokers portal, see <a href="#export-full-history-for-import-command">Export Full History ↗</a></p>
+<blockquote>
+<p>⚠️ Do not forget to run <code>fetch</code> after <code>import</code> so the application adds maximum details at least for the last year
+into the less detailed data loaded from CSV.</p>
+</blockquote>
+<h3 id="synchronization-logic-import--fetch"><a class="header" href="#synchronization-logic-import--fetch">Synchronization Logic (<code>import</code> + <code>fetch</code>)</a></h3>
+<p>When loading data from CSV (<code>import</code>) and Flex Query (<code>fetch</code>), the system prioritizes more complete Flex Query data:</p>
+<ul>
+<li>Flex Query (<code>fetch</code>) data is the source of truth. It overwrites CSV data for any matching dates.</li>
+<li>If a Flex Query record matches a CSV record semantically (Date, Ticker, Price, Quantity), it counts as an update (replacing with official ID).</li>
+<li>If data structure differs (e.g. split orders in Flex Query vs “bundled” record in CSV), the old CSV record is removed, and new Flex Query records are added.</li>
+<li>Completely identical records are skipped.</li>
+</ul>
+<h2 id="sync-data-and-create-declarations-sync"><a class="header" href="#sync-data-and-create-declarations-sync">Sync Data and Create Declarations (<code>sync</code>)</a></h2>
+<pre><code class="language-bash">ibkr-porez sync
+</code></pre>
+<p>Does the same as <a href="#fetch-data-fetch">fetch</a>:</p>
+<ul>
+<li>Downloads latest transactions from IBKR via Flex Query</li>
+<li>Syncs exchange rates from NBS</li>
+</ul>
+<p>Then creates all necessary declarations for the last 45 days (if they haven’t been created already).</p>
+<blockquote>
+<p>💡 If the connection to IBKR fails, <code>sync</code> still creates declarations from the transactions already stored locally and prints a warning; it exits successfully, and in the GUI keeps retrying for fresh data on the next cycle.</p>
+</blockquote>
+<p>You can then <a href="#declaration-management">Manage created declarations</a>.</p>
+<blockquote>
+<p>💡 If you ran <code>sync</code> for the first time and it created declarations that you already submitted before starting to use the application,
+you can quickly mark them all as paid and remove them from <a href="#list-declarations-list">list</a> output:</p>
+<pre><code class="language-bash">ibkr-porez list --status submitted -1 | ibkr-porez pay
+</code></pre>
+</blockquote>
+<h3 id="sync-from-a-downloaded-xml-file-sync---file"><a class="header" href="#sync-from-a-downloaded-xml-file-sync---file">Sync from a Downloaded XML File (<code>sync --file</code>)</a></h3>
+<p>If the IBKR API is temporarily unavailable, you can download the Flex Query XML manually from the IBKR website and use it instead:</p>
+<pre><code class="language-bash">ibkr-porez sync --file /path/to/report.xml
+</code></pre>
+<p>Does everything <code>sync</code> does — saves transactions, generates all necessary declarations — but reads data from a local file instead of calling the IBKR API.</p>
+<p>See <a href="#download-flex-query-xml-for-sync---file">how to download the Flex Query XML ↗</a>.</p>
+<p>In the GUI, the same option is available in the <strong>☰</strong> hamburger menu as <strong>Sync from Flex Query XML…</strong>.</p>
+<h2 id="view-statistics-stat"><a class="header" href="#view-statistics-stat">View Statistics (<code>stat</code>)</a></h2>
+<pre><code class="language-bash">ibkr-porez stat --year 2025
+ibkr-porez stat --ticker AAPL
+ibkr-porez stat --month 2025-01
+</code></pre>
+<p>Shows:</p>
+<ul>
+<li>Dividends received (in RSD)</li>
+<li>Number of sales (taxable events)</li>
+<li>Estimated Realized P/L (Capital Gains) (in RSD)</li>
+<li>Detailed breakdown by tickers or months (when using filters)</li>
+</ul>
+<h2 id="generate-tax-report-report"><a class="header" href="#generate-tax-report-report">Generate Tax Report (<code>report</code>)</a></h2>
+<pre><code class="language-bash">ibkr-porez report
+</code></pre>
+<p>If you don’t specify report type and period, PPDG-3R for the last complete half-year is generated by default</p>
+<ul>
+<li>Creates <code>ppdg3r_XXXX_HY.xml</code> in <a href="#configuration-config">Output Folder</a></li>
+<li>Import this file into the Serbian Tax Administration portal (ePorezi)</li>
+<li>Manually upload the file from <a href="#confirmation-document">Confirmation Document</a> to Item 8</li>
+</ul>
+<p>To select a different declaration type or time period, see the documentation</p>
+<pre><code class="language-bash">ibkr-porez report --help
+</code></pre>
+<h2 id="declaration-management"><a class="header" href="#declaration-management">Declaration Management</a></h2>
+<p>After creating declarations through the <a href="#sync-data-and-create-declarations-sync">sync</a> command, you can view them, change their status, and export them for upload to the tax portal.</p>
+<h3 id="list-declarations-list"><a class="header" href="#list-declarations-list">List Declarations (<code>list</code>)</a></h3>
+<p>Shows a list of all declarations with the ability to filter by status.</p>
+<pre><code class="language-bash"># Show active declarations (default):
+# draft + submitted + pending
+ibkr-porez list
+
+# Show all declarations
+ibkr-porez list --all
+
+# Filter by status
+ibkr-porez list --status draft
+ibkr-porez list --status submitted
+ibkr-porez list --status pending
+ibkr-porez list --status finalized
+
+# Only declaration IDs (for use in pipes)
+ibkr-porez list --ids-only
+ibkr-porez list --status draft -1
+</code></pre>
+<p>Example usage in Linux-style:</p>
+<pre><code class="language-bash"># Submit all drafts
+ibkr-porez list --status draft -1 | ibkr-porez submit
+</code></pre>
+<h3 id="view-declaration-details-show"><a class="header" href="#view-declaration-details-show">View Declaration Details (<code>show</code>)</a></h3>
+<p>Shows detailed information about a specific declaration.</p>
+<pre><code class="language-bash">ibkr-porez show &lt;declaration_id&gt;
+</code></pre>
+<p>Displays:</p>
+<ul>
+<li>Declaration type (PPDG-3R or PP OPO)</li>
+<li>Declaration period</li>
+<li>Status (draft, submitted, pending, finalized)</li>
+<li>Transaction details and calculations</li>
+<li>For PPDG-3R: tax-authority-recognized gain/loss alongside the calculated
+values, the capital loss carryforward applied (opening/used/adjusted/
+closing balance), and which vintages it was drawn from</li>
+<li>Attached files</li>
+</ul>
+<h3 id="submit-declaration-submit"><a class="header" href="#submit-declaration-submit">Submit Declaration (<code>submit</code>)</a></h3>
+<pre><code class="language-bash">ibkr-porez submit &lt;id&gt; [&lt;id&gt; ...]
+</code></pre>
+<p>Marks the declaration as submitted (imported to the tax portal).</p>
+<p>Behavior depends on declaration type:</p>
+<ul>
+<li><code>PPDG-3R</code> moves to <code>pending</code> after <code>submit</code> (waiting for tax authority assessment).</li>
+<li><code>PP OPO</code> after <code>submit</code>:
+<ul>
+<li>moves to <code>submitted</code> if tax is due;</li>
+<li>moves directly to <code>finalized</code> if tax due is <code>0</code>.</li>
+</ul>
+</li>
+</ul>
+<h3 id="pay-declaration-pay"><a class="header" href="#pay-declaration-pay">Pay Declaration (<code>pay</code>)</a></h3>
+<pre><code class="language-bash">ibkr-porez pay &lt;id&gt; [&lt;id&gt; ...]
+ibkr-porez pay &lt;id&gt; --tax 1234.56
+</code></pre>
+<p>Marks the declaration as finalized and stores payment date.</p>
+<p>Option <code>--tax</code> lets you record tax amount during payment, without a separate <code>assess</code> step.</p>
+<p>After this, it will disappear from the list shown by <a href="#list-declarations-list">list</a> (without <code>--all</code>)</p>
+<h3 id="record-assessed-tax-assess"><a class="header" href="#record-assessed-tax-assess">Record Assessed Tax (<code>assess</code>)</a></h3>
+<pre><code class="language-bash"># Record the official tax amount from the assessment
+ibkr-porez assess &lt;declaration_id&gt; --tax 1234.56
+
+# Record the amount and immediately mark it as already paid
+ibkr-porez assess &lt;declaration_id&gt; --tax 1234.56 --paid
+
+# Record a capital loss recognized by the tax authority (PPDG-3R only)
+ibkr-porez assess &lt;declaration_id&gt; --loss 50000.00 \
+    --reference "RES-123/2025" --date 2025-09-01
+
+# Record a capital gain recognized by the tax authority (PPDG-3R only)
+ibkr-porez assess &lt;declaration_id&gt; --gain 12000.00
+</code></pre>
+<p>This command is mainly for <code>PPDG-3R</code>, where the tax amount as well as the
+recognized capital gain/loss are determined by the tax authority after
+submission.</p>
+<p>What it does:</p>
+<ul>
+<li>stores the official tax amount in the declaration metadata (<code>--tax</code>);</li>
+<li>with <code>--paid</code>, immediately moves the declaration to <code>finalized</code>;</li>
+<li>without <code>--paid</code>:
+<ul>
+<li>if the amount is greater than zero, keeps the declaration active (<code>submitted</code>) for later payment;</li>
+<li>if the amount is zero, moves the declaration to <code>finalized</code>.</li>
+</ul>
+</li>
+</ul>
+<p>At least one of <code>--tax</code>, <code>--gain</code>, or <code>--loss</code> must be provided.</p>
+<p><code>--gain</code> and <code>--loss</code> are only available for <code>PPDG-3R</code> and record the capital
+gain/loss recognized by the tax authority — they are stored alongside the
+application’s calculated values and may differ from them (due to CPI
+adjustments or the tax authority’s methodology). A single assessment cannot
+recognize both a gain and a loss.</p>
+<p><code>--reference</code>, <code>--date</code>, and <code>--notes</code> are details about the assessment
+decision (reference number, date, notes). They are shown in
+<a href="#view-declaration-details-show">show</a>, and for a recognized loss the ruling
+number and date are also filled into part 7 of future PPDG-3R declarations
+(see <a href="#capital-loss-carryforward-carryforward">capital loss carryforward</a>),
+so it is worth recording them.</p>
+<p>If the assessment recognizes a loss (<code>--loss</code> greater than zero), an entry is
+created (or updated) in the
+<a href="#capital-loss-carryforward-carryforward">capital loss carryforward</a> registry.
+The carryforward is always based on the loss recognized by the tax authority,
+not the calculated one.</p>
+<blockquote>
+<p>⚠️ Once a carried-forward loss has been at least partially used by a
+subsequent declaration, the recognized loss can no longer be changed via
+<code>assess</code> — the command will return an error.</p>
+</blockquote>
+<h3 id="capital-loss-carryforward-carryforward"><a class="header" href="#capital-loss-carryforward-carryforward">Capital Loss Carryforward (<code>carryforward</code>)</a></h3>
+<pre><code class="language-bash">ibkr-porez carryforward
+</code></pre>
+<p>Shows all vintages of capital losses recognized by the tax authority that are
+available for carryforward to future periods:</p>
+<ul>
+<li>the source declaration and the period for which the loss was recognized;</li>
+<li>the recognized and remaining (unused) amount;</li>
+<li>the tax year after which the carryforward expires (a loss can be carried
+forward for 5 years);</li>
+<li>status: <code>Active</code> (usable), <code>Exhausted</code> (fully used), <code>Expired</code> (past its
+expiration).</li>
+</ul>
+<p>The same list is available in the GUI from the <strong>☰</strong> menu →
+<strong>Capital loss carryforward…</strong>.</p>
+<p>Every PPDG-3R declaration created via
+<a href="#sync-data-and-create-declarations-sync">sync</a> automatically reduces the
+calculated tax base using available carryforward (from older periods to
+newer), until the base reaches zero or the carryforward is exhausted. The
+<a href="#generate-tax-report-report">report</a> preview shows the carryforward amount
+used and remaining afterwards. The amount is deducted from the registry once
+— when the declaration is saved; re-running <code>sync</code> for the same period does
+not deduct it again.</p>
+<p>Carried-forward losses are also declared in the declaration itself: the
+PPDG-3R XML fills in form part 7 (“Kapitalni gubici”) — one row per active
+carryforward, with the tax authority’s ruling number and date (7.2/7.3) and
+the remaining loss amount (7.4). The final <code>Osnovica</code> and <code>PorezZaUplatu</code> in
+the XML also reflect the applied carryforward. Declaring the loss in part 7
+is the taxpayer’s responsibility — without it the tax authority will not
+apply it in the assessment.</p>
+<p>The ruling number and date come from
+<a href="#record-assessed-tax-assess">assess</a> (<code>--reference</code> and <code>--date</code>). If they
+are not recorded, fields 7.2/7.3 stay empty in the XML and <code>report</code> prints a
+warning — record them with <code>assess</code> and regenerate the report, or fill in
+those fields manually on the portal.</p>
+<h3 id="export-declaration-export"><a class="header" href="#export-declaration-export">Export Declaration (<code>export</code>)</a></h3>
+<pre><code class="language-bash">ibkr-porez export &lt;declaration_id&gt;
+ibkr-porez export &lt;declaration_id&gt; -o /path/to/output
+</code></pre>
+<p>Copies XML and all attached files (<a href="#attach-file-to-declaration-attach">attach</a>) to <a href="#configuration-config">Output Folder</a> or to the directory specified in parameters.</p>
+<h3 id="revert-declaration-status-revert"><a class="header" href="#revert-declaration-status-revert">Revert Declaration Status (<code>revert</code>)</a></h3>
+<pre><code class="language-bash"># Revert to draft (default)
+ibkr-porez revert &lt;id&gt; [&lt;id&gt; ...]
+
+# Revert to submitted
+ibkr-porez revert &lt;id&gt; [&lt;id&gt; ...] --to submitted
+</code></pre>
+<p>Reverts declaration status.</p>
+<h3 id="delete-declaration-delete"><a class="header" href="#delete-declaration-delete">Delete Declaration (<code>delete</code>)</a></h3>
+<pre><code class="language-bash"># Preview the plan (changes nothing)
+ibkr-porez delete &lt;id&gt;
+
+# Delete the declaration
+ibkr-porez delete &lt;id&gt; --yes
+
+# Allow deleting a non-draft declaration
+ibkr-porez delete &lt;id&gt; --yes --force
+</code></pre>
+<p>Deletes a declaration and undoes its carryforward-ledger effects: any carryforward it consumed is returned to the source vintages, and its own recognized-loss vintage (created by <code>assess</code>) is removed. If you deleted it to fix an error, run <code>sync</code> afterwards to rebuild the period from stored transactions.</p>
+<p>Without <code>--yes</code> it only prints what would be deleted. <code>--force</code> is required to delete a declaration that is not a draft. Only the most recent PPDG-3R can be deleted — deleting an earlier one would leave later declarations’ carryforward dangling; PP OPO declarations can be deleted at any time.</p>
+<p>This is also how you correct a prior declaration’s assessment that a later one already consumed: delete the later declaration (freeing the carryforward), re-run <code>assess</code> on the earlier one, then <code>sync</code> to rebuild.</p>
+<p>In the GUI the same action is available as the <strong>Delete</strong> button in the declaration’s row: it opens a confirmation dialog (replacing <code>--yes</code>) with a <strong>Force</strong> checkbox for non-draft declarations.</p>
+<h3 id="attach-file-to-declaration-attach"><a class="header" href="#attach-file-to-declaration-attach">Attach File to Declaration (<code>attach</code>)</a></h3>
+<pre><code class="language-bash"># Attach file
+ibkr-porez attach &lt;declaration_id&gt; /path/to/file.pdf
+
+# Delete attached file
+ibkr-porez attach &lt;declaration_id&gt; &lt;file_id&gt; --delete
+ibkr-porez attach &lt;declaration_id&gt; --delete --file-id &lt;file_id&gt;
+</code></pre>
+<p>Attaches a file to a declaration or removes an attached file from declaration storage.</p>
+<p>For saving to declaration storage, only the file name is used (path is discarded), so names must
+be unique - otherwise a file with the same name will overwrite a previously uploaded file with the same name even if from a different path</p>
+<blockquote>
+<p>💡 Attached files are copied along with the declaration XML during <a href="#export-declaration-export">export</a></p>
+</blockquote>
+<h2 id="export-flex-query-export-flex"><a class="header" href="#export-flex-query-export-flex">Export Flex Query (<code>export-flex</code>)</a></h2>
+<pre><code class="language-bash">ibkr-porez export-flex 2025-01-15
+ibkr-porez export-flex 2025-01-15 -o /path/to/output.xml
+ibkr-porez export-flex 2025-01-15 -o -  # Output to stdout (for pipes)
+</code></pre>
+<p>Exports Flex Query XML file obtained during <a href="#fetch-data-fetch">fetch</a> or <a href="#sync-data-and-create-declarations-sync">sync</a> on the specified date.</p>
+<p>Example usage in Linux-style:</p>
+<pre><code class="language-bash">ibkr-porez export-flex 2025-01-15 | ibkr-porez sync --file -
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<blockquote>
+<p><strong>English</strong> | <a href="../ru/ibkr.html">Русский</a> | <a href="../uk/ibkr.html">Українська</a> | <a href="../rs/ibkr.html">Srpski</a> | <a href="../rs-cyr/ibkr.html">Српски</a></p>
+</blockquote>
+<h1 id="interactive-brokers-ibkr"><a class="header" href="#interactive-brokers-ibkr">Interactive Brokers (IBKR)</a></h1>
+<h2 id="flex-web-service"><a class="header" href="#flex-web-service">Flex Web Service</a></h2>
+<ol>
+<li><strong>Performance &amp; Reports</strong> &gt; <strong>Flex Queries</strong>.</li>
+<li>Click the <strong>Settings</strong> icon (gear) in “Flex Web Service Configuration”.</li>
+<li>Enable <strong>Flex Web Service</strong>.</li>
+<li>Generate <strong>Token</strong>.
+<ul>
+<li><strong>Important</strong>: Copy this token immediately. You will not be able to see it fully again.</li>
+<li>Set expiration (recommended max - 1 year).</li>
+</ul>
+</li>
+</ol>
+<h2 id="flex-query"><a class="header" href="#flex-query">Flex Query</a></h2>
+<ol>
+<li><strong>Performance &amp; Reports</strong> &gt; <strong>Flex Queries</strong>.</li>
+<li>Click <strong>+</strong> to create a new <strong>Activity Flex Query</strong>.</li>
+<li><strong>Name</strong>: e.g., <code>ibkr-porez-data</code>.</li>
+<li><strong>Delivery Configuration</strong> (at the bottom of the page):
+<ul>
+<li><strong>Period</strong>: Select <strong>Last 365 Calendar Days</strong>.</li>
+</ul>
+</li>
+<li><strong>Format</strong>: <strong>XML</strong>.</li>
+</ol>
+<h3 id="sections-to-include"><a class="header" href="#sections-to-include">Sections to Include:</a></h3>
+<p>Enable the following sections and check <strong>Select All</strong> for columns.</p>
+<p>If you don’t trust anyone 8-) instead of <strong>Select All</strong>, select at least the fields listed in <code>Required Columns</code>.</p>
+<h3 id="transactions"><a class="header" href="#transactions">Transactions</a></h3>
+<p>Located under Trade Confirmations or Activity.</p>
+<details>
+<summary>Required Columns</summary>
+<ul>
+<li><code>Symbol</code></li>
+<li><code>Description</code></li>
+<li><code>Currency</code></li>
+<li><code>Quantity</code></li>
+<li><code>TradePrice</code></li>
+<li><code>TradeDate</code></li>
+<li><code>TradeID</code></li>
+<li><code>OrigTradeDate</code></li>
+<li><code>OrigTradePrice</code></li>
+<li><code>AssetClass</code></li>
+<li><code>Buy/Sell</code></li>
+</ul>
+</details>
+<h3 id="cash-transactions"><a class="header" href="#cash-transactions">Cash Transactions</a></h3>
+<details>
+<summary>Required Columns</summary>
+<ul>
+<li><code>Type</code></li>
+<li><code>Amount</code></li>
+<li><code>Currency</code></li>
+<li><code>DateTime</code> / <code>Date</code></li>
+<li><code>Symbol</code></li>
+<li><code>Description</code></li>
+<li><code>TransactionID</code></li>
+</ul>
+</details>
+<h2 id="save-and-get-query-id"><a class="header" href="#save-and-get-query-id">Save and Get Query ID</a></h2>
+<p>Note the <strong>Query ID</strong> (number usually appearing next to the query name in the list).</p>
+<p>You will need the <strong>Token</strong> and <strong>Query ID</strong> to configure <code>ibkr-porez</code>.</p>
+<h2 id="confirmation-document"><a class="header" href="#confirmation-document">Confirmation Document</a></h2>
+<p>For <strong>Item 8 (Dokazi uz prijavu)</strong> of the PPDG-3R tax return, you need a PDF report from the broker.
+It must be attached manually on the ePorezi portal after importing the XML.</p>
+<p>How to download the appropriate report:</p>
+<ol>
+<li>In IBKR go to <strong>Performance &amp; Reports</strong> &gt; <strong>Statements</strong> &gt; <strong>Activity Statement</strong>.</li>
+<li><strong>Period</strong>: Select <strong>Custom Date Range</strong>.</li>
+<li>Specify dates corresponding to your tax period (e.g., <code>01-01-2024</code> to <code>30-06-2024</code> for the first half).</li>
+<li>Click <strong>Download PDF</strong>.</li>
+<li>On the ePorezi portal, in section <strong>8. Dokazi uz prijavu</strong>, upload this file.</li>
+</ol>
+<h2 id="download-flex-query-xml-for-sync---file"><a class="header" href="#download-flex-query-xml-for-sync---file">Download Flex Query XML (for <code>sync --file</code>)</a></h2>
+<p>If the IBKR API (<code>sync</code> / <code>fetch</code>) is temporarily unavailable, you can run your Flex Query manually from the IBKR website:</p>
+<ol>
+<li>In IBKR go to <strong>Performance &amp; Reports</strong> &gt; <strong>Statements</strong> &gt; <strong>Flex Queries</strong>.</li>
+<li>Find the query you created for <code>ibkr-porez</code> (e.g., <code>ibkr-porez-data</code>).</li>
+<li>Click <strong>Run</strong> (blue arrow to the right of the query name).</li>
+<li>Select <strong>XML</strong> format and download the file.</li>
+<li>Use it with the <a href="#sync-from-a-downloaded-xml-file-sync---file"><code>sync --file</code> ↗</a> command or the <strong>Sync from Flex Query XML…</strong> option in the GUI hamburger menu.</li>
+</ol>
+<h2 id="export-full-history-for-import-command"><a class="header" href="#export-full-history-for-import-command">Export Full History (for import command)</a></h2>
+<p>If you need to load transaction history for a period longer than 1 year (unavailable via Flex Web Service),
+export data to CSV:</p>
+<ol>
+<li>In IBKR go to <strong>Performance &amp; Reports</strong> &gt; <strong>Statements</strong> &gt; <strong>Activity Statement</strong>.</li>
+<li><strong>Period</strong>: Select <strong>Custom Date Range</strong> and specify the entire period since account opening.</li>
+<li>Click <strong>Download CSV</strong>.</li>
+<li>This file can be used with the <a href="#import-historical-data-import">import ↗</a> command.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-c22b7243.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+
+    </div>
+    </body>
+</html>
