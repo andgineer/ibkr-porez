@@ -45,13 +45,10 @@ fn read_zipped_file(file_path: &Path) -> Result<String> {
 
 fn parse_date_from_filename(filename: &str) -> Option<NaiveDate> {
     let name = filename.strip_suffix(".zip").unwrap_or(filename);
-    let date_str = if let Some(rest) = name.strip_prefix("base-") {
-        rest.get(..8)?
-    } else if let Some(rest) = name.strip_prefix("delta-") {
-        rest.get(..8)?
-    } else {
-        return None;
-    };
+    let rest = name
+        .strip_prefix("base-")
+        .or_else(|| name.strip_prefix("delta-"))?;
+    let date_str = rest.get(..8)?;
     NaiveDate::parse_from_str(date_str, "%Y%m%d").ok()
 }
 
