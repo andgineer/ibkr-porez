@@ -137,10 +137,25 @@ fn scan_start(end_period: NaiveDate, creation_start: NaiveDate) -> NaiveDate
 ```
 
 Tight, not arbitrary: a distribution paid 2 January 2025 can be corrected
-31 March 2026, and on that date the rule yields 1 January 2025. Confirmed against
-the archived reports in `flex-queries/` — every §871(k) reversal for tax year 2025
-appeared between 1 and 11 February 2026, 49 to 159 days after its income, all
-beyond any 45-day window and all inside this horizon.
+31 March 2026, and on that date the rule yields 1 January 2025.
+
+Confirmed against the two reports in `raw_reports/`, and the mechanism is not what
+it looks like from a distance. **A §871(k) reversal carries the date of the
+distribution it reverses, not the date it was issued.** IXUS 2025-12-19 holds
+`-12.25`, `+12.25` and `-12.23`, all three dated 2025-12-19; SGOV 2025-12-24 holds
+`-26.27` and `+26.27`, both dated 2025-12-24. What arrives late is the row, not
+its date: none of these appear in `flex_report_1770123204.xml` and every one of
+them appears in `ibkr-porez-data-2026-05-08.xml`.
+
+That is exactly why the horizon has to be a date span reaching back a full
+previous calendar year. A fresh report lands carrying rows dated up to fifteen
+months old, and any span that does not cover those dates never sees them, no
+matter how recently they arrived. The horizon is not there to catch late dates —
+there are none — it is there to keep old dates in view.
+
+Dividend withholding and its reversals therefore share a date. The one observed
+case where dates genuinely differ is outside the annual cycle: JUL-2025 interest
+withheld 2025-08-05 and cancelled 2025-08-20.
 
 Groups are keyed on the income group, never on a stored boundary and never on a
 generated filename.
@@ -192,9 +207,9 @@ version stamp, and no pass over historical periods.
 
 The CSV importer exists to load history older than a Flex query reaches, and its
 only purpose is the purchase side of the capital-gains calculation. Income it
-carries is not a declaration source: `generate_income_reports` filters out
-`is_csv_sourced()` (src/models.rs:457) transactions along with the type and date
-filter, for both income and withholding rows.
+carries is not a declaration source: `collect_income_groups` filters out
+`is_csv_sourced()` (src/models.rs:456) transactions along with the type and date
+filter, for both income and withholding rows, so they never reach a group.
 
 This is a behaviour fix, not just documentation — today a CSV dividend inside the
 period would produce a PP-OPO. It also settles the CSV descriptions, which do not
@@ -227,6 +242,18 @@ regardless. See *Settled* above for why this is not closed by backfilling.
 - income predating this version, and a late reversal belonging to it, are out of
   scope; see above.
 - an amendment is generated, not filed; the taxpayer submits it.
+- a group whose income nets to zero or below is never declared, and if it was
+  already declared it is left alone. Undoing a filed declaration takes a storno
+  (`VrstaIzmenePrijave = 9`), which this app does not produce; an amendment
+  declaring zero income would be a different document saying a different thing.
+  The standing declaration then overstates income, which overpays — the same
+  direction every other failure in this design takes. Not observed in any report
+  to date.
+- the app emits no one-time signal, ever: no migration notice, no "these old
+  declarations may be wrong" pass, no install-time report. Every notice is
+  recomputed from current state on every sync and disappears when its cause does.
+  A signal that fires once has no state that keeps it true, cannot be re-derived,
+  and has to be dismissed rather than fixed.
 
 ## Constants
 
@@ -242,6 +269,69 @@ leaves 23 to file. The deadline is not a code constant; it is the reason for thi
 number and belongs in the spec.
 
 `DEFAULT_LOOKBACK_DAYS = 45` (src/sync.rs:20) stays and becomes the only window.
+
+## Order of work
+
+Four steps. Each compiles, keeps the suite green and leaves the app shippable, and
+each has its own line in *Verification* — the manual checks partition along these
+seams rather than being invented for them. Do not merge two steps to save a pass.
+
+**Step 1 — carry the identifier.** *Changes* 1 and 2. Adds the field, threads it
+through the Flex parser, fixes the 26 struct literals. Changes no behaviour at
+all; the suite must pass untouched. Kept separate for one reason: 26 mechanical
+edits in the same commit as a logic change is how a review stops reading.
+
+**Step 2 — matching and netting.** *Changes* 3 minus the amendment arms, plus 7.
+`distribution_key`, `collect_income_groups`, `decide`, `render_income_report`, the
+clamps, the CSV exclusion, the wait replacing the bail. `determine_income_period`
+is untouched, so the watermark still governs what is generated and `decide` takes
+`already_declared: bool` — `Declared` arrives in step 4, when there is something
+to distinguish. This is the step that changes money: fixes defects 1 and 3, and
+regenerates the goldens. Verified by *Verification* 3 and 4, and by
+`sync --lookback 365` producing the credits listed in 6.
+
+**Step 3 — the two horizons.** *Changes* 4 and 6. Watermark deleted,
+`determine_income_period` becomes pure and returns three dates, `SyncResult`
+carries notices. Fixes defect 2. Must not precede step 2: dropping the watermark
+while `.abs()` is still live would declare the eight old groups with doubled
+credits. Verified by *Verification* 1, 2 and 7.
+
+**Step 4 — amendments.** The rest of *Changes* 3, plus 5 and 8, plus both XML
+sections. `SourceAmounts`, `Declared`, the `Amend` arm, the изменена elements,
+`submit --number`, the timeliness code, the GUI pill. `VrstaPrijave` belongs here
+and not earlier: every amendment is late by nature, so shipping amendments while
+`1` is still hardcoded would assert timeliness the app knows to be false. Verified
+by *Verification* 5.
+
+Docs land with the step that makes them true, not in a batch at the end.
+
+### How each step starts and ends
+
+Run each step in its own session. Step 2 gets one to itself — it is the largest
+and the only one that changes money, and a context boundary in the middle of it is
+the worst place for one.
+
+Read first, in this order, and nothing else before starting: this file,
+`specs/spec-income-declarations.md`, `specs/spec-transaction-sources.md`. Between
+them they answer every question this work raises. **If a question comes up that
+they do not answer, the document is the defect** — fix it, then continue. Do not
+settle it in conversation and leave the file behind.
+
+Passages marked *settled* or *do not re-derive* are conclusions that already cost
+a verification pass. Reaching for the reasoning behind one means the paragraph is
+too weak — say so and strengthen it. Do not quietly design around it, and do not
+re-derive it from scratch.
+
+Facts about report structure come from the real reports under `raw_reports/` in
+the configured `data_dir`, never from `tests/resources/` — the fixtures were
+written to exercise code, not to describe what IBKR emits.
+
+Start each step from a clean tree with the previous step committed and the suite
+green; a fresh session reads git history to see what is already done. End each
+step with `cargo fmt && cargo clippy --all-targets -- -D warnings && cargo test`,
+then commit.
+
+Delete this file after step 4, not after each step.
 
 ## Changes
 
@@ -268,80 +358,138 @@ on `Transaction` (src/models.rs:198-220). `#[serde(default)]` keeps existing
 `transactions.json` loading unchanged. `is_identical_to` is **not** modified —
 see *Design*.
 
-`Transaction` derives no `Default`, so the new field breaks all 31 struct
-literals across 13 files — `src/fetch.rs`, `src/ibkr_csv.rs`, `src/ibkr_flex.rs`,
+`Transaction` derives no `Default`, so the new field breaks all 26 struct literals
+across 12 files — `src/fetch.rs`, `src/ibkr_csv.rs`, `src/ibkr_flex.rs`,
 `src/models.rs`, `src/sync.rs` and seven test files including
 `tests/test_python_compat.rs`. Mechanical `action_id: None`, but it is the bulk of
 the diff.
 
 ### 3. report_income.rs
 
+Three pieces, one job each, and the decision between them is a pure function:
+
 ```rust
-#[derive(Default)]
-pub struct IncomeReportBatch {
-    pub reports: Vec<IncomeReport>,
-    pub notices: Vec<String>,      // rendered at construction, one per group
+pub type GroupKey = (NaiveDate, String, String);  // (date, SYMBOL-or-CURRENCY upper, income_type)
+
+/// One income group in the broker's own currency. No exchange rate involved.
+pub struct IncomeGroup {
+    pub key: GroupKey,
+    pub currency: Currency,
+    pub gross_ccy: Decimal,      // signed sum of the group's income rows
+    pub tax_ccy: Decimal,        // credit, clamped -- see *Signs and clamps*
+    pub matched_any_tax: bool,   // a withholding row joined, whatever it summed to
 }
 
-pub type GroupKey = (NaiveDate, String, String);  // (date, SYMBOL upper, income_type)
+/// What a declaration records about its own source, in the income currency.
+pub struct SourceAmounts { pub gross_ccy: String, pub tax_ccy: String, pub currency: String }
 
-pub struct IncomeGenOptions {
-    pub today: NaiveDate,    // wait boundary; never read Local::now() in this module
-    pub force_rates: bool,   // nearest-cached NBS fallback (get_rate_or_force)
-}
+/// Whether this group already has a declaration, and whether that declaration
+/// can be compared at all. The third arm *is* the cutoff.
+pub enum Declared<'a> { No, Yes(&'a SourceAmounts), YesWithoutRecord }
+
+pub enum GroupAction { Create, Amend, Skip, Wait }
+
+pub fn collect_income_groups(txns: &[Transaction], scan_start: NaiveDate, end: NaiveDate)
+    -> Vec<IncomeGroup>;
+
+pub fn decide(group: &IncomeGroup, declared: Declared<'_>,
+              creation_start: NaiveDate, today: NaiveDate) -> GroupAction;
+
+pub struct RenderOptions { pub today: NaiveDate, pub force_rates: bool }
+pub struct Amends { pub declaration_id: String, pub purs_number: Option<String> }
+
+pub fn render_income_report(group: &IncomeGroup, amends: Option<&Amends>,
+    nbs: &NBSClient, config: &UserConfig, holidays: &HolidayCalendar,
+    opts: &RenderOptions) -> Result<IncomeReport>;
 ```
 
-Notices are plain strings. There is no kind enum: the two remaining cases —
-a missing rate and a group waiting for its tax — are both informational, both
-resolve themselves on a later sync, and nothing branches on which is which.
+`collect_income_groups` and `decide` are pure — no `Storage`, no `NBSClient`, no
+`UserConfig`, no clock, no `Result`. Every matching rule (the distribution key,
+signed netting, the CSV exclusion, the clamps) and every timing rule is testable
+on a `Vec<Transaction>` alone. `render_income_report` is the only piece that needs
+a rate, and it is reached only for a group that will produce a document.
 
-`generate_income_reports` takes `scan_start`, `creation_start`, `end`, the
-already-declared groups with their recorded source amounts, and
-`IncomeGenOptions`. Two starts, one end: `scan_start` decides what is read and
-compared, `creation_start` decides what may be created. It replaces the
-`build_income_groups` → `build_income_reports` split, where the first propagates
-the first rate error and the second bails on the first zero-WHT group.
+This keeps the split the module already has (`build_income_groups` →
+`build_income_reports`) and moves it to where it pays: **before** the exchange
+rate instead of after. Comparing an already-declared group then costs nothing
+because it never reaches NBS — a property of the shape, not an optimisation
+someone has to remember.
 
-`Result` is not for per-group problems — those are notices. It is kept because
-`HolidayError::MissingYear` must stay a hard error: it means the app ran out of
-holiday data, and generating with wrong holiday handling is worse than failing.
-It arrives through `holidays.is_serbian_holiday(target)?` inside `nbs.get_rate`
-(src/nbs.rs:93), which returns `anyhow::Result`, so distinguish it with
+`sync.rs` owns the loop and the declaration state. `report_income` never reads a
+declaration; the caller tells it what it needs to know through `Declared` and
+`Amends`. See *4. sync.rs*.
+
+**`collect_income_groups`:**
+
+1. Index every `WithholdingTax` transaction dated `>= scan_start`, excluding
+   CSV-sourced rows, by `distribution_key`. Rows whose key is `None` are dropped
+   from the index, not bucketed together — two keyless rows are not a match.
+2. Bucket income transactions in `[scan_start, end]`, excluding CSV-sourced rows,
+   by group key, summing their signed amounts into `gross_ccy`.
+3. Per group, sum the signed taxes whose key matches one of its income rows, and
+   record `matched_any_tax` — whether *any* row joined, which is not the same
+   question as whether the sum is non-zero.
+
+**Signs and clamps.** A withholding row is negative when tax is taken and positive
+when it is given back, so a distribution's signed sum is normally `<= 0` and the
+credit is its negation.
+
+- `tax_ccy = max(-signed_sum, 0)`. A positive signed sum means reversals exceed
+  withholdings within one distribution, which should not occur; carried through
+  unclamped it becomes a negative credit and pushes the tax due **above** 15%.
+  Clamping to zero errs toward overpaying, the direction this design errs in
+  everywhere.
+- A group whose `gross_ccy <= 0` is not a declaration: a fully reversed dividend
+  nets to zero, and a form reading `BrutoPrihod 0.00` states nothing. `decide`
+  returns `Skip`. The already-declared version of that case is an accepted
+  limitation, not a case to handle — see *Accepted limitations*.
+
+**`decide`** — the entire rule, in one pure function:
+
+| group state | result |
+| --- | --- |
+| `gross_ccy <= 0` | `Skip` |
+| `Declared::Yes`, amounts equal | `Skip` |
+| `Declared::Yes`, amounts differ | `Amend` |
+| `Declared::YesWithoutRecord` | `Skip` — the cutoff |
+| `Declared::No`, `date < creation_start` | `Skip` — read only so the arms above could run |
+| `Declared::No`, `!matched_any_tax`, `date + WHT_WAIT_DAYS >= today` | `Wait` |
+| `Declared::No`, otherwise | `Create` |
+
+`Create` covers the netted-to-zero group with no wait: zero is an answer, not a
+gap. `Wait` is reached only when no withholding row joined at all.
+
+Equality is on the **formatted `{:.2}` strings**, as stored, not on values parsed
+back into `Decimal`. That fixes the threshold at 0.01 implicitly and correctly —
+anything finer never reaches the declaration anyway — and it is made in the income
+currency, never in RSD, so a moved exchange rate cannot look like a change.
+
+The wait is measured from the income date, not from when the transaction reached
+storage, so income imported long after its date finalizes immediately. It does not
+consult `force_rates`: forcing an early zero-credit declaration is strictly
+harmful and saves at most `WHT_WAIT_DAYS` against a 30-day deadline.
+
+`Declared::YesWithoutRecord` is the only thing that expresses the cutoff.
+Declarations created before this change carry no `SourceAmounts`, and this arm
+states that they are never amended instead of leaving it to be inferred from a
+missing map entry.
+
+**`render_income_report`** resolves the rate, builds the `IncomeDeclarationEntry`
+and the XML. `Result` is not for per-group problems — a missing rate is one, and
+`sync.rs` turns it into a notice. It is kept because `HolidayError::MissingYear`
+must stay a hard error: it means the app ran out of holiday data, and generating
+with wrong holiday handling is worse than failing. It arrives through
+`holidays.is_serbian_holiday(target)?` inside `nbs.get_rate` (src/nbs.rs:93),
+which returns `anyhow::Result`, so distinguish it with
 `e.downcast_ref::<HolidayError>()` before mapping any other rate failure to a
 notice. Save/IO errors also stay `Err`. The guarantee holds for
 `force_rates: false` only — in force mode `get_rate_or_force`
 (src/report_income.rs:297-300) already swallows every `Err` into a cached-rate
 lookup. Accepted: `--force` is an explicit request for approximate rates.
 
-**Pipeline:**
-
-1. Index every `WithholdingTax` transaction dated `>= scan_start`, excluding
-   CSV-sourced rows, by `distribution_key`. Rows whose key is `None` are dropped
-   from the index, not bucketed together — two keyless rows are not a match.
-2. Bucket income transactions in `[scan_start, end]`, excluding CSV-sourced rows,
-   by group key, summing their signed amounts. The key comes from the raw
-   transaction, so already-declared groups never touch NBS.
-3. Sum the signed taxes whose key matches an income in the group, and keep
-   whether *any* row matched — that, not the sum being zero, is what the wait
-   in step 5 tests.
-4. Already declared: source amounts unchanged → skip silently; changed → emit a
-   report with `amends` set to the original's id. The group's date is irrelevant
-   here; only the horizon of step 2 bounds this.
-5. Not declared **and `date >= creation_start`** — a group older than that is
-   dropped silently, it was only read so that step 4 could check it. Resolve
-   rates:
-   - any rate error → notice, continue with the other groups;
-   - no withholding row matched and `date + WHT_WAIT_DAYS >= opts.today` →
-     notice, retried next sync;
-   - no withholding row matched and the wait elapsed → generate with a zero
-     credit;
-   - otherwise generate — including when the matched rows net to zero, which
-     needs no wait.
-
-The wait is measured from the income date, not from when the transaction appeared
-in storage, so income imported long after its date finalizes immediately. It does
-not consult `force_rates`: forcing an early zero-credit declaration is strictly
-harmful and saves at most `WHT_WAIT_DAYS` against a 30-day deadline.
+There is no `IncomeReportBatch` and no notice type. Notices are plain strings the
+caller builds from `GroupAction::Wait` and from a rate `Err`; nothing branches on
+which kind a notice is.
 
 **Metadata: the source amounts in the broker's own currency.**
 `IncomeReport::metadata()` (src/report_income.rs:33-82) today records only RSD
@@ -355,13 +503,16 @@ the group's own numbers next to them:
 - `currency` — the code, so the pair is unambiguous;
 - `exchange_rate` — the NBS rate used, which closes the loop between the two.
 
-These serve two purposes at once. They are what step 4 compares — never the RSD
-figures, because a shifted rate must not look like a change — and they are what
-makes a declaration checkable against the broker.
+These serve two purposes at once. Read back as `SourceAmounts`, they are what
+`decide` compares — never the RSD figures, because a shifted rate must not look
+like a change — and they are what makes a declaration checkable against the
+broker. `gross_income_ccy`, `foreign_tax_paid_ccy` and `currency` are exactly the
+three `SourceAmounts` fields; `exchange_rate` is recorded but never compared.
 
-Step 4 compares the **formatted `{:.2}` strings**, as stored, not values parsed
-back into `Decimal`. That fixes the threshold at 0.01 implicitly and correctly:
-anything finer never reaches the declaration anyway.
+One type owns those three key names, with `from_metadata` and `to_metadata` beside
+it, so the writer in `report_income` and the reader in `sync.rs` cannot drift
+apart on a spelling. `METADATA_KEY_ORDER` naming them a third time is display
+order only and cannot break the comparison.
 
 A change in `foreign_tax_paid_ccy` produces an amendment even when
 `porez_za_uplatu` does not move, which happens when withholding exceeds 15% and
@@ -385,9 +536,15 @@ directory and is counted the same way. The filename is
 `ppopo-izmena-{sym}-{YYYY-MMDD}.xml`, matching the existing shape
 (src/report_income.rs:212-214), so the two documents never collide on disk.
 
-`amends` names the **newest** declaration of the group, not the first — see
-*The declared-group map keys on the newest* below. A group's tax can change more
-than once: IXUS 2025-12-19 carries `-12.25`, `+12.25` and `-12.23`.
+`amends` is filled from the `Amends` the caller passes in — `report_income` does
+not look a declaration up. It names the **newest** declaration of the group, not
+the first; see *The declared-group map keys on the newest* below. A group's tax
+can change more than once: IXUS 2025-12-19 carries `-12.25`, `+12.25` and
+`-12.23`.
+
+`Amends::purs_number` is what `IdentifikatorPrijave` is written from, so the
+number recorded at `submit` reaches the document without `report_income` reading
+storage either.
 
 ### PP-OPO schema: what actually marks an amendment
 
@@ -445,7 +602,7 @@ The rule is a date comparison, not a tax judgement, and both dates are already
 computed:
 
 ```
-VrstaPrijave = if opts.today <= DatumDospelostiObaveze { 1 } else { 3 }
+VrstaPrijave = if today <= DatumDospelostiObaveze { 1 } else { 3 }
 ```
 
 `DatumDospelostiObaveze` is `next_working_day(income_date, holidays)` — income
@@ -464,7 +621,7 @@ the date comparison above is the whole rule. See `specs/spec-income-declarations
 *Sources*, for the trap that makes this look otherwise.
 
 `generate_income_xml` therefore takes `today: NaiveDate`, threaded from
-`IncomeGenOptions.today`. **This is not optional for the golden tests:** without
+`RenderOptions.today`. **This is not optional for the golden tests:** without
 it the function would have to read the clock, and every golden fixture — all
 dated 2025-12 to 2026-03 — would flip to `3` the moment its deadline passed, and
 back again for any fixture added with a recent date. Golden tests pass an
@@ -511,22 +668,42 @@ declaration with the highest numeric `declaration_id`, and that is both what ste
 matches and nothing more is produced; a genuine second change produces exactly one
 further amendment, which then references the first.
 
-`generate_and_save_income` builds the declared-group map once, before the loop —
-today `is_duplicate` re-reads and re-parses the whole declarations file per group
-(src/sync.rs:347 → :380 → src/storage.rs:338-358). Key each existing PP-OPO by
-`(period_start, metadata["symbol"].to_uppercase(), metadata["income_type"])`,
-where `period_start` is the `Declaration` field, not the metadata string; the
-value is the recorded source amounts, absent for declarations created before this
-change. Deliberately not keyed by filename stem, which is what `is_duplicate`
-does: that freezes the generated filename format forever and misses declarations
-whose `file_path` is `None`. Every PP-OPO this app has ever written carries both
-metadata keys, so no fallback is needed; a declaration missing one is hand-edited
-and is logged at `warn` and skipped. `is_duplicate` stays for PPDG-3R
-(src/sync.rs:261).
+`generate_and_save_income` owns the decision loop:
 
-`opts.today` is `end_period + Duration::days(1)`, not a second `Local::now()` —
-`end_period` comes from `Local::now()` at src/sync.rs:116 and a second read can
-land past midnight.
+```
+let groups = collect_income_groups(&storage.load_transactions(), scan_start, end);
+let declared = declared_group_map(storage);            // built once
+for group in &groups {
+    match decide(group, declared.lookup(&group.key), creation_start, today) {
+        Skip   => continue,
+        Wait   => notices.push(...),
+        Create => render(group, None)      -> save, or Err -> notice,
+        Amend  => render(group, Some(amends_from(&declared, &group.key))) -> save, or Err -> notice,
+    }
+}
+```
+
+Both callers of the group key live in this file, so the key is defined once and
+the two sides of the comparison cannot drift apart.
+
+The map is built once, before the loop — today `is_duplicate` re-reads and
+re-parses the whole declarations file per group (src/sync.rs:347 → :380 →
+src/storage.rs:338-358). Key each existing PP-OPO by
+`(period_start, metadata["symbol"].to_uppercase(), metadata["income_type"])`,
+where `period_start` is the `Declaration` field, not the metadata string. The
+value carries the newest declaration's id, its `SourceAmounts` if it has them, and
+its recorded PURS number; `lookup` turns that into `Declared::No`,
+`Declared::Yes` or `Declared::YesWithoutRecord`. Deliberately not keyed by
+filename stem, which is what `is_duplicate` does: that freezes the generated
+filename format forever and misses declarations whose `file_path` is `None`.
+Every PP-OPO this app has ever written carries both metadata keys, so no fallback
+is needed; a declaration missing one is hand-edited, logged at `warn` and skipped.
+`is_duplicate` stays for PPDG-3R (src/sync.rs:261).
+
+`today`, passed to both `decide` and `RenderOptions`, is
+`end_period + Duration::days(1)`, not a second `Local::now()` — `end_period` comes
+from `Local::now()` at src/sync.rs:116 and a second read can land past midnight.
+One value, read once, threaded through: nothing below `run_sync` reads a clock.
 
 `SyncResult` (src/sync.rs:28-38): `income_error: Option<String>` becomes
 `income_notices: Vec<String>`. `income_skipped` keeps its meaning: no reports, no
@@ -574,10 +751,18 @@ Amended PP-OPO: датум остваривања прихода 24.12.2025, SGO
 
 ### 7. cli/report.rs
 
-`run_income` (src/cli/report.rs:169-176) passes an empty declared map — this
-command writes to a destination directory and does not consult declaration state
-— and `IncomeGenOptions { today: Local::now().date_naive(), force_rates: force }`.
-Keep the `match` on `Result`. Print `batch.notices` after the reports.
+`run_income` (src/cli/report.rs:169-176) runs the same three-call loop with
+`Declared::No` for every group — this command writes to a destination directory
+and does not consult declaration state — and
+`RenderOptions { today: Local::now().date_naive(), force_rates: force }`. Its
+`creation_start` is the period start the user asked for, so nothing inside the
+period is dropped as out-of-window. Print the notices after the reports.
+
+The loop is a dozen lines repeated between here and `generate_and_save_income`.
+That is deliberate: the two differ in where they save, what they do with an `Err`
+and what they print, and the shared part — `decide` — is already a function. A
+common wrapper would have to take all three differences as parameters and would be
+longer than the duplication.
 
 `--force` now means the same thing in both commands: approximate rates, nothing
 else. The old zero-WHT escape hatch (src/report_income.rs:181) disappears with
@@ -639,38 +824,64 @@ are counted by `pending_new_declarations` like any other.
 - `predating_declaration_is_never_amended` — a declaration without the new
   metadata whose tax then changes produces nothing. Guards the cutoff.
 
-**New in `tests/test_reports.rs`,** all with an explicit `opts.today`:
+**New unit tests in `src/report_income.rs`** — `collect_income_groups` and
+`decide` are pure, so these take a `Vec<Transaction>` and an explicit `today`, and
+need no `TempDir`, no `Storage`, no seeded rates and no offline NBS. That is the
+point of the split; do not write them as integration tests.
+
+Matching and netting, over `collect_income_groups`:
 
 - `wht_matched_by_action_id` — two dividends of one symbol inside one wait window,
   each with its own tax under its own `actionID` → each credited its own.
 - `wht_matched_by_description_when_action_id_absent` — income and tax both with
-  `action_id: None`, matched on the `PER SHARE` prefix. Covers a distribution
-  IBKR emits without an `actionID`, and a distribution wholly predating the
-  upgrade. A mixed pair — one side `None`, the other `Some` — is deliberately not
-  tested, because it is out of scope.
+  `action_id: None`, matched on the `PER SHARE` prefix. Covers a distribution IBKR
+  emits without an `actionID`, and one wholly predating the upgrade. A mixed pair
+  — one side `None`, the other `Some` — is deliberately not tested; it is out of
+  scope.
 - `wht_matched_by_interest_token`.
 - `interest_tax_does_not_cross_currencies` — USD and EUR interest for the same
   month, one USD tax → credited to the USD group only.
-- `reversed_income_nets_to_zero` — a dividend and its reversal in one group give
-  zero gross, not `2X`.
-- `wht_reversal_nets_to_zero` — `-X` and `+X` under one key give zero, not `2X`.
-  The regression test for defect 1.
-- `late_reversal_produces_amendment` — and a variant with the reversal dated five
-  months after its dividend, the shape the archived reports actually show.
-- `amendment_compares_source_currency_not_rsd` — same amounts, different NBS rate
-  → no amendment.
+- `wht_across_year_end_is_credited` — dividend 2025-12-24, tax 2026-01-02, still
+  joined; the date takes no part.
+- `reversed_income_nets_to_zero` — a dividend and its reversal give zero gross,
+  not `2X`.
+- `wht_reversal_nets_to_zero` — `-X` and `+X` under one key give a zero credit,
+  not `2X`. The regression test for defect 1.
+- `reversals_exceeding_withholding_clamp_to_zero` — `-X` and `+2X` give a zero
+  credit, never a negative one that would push the tax due above 15%.
+- `csv_rows_are_excluded_on_both_sides` — a `csv-` dividend with a `csv-`
+  withholding row produces no group at all.
+
+Decisions, over `decide`:
+
+- `no_wht_waits_while_window_open` and `no_wht_finalizes_after_wait_elapses`.
+- `netted_wht_does_not_wait` — a reversal pair inside the wait window is `Create`,
+  not `Wait`. Distinguishes "no answer yet" from "the answer is zero".
+- `fully_reversed_income_is_never_declared` — `gross_ccy == 0` is `Skip`, even
+  undeclared and inside the window.
+- `already_declared_unchanged_is_skipped` and `already_declared_changed_amends`.
+- `declaration_without_recorded_amounts_is_never_amended` — `Declared::
+  YesWithoutRecord` with changed amounts is `Skip`. Guards the cutoff.
+- `outside_creation_window_is_skipped_when_undeclared` — the same group declared
+  and changed still amends.
+
+`decide` does not take `force_rates`, so "the wait cannot be forced" needs no
+test — it is not expressible.
+
+**New in `tests/test_reports.rs`** — only what genuinely needs a rate or storage:
+
 - `metadata_carries_source_currency_amounts` — `gross_income_ccy`,
   `foreign_tax_paid_ccy`, `currency` and `exchange_rate` present and matching the
-  broker's figures, not the converted ones.
-- `no_wht_finalizes_after_wait_elapses` — credit `0`.
-- `no_wht_waits_while_window_open`, and the same with `force_rates: true` still
-  waiting.
-- `netted_wht_does_not_wait` — a reversal pair inside the wait window is declared
-  at once with a zero credit, not held. Distinguishes "no answer yet" from "the
-  answer is zero".
-- `already_declared_group_is_skipped`.
-- `csv_income_produces_no_declaration` — a `csv-` dividend with a `csv-`
-  withholding row inside the period yields no report.
+  broker's figures, not the converted ones; and `SourceAmounts::from_metadata`
+  reads back exactly what `to_metadata` wrote.
+- `amendment_compares_source_currency_not_rsd` — same source amounts rendered at a
+  different NBS rate produce no amendment.
+- `late_reversal_produces_amendment` — the reversal dated **the same day** as its
+  dividend but imported months later, which is the shape the real reports show;
+  the amendment must come from the comparison, not from the row looking new. A
+  second variant dates the reversal months after the dividend to prove the join
+  ignores dates, but it is the synthetic one — do not treat it as the realistic
+  case.
 - `amendment_is_not_regenerated_on_the_next_sync` — sync, change the tax, sync,
   sync again: exactly one amendment, not two. The regression test for the
   declared-group map keying on the newest declaration.
@@ -688,16 +899,19 @@ are counted by `pending_new_declarations` like any other.
 - `submit_number_rejects_non_numeric_and_over_19_digits`.
 
 **Existing `tests/test_reports.rs` work** — 12 call sites (lines 438, 508, 554,
-605, 653, 695, 739, 783, 841, 872, 926, 991) need the new signature and an
-explicit `today` past their fixtures; none may read the real clock. Two need
-more:
+605, 653, 695, 739, 783, 841, 872, 926, 991) call `generate_income_reports`, which
+no longer exists. Each becomes the collect → decide → render loop with an explicit
+`today` past its fixture; none may read the real clock. Most of them assert
+matching or netting and, once rewritten, duplicate a unit test above — those move
+to `src/report_income.rs` and their storage fixtures go with them, rather than
+being converted in place. Two are not conversions at all:
 
-- `test_zero_wht_force_false_errors` (:852) asserts the removed `Err` and becomes
-  `no_wht_finalizes_after_wait_elapses`;
+- `test_zero_wht_force_false_errors` (:852) asserts the removed `Err`; it becomes
+  the unit test `no_wht_finalizes_after_wait_elapses`;
 - `test_wht_not_found_beyond_7_day_window` (:616) tests a window that no longer
-  exists. Its fixture — dividend 2025-12-24, tax 2026-01-02 — is the year-end
-  gap, so rewrite it as `wht_across_year_end_is_credited`, asserting the tax **is**
-  credited despite the 9-day gap.
+  exists. Its fixture — dividend 2025-12-24, tax 2026-01-02 — is the year-end gap,
+  so it becomes the unit test `wht_across_year_end_is_credited`, asserting the tax
+  **is** credited.
 
 **Golden files.** Every `generate_income_xml` call site in the golden tests gains
 an explicit `today` on or before the fixture's due date, so `VrstaPrijave` stays
@@ -720,11 +934,12 @@ test helper (:143-155) plus `print_income_error` (:202) need the new field.
 `specs/spec-income-declarations.md` and `specs/spec-transaction-sources.md`
 already exist — written alongside this plan, because the rules outlive it and this
 file gets deleted once implemented. Between them they hold: the distribution key
-and its three branches, signed netting on both sides, the interest key's currency,
-the two horizons and why they differ, the wait and why a netted zero does not
-wait, the amendment rule and its cutoff, the CSV rule, and the accepted
-limitations. Nothing to add there during implementation — verify the code matches
-them instead.
+and its three branches and why the second is permanent, signed netting on both
+sides with its clamps, the interest key's currency, the two horizons and why they
+differ, the wait and why a netted zero does not wait, the amendment rule and its
+cutoff, the CSV rule, the schema sources and the independence of the two form
+fields, and the accepted limitations including the ban on one-time signals.
+Nothing to add there during implementation — verify the code matches them instead.
 
 `specs/spec-auto-sync.md` gets one sentence: income notices reuse the sync-issue
 status line and are recomputed from scratch on every sync.
@@ -773,9 +988,14 @@ Manual, on real data:
    income date;
 6. `sync --lookback 365` generates for the eight income groups of 2025-07-02 …
    2025-12-04 that sit undeclared in `transactions.json`, each with the credit
-   its stored withholding gives it — the branch-2 path end to end. Only two carry
-   a non-zero credit (VOO 2025-07-02 → 0.52, VOO 2025-10-01 → 5.22); the other
-   six net to zero and must come out with a zero credit and the full 15% due;
+   its stored withholding gives it — the branch-2 path end to end. Two carry a
+   non-zero credit (VOO 2025-07-02 → 0.52, VOO 2025-10-01 → 5.22). **Five** net to
+   zero and must come out with a zero credit and the full 15% due. The eighth,
+   USD interest of 2025-09-04 for AUG-2025, matches no withholding row at all —
+   none exists for that month — so it takes the `Wait` arm, and since its date is
+   long past `WHT_WAIT_DAYS` it is declared immediately with a zero credit. The
+   two arms produce the same document here and must be told apart in the log, not
+   by the output;
 7. a plain `sync` reads back to 1 January of the previous year but creates
    nothing outside the 45-day window — those same eight groups stay undeclared
    until step 6 is asked for explicitly.

@@ -50,6 +50,13 @@ Amounts within one distribution are summed **with their sign**, so a reversal
 cancels what it reverses. This holds on the income side as well as the tax side: a
 reversed dividend cancels its original rather than counting twice.
 
+Neither sum may turn a declaration against the taxpayer's own figures. A credit is
+never negative: should reversals ever exceed the withholding of one distribution,
+the credit is zero, not a negative amount that would push the tax due above the
+15% actually owed. And income that nets to zero or below is not income — a fully
+reversed dividend produces no declaration, because a form declaring nothing states
+nothing.
+
 ## When a declaration is created
 
 Every sync looks for undeclared income within a recent window and declares it. A
@@ -147,6 +154,16 @@ as with the declaration number.
   toward overpaying rather than underpaying, and it announces itself, because
   declarations that were always zero suddenly demand payment. The app carries no
   machinery to detect a broken match.
+- A group that nets to zero **after** it was declared is left alone. Withdrawing a
+  filed return takes a cancellation, a different document than an amendment, and
+  the app produces only amendments. The standing declaration then overstates
+  income, which overpays — the direction every other failure here takes.
+- The app never emits a one-time signal: no migration notice, no pass over past
+  declarations announcing that they may be wrong, nothing shown once at first run
+  after an upgrade. Every notice is recomputed from current state on every sync
+  and disappears when its cause does. A one-time signal has no state that keeps it
+  true, cannot be re-derived once dismissed, and asks to be acknowledged rather
+  than fixed.
 
 ## Sources
 
