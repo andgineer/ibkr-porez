@@ -81,6 +81,17 @@ amending the original.
 The comparison is made in the income's own currency, never in dinars: a moved
 exchange rate must not look like a change in income.
 
+An amendment amends the **most recent** declaration of its group, not the first.
+A group's withholding can change more than once, and each change produces exactly
+one amendment referencing the one before it. Once an amendment exists it is what
+subsequent comparisons are made against, so a settled group produces nothing
+further.
+
+The taxpayer records the PURS number of a declaration when submitting it, and an
+amendment carries that number so the authority can tell which return it replaces.
+The number is optional in the generated document — without it the amendment is
+still valid to produce, and the taxpayer supplies it when filing.
+
 How far back the app looks for such changes is set by how long withholding can
 still change, not by the window that governs creation. Since a distribution of one
 tax year can be corrected until the following March, the app examines income from
@@ -91,6 +102,21 @@ exist for.
 
 Declarations created before this rule existed carry no record of their source
 amounts and are therefore never amended.
+
+## A declaration states whether it is on time
+
+The PP-OPO form distinguishes a return filed on or before its deadline from one
+filed after it, and the two carry different codes. A generated declaration states
+which it is, judged by the deadline — income date plus 30 days, moved past
+weekends and holidays — against the day it is generated.
+
+The app never claims a return is timely when it knows the deadline has passed.
+Every amendment is late by nature, as is every declaration produced for income
+old enough to need an explicitly widened window.
+
+A late return also owes interest. The app does not compute it and does not claim
+to: the interest fields are left empty for ePorezi and the taxpayer to complete,
+as with the declaration number.
 
 ## Accepted limitations
 

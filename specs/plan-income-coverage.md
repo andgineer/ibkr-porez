@@ -353,6 +353,15 @@ These serve two purposes at once. They are what step 4 compares — never the RS
 figures, because a shifted rate must not look like a change — and they are what
 makes a declaration checkable against the broker.
 
+Step 4 compares the **formatted `{:.2}` strings**, as stored, not values parsed
+back into `Decimal`. That fixes the threshold at 0.01 implicitly and correctly:
+anything finer never reaches the declaration anyway.
+
+A change in `foreign_tax_paid_ccy` produces an amendment even when
+`porez_za_uplatu` does not move, which happens when withholding exceeds 15% and
+the credit is already capped. The declared foreign-tax figure changed, and the
+filed declaration has to match reality.
+
 Add all four to `METADATA_KEY_ORDER` (src/cli/show.rs:89-112), each beside its
 RSD counterpart, so `show` prints them in place rather than sorting them into the
 unordered extras at the end. The GUI details dialog
@@ -361,21 +370,93 @@ unordered extras at the end. The GUI details dialog
 **Amendments.** An amendment is an ordinary `IncomeReport` with one extra field:
 
 ```rust
-pub amends: Option<String>,   // declaration_id of the original
+pub amends: Option<String>,   // declaration_id being amended
 ```
 
 No separate type and no separate list — an amendment is a declaration, so it
 travels the same path, is saved by the same code, lands in the same output
-directory and is counted the same way. Only two things branch on `amends`:
-`VrstaPrijave`, which marks an измењена пријава instead of the hardcoded `"1"`
-(src/declaration_income_xml.rs:52), and the CLI's one extra hint line. The
-filename is `ppopo-izmena-{sym}-{YYYY-MMDD}.xml`, matching the existing shape
+directory and is counted the same way. The filename is
+`ppopo-izmena-{sym}-{YYYY-MMDD}.xml`, matching the existing shape
 (src/report_income.rs:212-214), so the two documents never collide on disk.
 
-> **Open before implementing:** the PP-OPO XSD decides which `VrstaPrijave` value
-> means измењена пријава and where the original's PURS number goes. Read the
-> schema; do not guess. The number stays optional in our XML — ePorezi will not
-> register an amendment without it, and the taxpayer completes it there.
+`amends` names the **newest** declaration of the group, not the first — see
+*The declared-group map keys on the newest* below. A group's tax can change more
+than once: IXUS 2025-12-19 carries `-12.25`, `+12.25` and `-12.23`.
+
+### PP-OPO schema: what actually marks an amendment
+
+From `PPOPO-Prijava.xsd` published by PURS. `PodaciOPrijavi` is an `xs:sequence`,
+so element order is fixed:
+
+```
+KlijentskaOznakaDeklaracije   optional
+VrstaPrijave                  required   1 | 3 | 4 | 5
+ObracunskiPeriod              optional
+DatumOstvarivanjaPrihoda      required
+Rok                           required   1 | 2
+DatumDospelostiObaveze        required
+DatumObracunaKamate           optional
+VrstaIzmenePrijave            optional   1 | 2 | 3 | 9
+IdentifikatorPrijave          optional   unsignedLong, ≤ 19 digits
+PoNalazuKontroleSuda          optional
+OsnovIzmene                   optional   1 | 2 | 3
+```
+
+`VrstaPrijave` does **not** mark an amendment — it states when the return is
+filed relative to its deadline. An amendment is marked by two elements appended
+after `DatumDospelostiObaveze`, which is exactly where
+`write_podaci_o_prijavi` (src/declaration_income_xml.rs:46-63) currently stops,
+so nothing existing moves:
+
+- `VrstaIzmenePrijave` = `1` — измена по члану 40. ЗПППА, the voluntary
+  correction. `2` is by audit order and `9` is a storno; neither is ours.
+- `IdentifikatorPrijave` — the PURS number of the declaration being amended.
+  Numeric, so `submit --number` must reject anything that is not up to 19
+  digits. Optional in the schema, so it is simply omitted when unknown; ePorezi
+  will not register the amendment without it and the taxpayer completes it there.
+
+`PoNalazuKontroleSuda` and `OsnovIzmene` belong to audit and court cases. Never
+written.
+
+### VrstaPrijave states timeliness, and must stop lying
+
+`VrstaPrijave` is hardcoded `"1"` today (src/declaration_income_xml.rs:52).
+Per the PP-OPO rulebook, `1` is an општа пријава — filed **before or on** the due
+date — and `3` is a пријава по члану 182б ЗПППА, filed after it has passed.
+
+Hardcoding `1` therefore asserts timeliness that may be false. It is already
+wrong today for a declaration generated on day 40 of a 30-day deadline, and this
+plan makes it routinely wrong: every amendment is by nature late, and every
+declaration produced by `sync --lookback` over 2025 income is years late.
+
+The rule is a date comparison, not a tax judgement, and both dates are already
+computed:
+
+```
+VrstaPrijave = if opts.today <= DatumDospelostiObaveze { 1 } else { 3 }
+```
+
+`DatumDospelostiObaveze` is `next_working_day(income_date, holidays)` — income
+plus 30 days, advanced past weekends and holidays (src/due_date.rs:10).
+
+The rule can only err toward `1` — when the app generates in time but the
+taxpayer files late — which is the assumption the app already makes. It never
+claims timeliness for a return the app itself knows is overdue. Amendments need
+no special case: generated months after the income, they come out as `3`
+naturally.
+
+`generate_income_xml` therefore takes `today: NaiveDate`, threaded from
+`IncomeGenOptions.today`. **This is not optional for the golden tests:** without
+it the function would have to read the clock, and every golden fixture — all
+dated 2025-12 to 2026-03 — would flip to `3` the moment its deadline passed, and
+back again for any fixture added with a recent date. Golden tests pass an
+explicit date on or before the fixture's due date, so existing goldens keep
+`VrstaPrijave = 1` and stay deterministic.
+
+Interest is out of scope. A `3` return carries `DatumObracunaKamate` and interest
+amounts; the app writes neither and leaves the `Kamata` block at zeros as it does
+today. ePorezi computes and the taxpayer completes them, exactly as with
+`IdentifikatorPrijave`.
 
 ### 4. sync.rs
 
@@ -401,6 +482,16 @@ outside tests then touches it (tests/test_storage.rs:257,
 tests/test_models.rs:151, tests/test_python_compat.rs:123,
 tests/resources/declarations.json:411). The accessors are `pub` on a lib crate,
 so nothing goes dead. **src/storage.rs is not modified.**
+
+**The declared-group map keys on the newest.** Once an amendment exists, its
+group has **two** declarations under the same `(period_start, symbol,
+income_type)` key — the original and the amendment. Comparing against the
+original would find the amounts still changed and emit a second amendment, then a
+third, on every sync forever. The map therefore keeps, for each group key, the
+declaration with the highest numeric `declaration_id`, and that is both what step
+4 compares against and what `amends` points at. After an amendment the comparison
+matches and nothing more is produced; a genuine second change produces exactly one
+further amendment, which then references the first.
 
 `generate_and_save_income` builds the declared-group map once, before the loop —
 today `is_duplicate` re-reads and re-parses the whole declarations file per group
@@ -438,6 +529,10 @@ documents really do go to PURS, and one declaration stays one file.
 accepted only when exactly one id is given; more than one is an error. Stored in
 the declaration's `metadata`, which already holds `symbol` and `income_type` and
 needs no schema change. In the GUI, an optional field in the submit confirmation.
+
+`IdentifikatorPrijave` is `xs:unsignedLong` with at most 19 digits, so `--number`
+rejects anything that is not 1–19 digits at parse time rather than writing XML
+that fails validation at ePorezi.
 
 ### 6. cli/sync.rs
 
@@ -558,6 +653,21 @@ are counted by `pending_new_declarations` like any other.
 - `already_declared_group_is_skipped`.
 - `csv_income_produces_no_declaration` — a `csv-` dividend with a `csv-`
   withholding row inside the period yields no report.
+- `amendment_is_not_regenerated_on_the_next_sync` — sync, change the tax, sync,
+  sync again: exactly one amendment, not two. The regression test for the
+  declared-group map keying on the newest declaration.
+- `second_change_produces_a_second_amendment_referencing_the_first` — the IXUS
+  shape: `-X`, then `+X`, then `-Y`.
+
+**New in `tests/test_xml.rs` / `tests/test_golden_xml.rs`:**
+
+- `vrsta_prijave_is_1_before_the_due_date` and
+  `vrsta_prijave_is_3_after_the_due_date` — `today` on the due date and one day
+  past it.
+- `amendment_writes_izmena_elements` — `VrstaIzmenePrijave = 1`, and
+  `IdentifikatorPrijave` present only when a number was recorded, in schema
+  order after `DatumDospelostiObaveze`.
+- `submit_number_rejects_non_numeric_and_over_19_digits`.
 
 **Existing `tests/test_reports.rs` work** — 12 call sites (lines 438, 508, 554,
 605, 653, 695, 739, 783, 841, 872, 926, 991) need the new signature and an
@@ -571,7 +681,12 @@ more:
   gap, so rewrite it as `wht_across_year_end_is_credited`, asserting the tax **is**
   credited despite the 9-day gap.
 
-**Golden files.** `tests/resources/golden-003-ppopo-sgov-2025-1224.xml` records
+**Golden files.** Every `generate_income_xml` call site in the golden tests gains
+an explicit `today` on or before the fixture's due date, so `VrstaPrijave` stays
+`1` and the goldens do not drift with the calendar. Passing the real clock would
+make them depend on the date the suite runs.
+
+`tests/resources/golden-003-ppopo-sgov-2025-1224.xml` records
 `PorezPlacenDrugojDrzavi = 5225.01` with `PorezZaUplatu = 0.00` — a reversal pair
 double-counted by `.abs()`. Fixing defect 1 turns it into `0.00` / `1306.01`.
 Regenerate the affected goldens and read the diff: it is the proof the bug is
