@@ -137,6 +137,13 @@ inside `nbs.get_rate` (src/nbs.rs:94), which returns `anyhow::Result`, so
 distinguish it with `e.downcast_ref::<HolidayError>()` before mapping any other
 rate failure to a `MissingRate` notice. Save/IO errors also stay `Err`.
 
+That guarantee holds for `force_rates: false` only. In force mode
+`get_rate_or_force` (src/report_income.rs:297-300) already swallows *every*
+`Err` into a nearest-cached-rate lookup, so `MissingYear` never reaches the
+downcast and degrades to a `MissingRate` notice. Accepted rather than fixed:
+`--force` is an explicit "use approximate rates" request, and the group it
+touches is the one the user asked to push through anyway.
+
 **Withholding-tax attribution.** `find_withholding_tax` currently sums *every*
 candidate in range (src/report_income.rs:239-277). Widening the matching window
 from 7 to 20 days makes that unsafe on its own: two payments of one symbol closer
@@ -156,20 +163,42 @@ A tax matches an income transaction when:
 Among matching incomes with `income.date <= tax.date`, the tax belongs to the one
 with the **greatest date**. A tax with no preceding match belongs to nobody.
 
-Building the map over the incomes in `[start, end]` only is sufficient: if a
-tax's true owner lies before `start`, then no in-window income can have a date
-`<= tax.date` (such an income would be later than the owner and would itself be
-the owner). A restricted search can therefore drop an owner but never pick a
-wrong one. Keep the pool filter at src/report_income.rs:110-117, changing its
+Build the map over the incomes in `[start, end + WHT_WAIT_DAYS]` — wider than the
+range that gets reports. The two boundaries are not symmetric:
+
+- **below `start`** the restriction is safe. If a tax's true owner lies before
+  `start`, no income at or after `start` can have a date `<= tax.date` — such an
+  income would be later than the owner and would itself be the owner. The tax is
+  left ownerless rather than misattributed.
+- **above `end`** it is not. The pool holds taxes up to `end + WHT_WAIT_DAYS`,
+  and an income just past `end` can own one of them. Cut the incomes off at
+  `end` and that tax falls to the last matching income *inside* the window — a
+  wrong credit, not a dropped one. `report income --half 1` is the everyday
+  case: a dividend on Jul 1 with its tax on Jul 2 hands its credit to the
+  previous payment of the same symbol in June. Widening the match window from 7
+  to 20 days widens this hole with it.
+
+`end + WHT_WAIT_DAYS` is exactly enough and no more: it is the largest date the
+pool can hold, so no income beyond it can precede a pool tax. The pool itself
+does not grow — keep the filter at src/report_income.rs:110-117, changing its
 upper bound from `end + 7` to `end + WHT_WAIT_DAYS`.
+
+Groups past `end` take part in ownership only. They are never reported and never
+produce a notice.
 
 **Pipeline:**
 
-1. Bucket income transactions in `[start, end]` by group key
+1. Bucket income transactions in `[start, end + WHT_WAIT_DAYS]` by group key
    `(date, symbol|currency uppercased, income_type)`. The key comes from the raw
    transaction — **no exchange rate needed yet.**
-2. Key in `declared` → skip silently. Never regenerate.
-3. Otherwise resolve rates and sum the taxes whose owner is this group and whose
+2. Build the tax → owning group map over **all** of those groups, before any
+   filtering. A group that is already declared, or that sits past `end`, still
+   owns its taxes. Drop it first and its tax falls through to an earlier group
+   with no claim to it — a double credit on the second payment of a symbol
+   inside one wait window.
+3. Walk the groups in `[start, end]` only. Key in `declared` → skip silently.
+   Never regenerate.
+4. Otherwise resolve rates and sum the taxes whose owner is this group and whose
    date falls in `[date, min(opts.today, date + WHT_WAIT_DAYS)]`:
    - any rate error (income or tax leg) → `MissingRate` notice, continue with
      the other groups;
@@ -270,6 +299,15 @@ join the per-group lines: `status_pill` (src/gui/main_window.rs:119-128) holds
 one short string, and an NBS outage produces a notice for every group in the
 window.
 
+**A fetch error keeps its priority.** `handle_sync_done` sets the pill from
+`fetch_error` first and never looks at the income side (src/gui/app.rs:565-572);
+leave that branch alone. Both messages want the same one-line pill, and a broken
+IBKR connection is the more actionable of the two — it also *causes* income
+notices, since a report that never arrived cannot carry the withholding tax
+anyone is waiting for. Consequence to accept: while the fetch is failing the
+notices are invisible in the GUI. They are still in `SyncResult`, still printed
+by the CLI, and reappear in the pill on the first sync that fetches cleanly.
+
 Nothing is lost across syncs: while a cause holds, the pill is re-set every sync;
 when a `WaitingForWht` cause clears, a declaration was created, and created
 declarations are counted by `pending_new_declarations`, which persists and is
@@ -335,6 +373,15 @@ so these lose their `Storage` and their `Option`):
 - `wht_belongs_to_nearest_preceding_payment`: two dividends of one symbol 15 days
   apart, one tax after the second → credited to the second only. Guards the
   7 → 20 widening.
+- `wht_owner_after_window_end_is_not_stolen`: `end` = 2026-06-30, dividends of
+  one symbol on 06-25 and 07-01, tax on 07-02. One report (06-25) with a **zero**
+  credit; the 07-01 group owns the tax and is not reported. Guards the
+  `end + WHT_WAIT_DAYS` ownership range — cut the incomes at `end` and June
+  silently takes July's credit.
+- `wht_of_declared_group_is_not_recredited`: dividends of one symbol on 06-05 and
+  06-15, tax on 06-16, `declared` holding the 06-15 key. One report (06-05) with
+  a **zero** credit. Guards building the ownership map before the `declared`
+  filter — filter first and 06-05 claims a tax that is already spent.
 - `already_declared_group_is_skipped`: key present in `declared` → no report.
 
 **Existing `tests/test_reports.rs` work** — there are **12** call sites (lines
