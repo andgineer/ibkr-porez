@@ -108,12 +108,36 @@ stronger signal than any notice the app could print, and it errs toward
 overpaying rather than underpaying. No unmatched-tax notice, no ambiguity check,
 no extra state.
 
-### Rescan a fixed window
+### Two horizons, and only one of them is a window
 
-Drop the watermark. Every sync rescans `DEFAULT_LOOKBACK_DAYS` and skips groups
-that already have a declaration, keyed on the income group rather than a stored
-boundary. Late data inside the window is picked up next run, whatever made it
+Drop the watermark. Two separate spans replace it, and conflating them is the
+mistake to avoid.
+
+**The creation window** — `DEFAULT_LOOKBACK_DAYS`, or `--lookback N`. A group
+inside it with no declaration gets one. A group outside it with no declaration is
+left alone. Late data inside the window is picked up next run, whatever made it
 late.
+
+**The scan horizon** — how far back transactions are read at all, so that an
+already-declared group can be re-checked. Withholding for a distribution of tax
+year Y is corrected between January and March of Y+1, capped by the 1042-S filing
+(`specs/spec-transaction-sources.md`), so the horizon is **1 January of the
+previous calendar year**, or the creation window's start if `--lookback` reaches
+further back:
+
+```rust
+fn scan_start(end_period: NaiveDate, creation_start: NaiveDate) -> NaiveDate
+// min(NaiveDate::from_ymd(end_period.year() - 1, 1, 1), creation_start)
+```
+
+Tight, not arbitrary: a distribution paid 2 January 2025 can be corrected
+31 March 2026, and on that date the rule yields 1 January 2025. Confirmed against
+the archived reports in `flex-queries/` — every §871(k) reversal for tax year 2025
+appeared between 1 and 11 February 2026, 49 to 159 days after its income, all
+beyond any 45-day window and all inside this horizon.
+
+Groups are keyed on the income group, never on a stored boundary and never on a
+generated filename.
 
 ### Hold a group without tax for a bounded wait
 
@@ -136,17 +160,41 @@ declaration, never a wrong credit.
 
 ### Amend when a declared group changes
 
-When a rescan finds that an already-declared group's source amounts differ from
-what was declared, generate an измењена пријава.
+When a declared group's source amounts differ from what was declared, generate an
+измењена пријава. No range is involved and none is needed: a reversal reaches the
+income it reverses through the distribution key, and the difference shows up in
+the comparison. The scan horizon above is the only bound, and it exists to avoid
+reading transactions that provably cannot change — not to limit which declarations
+may be amended.
 
 Comparison is against amounts recorded in the declaration's metadata **in the
 income currency**, never in RSD — a shifted exchange rate must not look like a
 change.
 
+Every declared group inside the horizon is recomputed and compared on every sync.
+Deliberately not driven by "which rows arrived in this fetch": a reversal already
+in storage would never be new again, so a fetch that failed, a sync that stopped
+between import and generation, or an import through `sync --file` would lose it
+permanently — the same failure class as defect 2.
+
 Nothing from before this change is ever touched: only declarations created by the
 new code carry those metadata fields, so earlier ones are invisible to the
 mechanism. That is the whole cutoff — no install timestamp, no migration flag, no
 version stamp, and no pass over historical periods.
+
+### CSV-sourced transactions never produce an income declaration
+
+The CSV importer exists to load history older than a Flex query reaches, and its
+only purpose is the purchase side of the capital-gains calculation. Income it
+carries is not a declaration source: `generate_income_reports` filters out
+`is_csv_sourced()` (src/models.rs:457) transactions along with the type and date
+filter, for both income and withholding rows.
+
+This is a behaviour fix, not just documentation — today a CSV dividend inside the
+period would produce a PP-OPO. It also settles the CSV descriptions, which do not
+follow the Flex shape at all (`tests/resources/complex_activity.csv` carries
+`Dividend Payment` and `Tax`) and would never carry an `actionID`: they are simply
+never asked to match.
 
 ### Income predating this version
 
@@ -241,8 +289,10 @@ Notices are plain strings. There is no kind enum: the two remaining cases —
 a missing rate and a group waiting for its tax — are both informational, both
 resolve themselves on a later sync, and nothing branches on which is which.
 
-`generate_income_reports` takes `start`, `end`, the already-declared groups with
-their recorded source amounts, and `IncomeGenOptions`. It replaces the
+`generate_income_reports` takes `scan_start`, `creation_start`, `end`, the
+already-declared groups with their recorded source amounts, and
+`IncomeGenOptions`. Two starts, one end: `scan_start` decides what is read and
+compared, `creation_start` decides what may be created. It replaces the
 `build_income_groups` → `build_income_reports` split, where the first propagates
 the first rate error and the second bails on the first zero-WHT group.
 
@@ -259,18 +309,21 @@ lookup. Accepted: `--force` is an explicit request for approximate rates.
 
 **Pipeline:**
 
-1. Index every `WithholdingTax` transaction by `distribution_key`, no date
-   filter. Rows whose key is `None` are dropped from the index, not bucketed
-   together.
-2. Bucket income transactions in `[start, end]` by group key, summing their
-   signed amounts. The key comes from the raw transaction, so already-declared
-   groups never touch NBS.
+1. Index every `WithholdingTax` transaction dated `>= scan_start`, excluding
+   CSV-sourced rows, by `distribution_key`. Rows whose key is `None` are dropped
+   from the index, not bucketed together — two keyless rows are not a match.
+2. Bucket income transactions in `[scan_start, end]`, excluding CSV-sourced rows,
+   by group key, summing their signed amounts. The key comes from the raw
+   transaction, so already-declared groups never touch NBS.
 3. Sum the signed taxes whose key matches an income in the group, and keep
    whether *any* row matched — that, not the sum being zero, is what the wait
    in step 5 tests.
 4. Already declared: source amounts unchanged → skip silently; changed → emit a
-   report with `amends` set to the original's id.
-5. Not declared, resolve rates:
+   report with `amends` set to the original's id. The group's date is irrelevant
+   here; only the horizon of step 2 bounds this.
+5. Not declared **and `date >= creation_start`** — a group older than that is
+   dropped silently, it was only read so that step 4 could check it. Resolve
+   rates:
    - any rate error → notice, continue with the other groups;
    - no withholding row matched and `date + WHT_WAIT_DAYS >= opts.today` →
      notice, retried next sync;
@@ -330,11 +383,16 @@ filename is `ppopo-izmena-{sym}-{YYYY-MMDD}.xml`, matching the existing shape
 watermark, no `Option`:
 
 ```rust
-fn determine_income_period(end_period: NaiveDate, options: &SyncOptions) -> (NaiveDate, NaiveDate)
+fn determine_income_period(end_period: NaiveDate, options: &SyncOptions)
+    -> (NaiveDate, NaiveDate, NaiveDate)   // (scan_start, creation_start, end)
 ```
 
-`start = end_period - (lookback - 1)`, from `options.forced_lookback_days` or
-`DEFAULT_LOOKBACK_DAYS`.
+`creation_start = end_period - (lookback - 1)`, from
+`options.forced_lookback_days` or `DEFAULT_LOOKBACK_DAYS`.
+`scan_start = min(Jan 1 of end_period.year() - 1, creation_start)`.
+
+Both are pure functions of `end_period` and `options` — no `Storage`, no
+watermark, no `Option`.
 
 Delete the watermark-advance block (src/sync.rs:175-181).
 `last_declaration_date` stays in `DeclarationsFile` with both accessors
@@ -439,9 +497,21 @@ are counted by `pending_new_declarations` like any other.
 
 - `test_income_period_no_last_date`, `test_income_period_with_last_date`,
   `test_income_period_last_date_equals_end` → one `income_period_is_fixed_window`
-  asserting `start == end - 44`. Their `set_last_declaration_date` calls
+  asserting `creation_start == end - 44`. Their `set_last_declaration_date` calls
   (src/sync.rs:496, :513, :525) go with them.
-- `test_forced_lookback_overrides_start` → keep, minus `Storage`.
+- `test_forced_lookback_overrides_start` → keep, minus `Storage`, asserting
+  `creation_start`.
+
+**New for the horizon, in `src/sync.rs`:**
+
+- `scan_horizon_is_previous_calendar_year` — `end = 2026-07-26` → `scan_start ==
+  2025-01-01`, and `end = 2026-01-02` → `2025-01-01` too.
+- `scan_horizon_follows_a_deeper_lookback` — `--lookback 3650` pushes
+  `scan_start` back to `creation_start`, not the other way round.
+- `income_outside_creation_window_is_not_declared_but_is_compared` — a group
+  inside the horizon and outside the window, already declared, whose tax then
+  changes, produces an amendment; the same group undeclared produces nothing.
+  The two horizons in one test.
 
 **New in `src/sync.rs`:**
 
@@ -472,7 +542,8 @@ are counted by `pending_new_declarations` like any other.
   zero gross, not `2X`.
 - `wht_reversal_nets_to_zero` — `-X` and `+X` under one key give zero, not `2X`.
   The regression test for defect 1.
-- `late_reversal_produces_amendment`.
+- `late_reversal_produces_amendment` — and a variant with the reversal dated five
+  months after its dividend, the shape the archived reports actually show.
 - `amendment_compares_source_currency_not_rsd` — same amounts, different NBS rate
   → no amendment.
 - `metadata_carries_source_currency_amounts` — `gross_income_ccy`,
@@ -485,6 +556,8 @@ are counted by `pending_new_declarations` like any other.
   at once with a zero credit, not held. Distinguishes "no answer yet" from "the
   answer is zero".
 - `already_declared_group_is_skipped`.
+- `csv_income_produces_no_declaration` — a `csv-` dividend with a `csv-`
+  withholding row inside the period yields no report.
 
 **Existing `tests/test_reports.rs` work** — 12 call sites (lines 438, 508, 554,
 605, 653, 695, 739, 783, 841, 872, 926, 991) need the new signature and an
@@ -511,27 +584,21 @@ test helper (:143-155) plus `print_income_error` (:202) need the new field.
 
 ## Docs
 
-New `specs/spec-income-declarations.md`, rules only:
-
-- a withholding tax belongs to the distribution it names; amounts within one
-  distribution are summed with their sign, so a reversal cancels its original,
-  on the income side as well as the tax side;
-- broker interest belongs to its month **and its currency**; a tax on one
-  currency's interest is never credited to another's;
-- a declaration is generated for every undeclared income group inside the rescan
-  window; a group that already has one is never regenerated;
-- a group for which no withholding tax was found at all is held for a bounded
-  wait, then declared without a foreign-tax credit; a group whose withholding
-  nets to zero is declared at once, because that is an answer, not a gap;
-- when a declared group's source amounts change, an amendment is generated;
-  declarations predating this rule are never amended;
-- a group missing an exchange rate is reported and retried next sync;
-- a deleted declaration is rebuilt by the next sync while its group is in the
-  window;
-- the accepted limitations listed under *Design*.
+`specs/spec-income-declarations.md` and `specs/spec-transaction-sources.md`
+already exist — written alongside this plan, because the rules outlive it and this
+file gets deleted once implemented. Between them they hold: the distribution key
+and its three branches, signed netting on both sides, the interest key's currency,
+the two horizons and why they differ, the wait and why a netted zero does not
+wait, the amendment rule and its cutoff, the CSV rule, and the accepted
+limitations. Nothing to add there during implementation — verify the code matches
+them instead.
 
 `specs/spec-auto-sync.md` gets one sentence: income notices reuse the sync-issue
 status line and are recomputed from scratch on every sync.
+
+`docs/*/src/ibkr.md` states the CSV importer's purpose plainly where it describes
+the import: it supplies purchase history older than a Flex query reaches, for the
+capital-gains calculation, and never produces income declarations.
 
 `docs/*/src/usage.md` (`sync`, `submit`, `delete`) — the same in user terms, plus
 `sync --lookback N` for older income, the optional declaration number on
@@ -548,6 +615,7 @@ rs-cyr, uk).
   historical periods.
 - Income predating this version, including a withholding reversal that arrives
   after the upgrade for a dividend that arrived before it. See *Design*.
+- Declaring income imported from CSV. See *Design*.
 - Detecting or reporting a broken join. See *Design*.
 - Submitting an amendment.
 - Splitting one withholding tax across several income groups — the distribution
@@ -572,4 +640,9 @@ Manual, on real data:
    income date;
 6. `sync --lookback 365` generates for the eight income groups of 2025-07-02 …
    2025-12-04 that sit undeclared in `transactions.json`, each with the credit
-   its stored withholding gives it — the branch-2 path end to end.
+   its stored withholding gives it — the branch-2 path end to end. Only two carry
+   a non-zero credit (VOO 2025-07-02 → 0.52, VOO 2025-10-01 → 5.22); the other
+   six net to zero and must come out with a zero credit and the full 15% due;
+7. a plain `sync` reads back to 1 January of the previous year but creates
+   nothing outside the 45-day window — those same eight groups stay undeclared
+   until step 6 is asked for explicitly.
