@@ -86,6 +86,7 @@ fn write_test_transactions(data_dir: &std::path::Path) {
         open_price: None,
         exchange_rate: Some(Decimal::from_str("117.25").unwrap()),
         amount_rsd: Some(Decimal::from_str("-175875.0").unwrap()),
+        action_id: None,
     }];
     let json = serde_json::to_string_pretty(&txns).unwrap();
     std::fs::write(data_dir.join("transactions.json"), json).unwrap();

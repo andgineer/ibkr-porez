@@ -280,5 +280,6 @@ fn make_test_transaction(id: &str, symbol: &str, qty: &str, price: &str) -> Tran
         open_price: None,
         exchange_rate: None,
         amount_rsd: None,
+        action_id: None,
     }
 }

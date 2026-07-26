@@ -276,6 +276,7 @@ fn convert_trade(el: &XmlTrade) -> Option<Transaction> {
         open_price,
         exchange_rate: None,
         amount_rsd: None,
+        action_id: None,
     })
 }
 
@@ -311,6 +312,7 @@ fn convert_cash_transaction(el: &XmlCashTransaction) -> Option<Transaction> {
         open_price: None,
         exchange_rate: None,
         amount_rsd: None,
+        action_id: non_empty(el.action_id.as_ref()).map(str::to_string),
     })
 }
 
@@ -416,6 +418,8 @@ struct XmlCashTransaction {
     transaction_id: Option<String>,
     #[serde(rename = "@description")]
     description: Option<String>,
+    #[serde(rename = "@actionID")]
+    action_id: Option<String>,
 }
 
 #[cfg(test)]
@@ -507,6 +511,7 @@ mod tests {
             date_time: Some("20230101".into()),
             transaction_id: Some("C1".into()),
             description: None,
+            action_id: None,
         };
         assert!(convert_cash_transaction(&ct).is_none());
     }
@@ -521,6 +526,7 @@ mod tests {
             date_time: Some("20230315".into()),
             transaction_id: Some("D1".into()),
             description: Some("Apple div".into()),
+            action_id: None,
         };
         let tx = convert_cash_transaction(&ct).unwrap();
         assert_eq!(tx.r#type, TransactionType::Dividend);
@@ -537,9 +543,39 @@ mod tests {
             date_time: Some("20230315".into()),
             transaction_id: Some("W1".into()),
             description: None,
+            action_id: None,
         };
         let tx = convert_cash_transaction(&ct).unwrap();
         assert_eq!(tx.r#type, TransactionType::WithholdingTax);
+    }
+
+    fn cash_transaction_xml(action_id_attr: &str) -> String {
+        format!(
+            r#"<FlexQueryResponse>
+              <FlexStatements>
+                <FlexStatement>
+                  <CashTransactions>
+                    <CashTransaction type="Dividends" symbol="AAPL" currency="USD"
+                                     amount="25.00" dateTime="20250109" transactionID="D1"
+                                     description="AAPL(US0378331005) CASH DIVIDEND USD 0.26 PER SHARE"
+                                     {action_id_attr} />
+                  </CashTransactions>
+                </FlexStatement>
+              </FlexStatements>
+            </FlexQueryResponse>"#
+        )
+    }
+
+    #[test]
+    fn empty_action_id_parses_as_none() {
+        let txns = parse_flex_report(&cash_transaction_xml(r#"actionID="""#)).unwrap();
+        assert_eq!(txns[0].action_id, None);
+    }
+
+    #[test]
+    fn action_id_is_carried_from_flex() {
+        let txns = parse_flex_report(&cash_transaction_xml(r#"actionID="292616176""#)).unwrap();
+        assert_eq!(txns[0].action_id.as_deref(), Some("292616176"));
     }
 
     fn flex_xml_report() -> &'static str {

@@ -28,6 +28,7 @@ fn make_trade(
         open_price: None,
         exchange_rate: None,
         amount_rsd: None,
+        action_id: None,
     }
 }
 
@@ -319,6 +320,7 @@ fn test_non_trade_transactions_ignored() {
         open_price: None,
         exchange_rate: None,
         amount_rsd: None,
+        action_id: None,
     }];
 
     let entries = calc.process_trades(&txns).unwrap();

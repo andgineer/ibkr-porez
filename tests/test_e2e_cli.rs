@@ -96,6 +96,7 @@ fn make_trade(
         open_price: open_price.map(|p| Decimal::from_str(p).unwrap()),
         exchange_rate: Some(r),
         amount_rsd: Some(amt * r),
+        action_id: None,
     }
 }
 
@@ -116,6 +117,7 @@ fn make_dividend(id: &str, date: NaiveDate, symbol: &str, amount: &str, rate: &s
         open_price: None,
         exchange_rate: Some(r),
         amount_rsd: Some(amt * r),
+        action_id: None,
     }
 }
 
@@ -1163,6 +1165,7 @@ fn setup_report_env() -> (tempfile::TempDir, PathBuf) {
         open_price: None,
         exchange_rate: Some(Decimal::from_str("108.00").unwrap()),
         amount_rsd: Some(Decimal::from_str("-405.00").unwrap()),
+        action_id: None,
     };
 
     seed_transactions(&storage, &[buy, sell, div, wht]);

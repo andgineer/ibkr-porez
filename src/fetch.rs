@@ -251,6 +251,7 @@ mod tests {
             open_price: None,
             exchange_rate: None,
             amount_rsd: None,
+            action_id: None,
         }];
 
         prefetch_rates(&storage, &nbs, &txns);
@@ -291,6 +292,7 @@ mod tests {
             open_price: None,
             exchange_rate: None,
             amount_rsd: None,
+            action_id: None,
         };
         let txns = vec![make_txn("D1"), make_txn("D2")];
 

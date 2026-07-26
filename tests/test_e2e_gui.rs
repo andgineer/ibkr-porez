@@ -55,6 +55,7 @@ fn make_transaction(id: &str, date: NaiveDate) -> Transaction {
         open_price: None,
         exchange_rate: None,
         amount_rsd: None,
+        action_id: None,
     }
 }
 

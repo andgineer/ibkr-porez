@@ -124,6 +124,7 @@ fn parse_trade_row(
         open_price: None,
         exchange_rate: None,
         amount_rsd: None,
+        action_id: None,
     })
 }
 
@@ -167,6 +168,7 @@ fn parse_dividend_row(
         open_price: None,
         exchange_rate: None,
         amount_rsd: None,
+        action_id: None,
     })
 }
 

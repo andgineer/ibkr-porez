@@ -53,6 +53,7 @@ fn make_txn(
         open_price: None,
         exchange_rate: None,
         amount_rsd: None,
+        action_id: None,
     }
 }
 

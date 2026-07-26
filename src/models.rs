@@ -217,6 +217,8 @@ pub struct Transaction {
     pub exchange_rate: Option<Decimal>,
     #[serde(default, deserialize_with = "deserialize_decimal_opt")]
     pub amount_rsd: Option<Decimal>,
+    #[serde(default)]
+    pub action_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

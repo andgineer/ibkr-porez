@@ -760,6 +760,7 @@ mod tests {
             open_price: None,
             exchange_rate: None,
             amount_rsd: None,
+            action_id: None,
         }
     }
 

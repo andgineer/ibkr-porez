@@ -26,6 +26,7 @@ fn make_txn(id: &str, symbol: &str, qty: &str, date: NaiveDate, csv: bool) -> Tr
         open_price: None,
         exchange_rate: None,
         amount_rsd: None,
+        action_id: None,
     }
 }
 
