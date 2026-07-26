@@ -1,5 +1,26 @@
 # Plan: income coverage — match by distribution, net by sign, amend when it changes
 
+## Domain of definition — read this before reviewing anything else
+
+No declaration that exists at the moment this version is installed is an input to
+any mechanism in this plan: none is compared, none is amended, none is assessed,
+and whether any of them is right is not a question this work asks. Nothing already
+in storage is ever rewritten.
+
+Stored transactions are read — declaring undeclared income from them is exactly
+what `sync --lookback` does — but they are read as they are: never corrected,
+never backfilled, and never used to judge a declaration that already exists.
+
+This is the boundary of the domain, not a compromise, not an accepted risk and
+not a limitation to engineer around. It has no justification that can be argued
+with, because there is nothing to argue: an observation of the form "but that old
+declaration is wrong" lies outside the domain and is not a finding. Every
+guarantee stated in this plan — including the one about erring toward overpaying —
+is a guarantee about the new version's own output and says nothing about anything
+that predates it.
+
+Do not reopen this. Do not re-derive it. Do not restate it as a trade-off.
+
 ## Problem
 
 Three defects in the PP-OPO path, in order of fiscal severity.
@@ -41,15 +62,26 @@ An ordered fallback chain, no other logic:
 
 1. `actionID` from the Flex report — the identifier of the corporate action.
    A dividend and every withholding row belonging to it, reversals included,
-   share it.
+   share it. **An empty `actionID` is absent, not a value** — see below.
 2. the description prefix up to and including `PER SHARE`. IBKR builds the tax
    description by appending `- US TAX` to the income's, and the per-share rate
    distinguishes one distribution of a security from the next.
-3. the currency paired with the `CREDIT INT FOR <MON>-<YYYY>` token —
-   broker-interest rows carry no `actionID`, so this is their permanent key, not
-   a fallback. The currency comes from the transaction's own field, present on
-   both sides; the tax description does not name it, and the token alone would
-   give one month's USD tax to that month's EUR interest as well.
+3. the currency paired with the `CREDIT INT FOR <MON>-<YYYY>` token — this is
+   broker interest's permanent key, not a fallback, because interest is not a
+   corporate action and carries no identifier. The currency comes from the
+   transaction's own field, present on both sides; the tax description does not
+   name it, and the token alone would give one month's USD tax to that month's
+   EUR interest as well.
+
+**`actionID` is always present in the report and is empty where there is no
+corporate action.** Counted over both files in `raw_reports/`: set on 22 of 22
+`Dividends` and on 33 withholding rows, empty on the 4 withholding rows against
+broker interest, on all 4 `Broker Interest Received` and on all 14
+`Deposits/Withdrawals`. Deserialising it straight into `Option<String>` yields
+`Some("")`, which is a perfectly good hash key — and would collapse every interest
+row and every interest withholding, of every month and every currency, into one
+bucket, with branches 2 and 3 unreachable. It is normalised at the parser, not at
+the key: see *Changes 1*.
 
 The token is a substring, not a prefix: the income reads `USD CREDIT INT FOR
 JUL-2025`, its tax `WITHHOLDING @ 30% ON CREDIT INT FOR JUL-2025` and its
@@ -58,6 +90,18 @@ cancellation `CANCEL WITHHOLDING ON CREDIT INT FOR JUL-2025`.
 Matching is a hash join on that key, summing **signed** amounts so a reversal
 cancels its original. A transaction with no key joins nothing — two keyless rows
 must never be treated as a match.
+
+**A key that resolves to more than one income group credits none of them.** The
+join is many-to-one by construction, and nothing in branch 2 or 3 guarantees it:
+a per-share rate is not an identifier, so two distributions of one security paying
+the same rate would share a key, and each would be credited the sum of both taxes
+— a doubled credit, the only way this design could ever understate the tax due.
+Not observed: all 16 distributions across both reports and `transactions.json`
+resolve to 16 distinct keys, and no holding pays a fixed rate. The guard is
+therefore insurance and costs a few lines — when a key buckets two income groups,
+its taxes join neither, both see a zero credit and both overpay, which is the
+direction everything else here errs in. It is not a detection mechanism: nothing
+is reported, counted or stored.
 
 **Income is summed with its sign too**, within the group and for the same reason:
 a reversed dividend must cancel its original rather than be counted twice.
@@ -79,9 +123,8 @@ re-fetched report never writes `action_id` onto transactions already in
 `transactions.json` — they keep `None` for good. This is the decision, not a
 limitation to engineer around, and it is not to be reopened:
 
-- backfilling changes nothing that matters. The field serves income declarations
-  only; capital-gains declarations never consult it, and every dividend group
-  older than this version already has its declaration;
+- backfilling would rewrite data that lies outside this plan's domain of
+  definition — see the section of that name above;
 - it cannot be done completely in any case. A CSV activity statement carries no
   such field, and a Flex Query does not reach back far enough to re-supply those
   years, so `None` is permanent for part of the history no matter what;
@@ -169,11 +212,10 @@ zero credit. That is the normal shape of every §871(k) distribution, so
 conflating the two would delay the most common case by `WHT_WAIT_DAYS` for
 nothing.
 
-A group with no matched row is held until its income is
-`WHT_WAIT_DAYS` old, then declared with a zero credit — the full 15% is declared
-as due, which is fiscally safe, and the permanent-failure mode is gone. A group
-is declared as soon as any withholding row matches it, so the common case keeps
-today's latency.
+A group with no matched row is held while `date + WHT_WAIT_DAYS >= today`, then
+declared with a zero credit — the full 15% is declared as due, which is fiscally
+safe, and the permanent-failure mode is gone. A group is declared as soon as any
+withholding row matches it, so the common case keeps today's latency.
 
 The wait is not load-bearing: matching does not depend on it, and a tax that
 changes later is caught by the amendment path. A wrong constant costs a delayed
@@ -198,10 +240,10 @@ in storage would never be new again, so a fetch that failed, a sync that stopped
 between import and generation, or an import through `sync --file` would lose it
 permanently — the same failure class as defect 2.
 
-Nothing from before this change is ever touched: only declarations created by the
-new code carry those metadata fields, so earlier ones are invisible to the
-mechanism. That is the whole cutoff — no install timestamp, no migration flag, no
-version stamp, and no pass over historical periods.
+Only declarations created by the new code carry those metadata fields, so the
+mechanism's domain is exactly the set of declarations it produced itself, and the
+absence of the fields is what expresses that. No install timestamp, no migration
+flag, no version stamp, no pass over historical periods.
 
 ### CSV-sourced transactions never produce an income declaration
 
@@ -219,28 +261,27 @@ never asked to match.
 
 ### Income predating this version
 
-Nothing here is built to work for dividend income that arrived before this
-version, and nothing needs to be. The version being replaced generated a
-declaration as soon as the income appeared, so every such group already has one.
+Out of the domain of definition — see the section at the top of this file. Nothing
+here is built for it, nothing here is measured against it, and its state is not a
+subject of this plan.
 
-The one consequence, accepted: a withholding reversal arriving **after** the
-upgrade for a dividend that arrived **before** it carries an `actionID` its
-dividend does not have, so it keys on branch 1 while the dividend keys on branch 2
-and the two do not join. Such a reversal is ignored — the declaration keeps the
-credit it was created with, and no amendment is generated. That declaration
-predates the metadata the amendment path compares, so it is invisible to that path
-regardless. See *Settled* above for why this is not closed by backfilling.
+One mechanical consequence is worth naming so it is not mistaken for a defect in
+the join: a withholding reversal arriving **after** the upgrade for a dividend
+that arrived **before** it carries an `actionID` its dividend does not have, so it
+keys on branch 1 while the dividend keys on branch 2 and the two do not join. Such
+a reversal joins nothing and changes nothing. This is the boundary behaving as
+defined, not a case to handle.
 
 ### Accepted limitations
+
+These are limitations of the new version's own behaviour. Nothing outside the
+domain of definition appears here — the boundary is not a limitation.
 
 - income older than the window is not generated; `sync --lookback N` reaches it.
 - a group that never resolves its exchange rate leaves the window after
   `DEFAULT_LOOKBACK_DAYS` and is forgotten. `Currency` is a closed enum of
   USD/EUR/GBP/RSD (src/models.rs:39-44), all published daily by NBS, and
   `get_rate` already looks back 10 days.
-- declarations predating this change are never amended.
-- income predating this version, and a late reversal belonging to it, are out of
-  scope; see above.
 - an amendment is generated, not filed; the taxpayer submits it.
 - a group whose income nets to zero or below is never declared, and if it was
   already declared it is left alone. Undoing a filed declaration takes a storno
@@ -281,14 +322,22 @@ through the Flex parser, fixes the 26 struct literals. Changes no behaviour at
 all; the suite must pass untouched. Kept separate for one reason: 26 mechanical
 edits in the same commit as a logic change is how a review stops reading.
 
-**Step 2 — matching and netting.** *Changes* 3 minus the amendment arms, plus 7.
-`distribution_key`, `collect_income_groups`, `decide`, `render_income_report`, the
-clamps, the CSV exclusion, the wait replacing the bail. `determine_income_period`
-is untouched, so the watermark still governs what is generated and `decide` takes
-`already_declared: bool` — `Declared` arrives in step 4, when there is something
-to distinguish. This is the step that changes money: fixes defects 1 and 3, and
-regenerates the goldens. Verified by *Verification* 3 and 4, and by
-`sync --lookback 365` producing the credits listed in 6.
+**Step 2 — matching and netting.** *Changes* 3 minus the amendment arms, plus 7,
+plus the call site in *Changes 4*. `distribution_key`, `collect_income_groups`,
+`decide`, `render_income_report`, the clamps, the CSV exclusion, the wait replacing
+the bail.
+
+`generate_income_reports` ceases to exist here, so `generate_and_save_income` is
+rewired to the three-call loop in the same step — it cannot compile otherwise.
+Only the call site moves: `determine_income_period` and the watermark are
+untouched, so the watermark still governs what is generated, `scan_start` is the
+period start it returns, `already_declared` comes from the existing `is_duplicate`
+and `decide` takes it as a `bool`. The declared-group map, `Declared` and the
+`Amend` arm arrive in steps 3 and 4, when there is something to distinguish.
+
+This is the step that changes money: fixes defects 1 and 3, and regenerates the
+goldens. Verified by *Verification* 3 and 4, and by the `sync --lookback` of 6
+producing the credits listed there.
 
 **Step 3 — the two horizons.** *Changes* 4 and 6. Watermark deleted,
 `determine_income_period` becomes pure and returns three dates, `SyncResult`
@@ -345,6 +394,18 @@ Add to `XmlCashTransaction` (src/ibkr_flex.rs:404-419) and carry into the
 action_id: Option<String>,
 ```
 
+**Normalise it on the way out, in `convert_cash_transaction`:**
+
+```rust
+action_id: non_empty(el.action_id.as_ref()).map(str::to_string),
+```
+
+`non_empty` (src/ibkr_flex.rs:315) is already what the four required fields are
+read through. Without it the field carries `Some("")` for every row IBKR emits
+without a corporate action — see *Design*. Normalising here and not in
+`distribution_key` means the empty string never enters the model at all, so no
+later reader has to know about it.
+
 Trades do not need it.
 
 ### 2. models.rs
@@ -374,7 +435,7 @@ pub type GroupKey = (NaiveDate, String, String);  // (date, SYMBOL-or-CURRENCY u
 /// One income group in the broker's own currency. No exchange rate involved.
 pub struct IncomeGroup {
     pub key: GroupKey,
-    pub currency: Currency,
+    pub currency: Currency,     // the first row's; a group is one currency
     pub gross_ccy: Decimal,      // signed sum of the group's income rows
     pub tax_ccy: Decimal,        // credit, clamped -- see *Signs and clamps*
     pub matched_any_tax: bool,   // a withholding row joined, whatever it summed to
@@ -425,10 +486,23 @@ declaration; the caller tells it what it needs to know through `Declared` and
    CSV-sourced rows, by `distribution_key`. Rows whose key is `None` are dropped
    from the index, not bucketed together — two keyless rows are not a match.
 2. Bucket income transactions in `[scan_start, end]`, excluding CSV-sourced rows,
-   by group key, summing their signed amounts into `gross_ccy`.
-3. Per group, sum the signed taxes whose key matches one of its income rows, and
+   by group key, summing their signed amounts into `gross_ccy`. The second element
+   of `GroupKey` is **upper-cased** — the symbol for a dividend, the currency code
+   for interest. `sync.rs` keys the declared-group map on
+   `metadata["symbol"].to_uppercase()`, and the two must be the same string or a
+   declared group looks undeclared and is re-declared on every sync. `symbol` on
+   the entry, and the lower-cased filename, keep their present shape.
+3. Drop every distribution key that resolves to more than one income group, on
+   both sides. Its taxes join nothing, the groups see a zero credit and
+   `matched_any_tax` stays `false`. See *Design* — the join must be many-to-one,
+   and no branch guarantees it.
+4. Per group, sum the signed taxes whose key matches one of its income rows, and
    record `matched_any_tax` — whether *any* row joined, which is not the same
    question as whether the sum is non-zero.
+
+A group's `currency` is the first income row's. A security paying one distribution
+in two currencies on one date would be mis-summed; it is not a case IBKR produces,
+and the type records the assumption rather than defending against it.
 
 **Signs and clamps.** A withholding row is negative when tax is taken and positive
 when it is given back, so a distribution's signed sum is normally `<= 0` and the
@@ -469,10 +543,12 @@ storage, so income imported long after its date finalizes immediately. It does n
 consult `force_rates`: forcing an early zero-credit declaration is strictly
 harmful and saves at most `WHT_WAIT_DAYS` against a 30-day deadline.
 
-`Declared::YesWithoutRecord` is the only thing that expresses the cutoff.
-Declarations created before this change carry no `SourceAmounts`, and this arm
-states that they are never amended instead of leaving it to be inferred from a
-missing map entry.
+`Declared::YesWithoutRecord` is the only thing that expresses the boundary of the
+domain. A declaration carrying no `SourceAmounts` is not one this mechanism is
+defined over, and this arm states that in the type instead of leaving it to be
+inferred from a missing map entry. It is not a fallback and there is no better
+answer to reconstruct: reconstructing one would place the mechanism outside its
+domain.
 
 **`render_income_report`** resolves the rate, builds the `IncomeDeclarationEntry`
 and the XML. `Result` is not for per-group problems — a missing rate is one, and
@@ -508,6 +584,11 @@ These serve two purposes at once. Read back as `SourceAmounts`, they are what
 like a change — and they are what makes a declaration checkable against the
 broker. `gross_income_ccy`, `foreign_tax_paid_ccy` and `currency` are exactly the
 three `SourceAmounts` fields; `exchange_rate` is recorded but never compared.
+
+`metadata()` derives everything from `entries`, which hold RSD only, so
+`IncomeReport` carries the source figures itself — `source: SourceAmounts` and the
+`exchange_rate` — set by `render_income_report` from the group and the rate it
+resolved. Without them there is nothing for `metadata()` to write.
 
 One type owns those three key names, with `from_metadata` and `to_metadata` beside
 it, so the writer in `report_income` and the reader in `sync.rs` cannot drift
@@ -697,8 +778,11 @@ its recorded PURS number; `lookup` turns that into `Declared::No`,
 filename stem, which is what `is_duplicate` does: that freezes the generated
 filename format forever and misses declarations whose `file_path` is `None`.
 Every PP-OPO this app has ever written carries both metadata keys, so no fallback
-is needed; a declaration missing one is hand-edited, logged at `warn` and skipped.
-`is_duplicate` stays for PPDG-3R (src/sync.rs:261).
+is needed; a declaration missing one has been hand-edited and is logged at `warn`
+and left out of the map. Note what that means and accept it: unkeyable is
+indistinguishable from absent, so its group reads as undeclared and is declared
+again. There is nothing to key it by — the `warn` is what points at the edited
+file. `is_duplicate` stays for PPDG-3R (src/sync.rs:261).
 
 `today`, passed to both `decide` and `RenderOptions`, is
 `end_period + Duration::days(1)`, not a second `Local::now()` — `end_period` comes
@@ -767,9 +851,15 @@ longer than the duplication.
 `--force` now means the same thing in both commands: approximate rates, nothing
 else. The old zero-WHT escape hatch (src/report_income.rs:181) disappears with
 the bail it existed to bypass — a group older than `WHT_WAIT_DAYS` is emitted
-with a zero credit without any flag. One behaviour change to document: for a
-period whose groups are all older than the wait, plain `report income` now emits
-zero-credit XML where today it errors out.
+with a zero credit without any flag. Two behaviour changes to document:
+
+- for a period whose groups are all older than the wait, plain `report income` now
+  emits zero-credit XML where today it errors out;
+- a group still inside the wait produces a notice and no file, where today
+  `--force` produced one. `decide` does not take `force_rates` and this command
+  does not get its own rule: a report the user would file with a credit the broker
+  has not finished computing is the thing the wait exists to prevent. The notice
+  must say which groups are waiting and until when, since here nothing else does.
 
 ### 8. gui
 
@@ -821,8 +911,9 @@ are counted by `pending_new_declarations` like any other.
 - `declaration_without_file_path_is_not_regenerated` — PP-OPO with
   `file_path: None` but metadata carrying symbol/type.
 - `no_watermark_is_written`.
-- `predating_declaration_is_never_amended` — a declaration without the new
-  metadata whose tax then changes produces nothing. Guards the cutoff.
+- `declaration_without_source_amounts_is_never_amended` — a declaration without
+  the source-amount metadata whose tax then changes produces nothing. Guards the
+  boundary of the domain.
 
 **New unit tests in `src/report_income.rs`** — `collect_income_groups` and
 `decide` are pure, so these take a `Vec<Transaction>` and an explicit `today`, and
@@ -834,10 +925,9 @@ Matching and netting, over `collect_income_groups`:
 - `wht_matched_by_action_id` — two dividends of one symbol inside one wait window,
   each with its own tax under its own `actionID` → each credited its own.
 - `wht_matched_by_description_when_action_id_absent` — income and tax both with
-  `action_id: None`, matched on the `PER SHARE` prefix. Covers a distribution IBKR
-  emits without an `actionID`, and one wholly predating the upgrade. A mixed pair
-  — one side `None`, the other `Some` — is deliberately not tested; it is out of
-  scope.
+  `action_id: None`, matched on the `PER SHARE` prefix. Covers every distribution
+  that carries no `actionID` on either side. A mixed pair — one side `None`, the
+  other `Some` — is deliberately not tested; it is out of scope.
 - `wht_matched_by_interest_token`.
 - `interest_tax_does_not_cross_currencies` — USD and EUR interest for the same
   month, one USD tax → credited to the USD group only.
@@ -851,6 +941,17 @@ Matching and netting, over `collect_income_groups`:
   credit, never a negative one that would push the tax due above 15%.
 - `csv_rows_are_excluded_on_both_sides` — a `csv-` dividend with a `csv-`
   withholding row produces no group at all.
+- `ambiguous_key_credits_neither_group` — two dividends of one symbol on different
+  dates with the same `PER SHARE` rate and no `actionID`, one tax row: both groups
+  get a zero credit and `matched_any_tax == false`, never the tax twice.
+- `group_key_is_upper_cased` — a lower-case `symbol` on the transaction yields an
+  upper-case `GroupKey`, so it matches what `metadata()` writes.
+
+And in `src/ibkr_flex.rs`, over the parser rather than the key:
+
+- `empty_action_id_parses_as_none` — a `CashTransaction` with `actionID=""` gives
+  `action_id: None`. Guards the interest key: with `Some("")` every interest row
+  and every interest withholding share one bucket.
 
 Decisions, over `decide`:
 
@@ -959,10 +1060,9 @@ rs-cyr, uk).
 
 - PPDG-3R generation (already period-based with dedup, no watermark).
 - Reporting income older than the window.
-- Amending declarations created before this change; any retroactive pass over
-  historical periods.
-- Income predating this version, including a withholding reversal that arrives
-  after the upgrade for a dividend that arrived before it. See *Design*.
+- Everything that predates this version, by any command or flag: its declarations,
+  its transactions, its amounts, and any reversal belonging to it. Outside the
+  domain of definition — see the section at the top of this file.
 - Declaring income imported from CSV. See *Design*.
 - Detecting or reporting a broken join. See *Design*.
 - Submitting an amendment.
@@ -986,9 +1086,13 @@ Manual, on real data:
    waiting notice; once its tax arrives the next sync declares it with the credit;
 5. a reversal arriving after its declaration produces an amendment naming the
    income date;
-6. `sync --lookback 365` generates for the eight income groups of 2025-07-02 …
-   2025-12-04 that sit undeclared in `transactions.json`, each with the credit
-   its stored withholding gives it — the branch-2 path end to end. Two carry a
+6. `sync --lookback N`, with `N` large enough that `creation_start` reaches
+   2025-07-02 — compute it, do not copy a number: `creation_start =
+   end_period - (N - 1)` and `end_period` is yesterday, so `N` grows by a day for
+   every day this step is left unrun. It generates for the eight income groups of
+   2025-07-02 … 2025-12-04 that sit undeclared in `transactions.json`, each with
+   the credit its stored withholding gives it — the branch-2 path end to end,
+   since no stored transaction carries an `actionID`. Two carry a
    non-zero credit (VOO 2025-07-02 → 0.52, VOO 2025-10-01 → 5.22). **Five** net to
    zero and must come out with a zero credit and the full 15% due. The eighth,
    USD interest of 2025-09-04 for AUG-2025, matches no withholding row at all —

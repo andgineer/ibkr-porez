@@ -7,6 +7,29 @@ withheld abroad is credited against the 15% due in Serbia.
 See `spec-transaction-sources.md` for where the underlying transactions come
 from and why withholding tax keeps changing after the fact.
 
+## Domain of definition
+
+Every rule about changing a declaration is defined over declarations the
+application produced under these rules. A declaration that carries no record of
+its own source amounts is outside that domain: it is not compared, not amended,
+not assessed, and its correctness is not a question this document answers.
+
+Transactions are a different matter and are not covered by this boundary. Every
+stored transaction is read as an input, whatever its age — declaring income the
+taxpayer asks for explicitly is exactly that. What is never done is writing back:
+no stored transaction is corrected or backfilled.
+
+This is the boundary of the domain, not a compromise, not an accepted risk and not
+a limitation. It has no justification that can be argued with, because there is
+nothing to argue. Every guarantee below — including the one about erring toward
+overpaying — is a guarantee about output produced under these rules and says
+nothing about anything outside them. An observation of the form "but that
+declaration is wrong" is outside the domain and is not a finding.
+
+Nothing in the application reaches back across this boundary: no migration, no
+retroactive pass, no reconstruction of missing records, no flag that would enable
+one.
+
 ## What one declaration covers
 
 An income group is all income of one security (for dividends) or one currency
@@ -33,18 +56,25 @@ The distribution is identified, in order:
    month's tax on one currency's interest would be credited to another's.
 
 The second rule is permanent, not a transitional fallback, and carries a large
-share of the stored history on its own. The identifier is recorded when a
-transaction first arrives and is never added to a transaction already stored:
-rewriting stored history to backfill it is deliberately not done. Much of that
-history could not be backfilled in any case — a CSV activity statement has no such
-field at all, and a Flex Query does not reach far enough back to re-supply those
+share of the stored transactions on its own. The identifier is recorded when a
+transaction first arrives and is never added to a transaction already stored —
+that would write outside the domain of definition. It could not be done completely
+in any case: a CSV activity statement has no such field at all, and a Flex Query
+does not reach far enough back to re-supply the earliest
 years. Matching by description is what serves every row without an identifier, and
 it is equally what covers anything the broker emits without one: the field is not
 listed in the published Flex Query reference and carries no stability promise.
 
 Within one distribution the rules do not mix. Income and withholding that both
-predate the identifier match by description on both sides; a distribution that
+lack the identifier match by description on both sides; a distribution that
 carries it carries it on both sides.
+
+A tax belongs to one distribution and no more. Where an identification would fit
+two distributions at once — a rate per share is not an identifier, so two payments
+of one security at the same rate are indistinguishable by it — the tax is credited
+to neither. Both then declare no credit and both overpay, which is the direction
+every failure here takes; crediting each of them the whole amount would hand out
+the same relief twice and understate the tax due.
 
 Amounts within one distribution are summed **with their sign**, so a reversal
 cancels what it reverses. This holds on the income side as well as the tax side: a
@@ -115,8 +145,9 @@ widened creation window, whichever reaches further back. A shorter horizon would
 miss the annual reclassification entirely, which is the very event amendments
 exist for.
 
-Declarations created before this rule existed carry no record of their source
-amounts and are therefore never amended.
+A declaration carrying no record of its source amounts is outside the domain of
+definition and is never amended. Its recorded amounts are not reconstructed from
+anything else it carries.
 
 ## A declaration states whether it is on time
 
@@ -140,14 +171,15 @@ as with the declaration number.
 
 ## Accepted limitations
 
+These are limitations of behaviour inside the domain of definition. The boundary
+of that domain is not one of them and does not belong on this list.
+
 - An amendment is generated, not filed. The taxpayer submits it, and records the
   original's PURS number so the amendment can reference it.
-- A withholding reversal is ignored when the income it belongs to carries no
-  distribution identifier and the reversal does. Income that old was declared as
-  it arrived and its declaration stands, so the credit it was created with is what
-  it keeps. Backfilling the identifier onto stored income to close this is
-  deliberately not done: it would rewrite settled history to change declarations
-  that are already filed.
+- A withholding reversal joins nothing when the income it belongs to carries no
+  distribution identifier and the reversal does. Backfilling the identifier onto
+  stored income to close this is not done: it would rewrite data outside the
+  domain of definition.
 - Income imported from CSV is never declared. See `spec-transaction-sources.md`.
 - If distribution matching ever breaks entirely, groups see no tax and are
   declared with no credit — the taxpayer overpays. This is deliberate: it errs
