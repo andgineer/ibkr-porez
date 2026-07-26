@@ -45,11 +45,24 @@ An ordered fallback chain, no other logic:
 2. the description prefix up to and including `PER SHARE`. IBKR builds the tax
    description by appending `- US TAX` to the income's, and the per-share rate
    distinguishes one distribution of a security from the next.
-3. the `CREDIT INT FOR <MON>-<YYYY>` token — broker-interest rows carry no
-   `actionID`, so this is their permanent key, not a fallback.
+3. the currency paired with the `CREDIT INT FOR <MON>-<YYYY>` token —
+   broker-interest rows carry no `actionID`, so this is their permanent key, not
+   a fallback. The currency comes from the transaction's own field, present on
+   both sides; the tax description does not name it, and the token alone would
+   give one month's USD tax to that month's EUR interest as well.
+
+The token is a substring, not a prefix: the income reads `USD CREDIT INT FOR
+JUL-2025`, its tax `WITHHOLDING @ 30% ON CREDIT INT FOR JUL-2025` and its
+cancellation `CANCEL WITHHOLDING ON CREDIT INT FOR JUL-2025`.
 
 Matching is a hash join on that key, summing **signed** amounts so a reversal
-cancels its original.
+cancels its original. A transaction with no key joins nothing — two keyless rows
+must never be treated as a match.
+
+**Income is summed with its sign too**, within the group and for the same reason:
+a reversed dividend must cancel its original rather than be counted twice.
+`.abs()` on the income amount (src/report_income.rs:139) goes with the three on
+the tax side.
 
 Verified on the real reports under `raw_reports/` in the configured `data_dir`:
 24 of 24 withholding rows in `ibkr-porez-data-2026-05-08.xml` (2025-06-13 …
@@ -59,13 +72,28 @@ of one symbol 20 days apart carry different `actionID`s; a cancellation arriving
 15 days after its interest still finds its owner, because the date takes no part
 in the join.
 
-Branch 2 is why **storage and its merge are not touched at all**.
-`is_identical_to` (src/models.rs:461) does not compare new fields, so a re-fetched
-report will never write `action_id` onto transactions already in
-`transactions.json` — they keep `None` for good. Rather than reach into the merge
-(XML supremacy, key matching, CSV handling — the most delicate code in the repo)
-to force a rewrite, branch 2 simply keeps working for them, exactly as it does for
-anything IBKR ever emits without an `actionID`.
+**Storage and its merge are not touched at all.** `is_identical_to`
+(src/models.rs:461) does not compare new fields and the merge skips identical rows
+(src/storage.rs:594), so a re-fetched report never writes `action_id` onto
+transactions already in `transactions.json` — they keep `None` for good. Reaching
+into the merge (XML supremacy, key matching, CSV handling — the most delicate code
+in the repo) to force a rewrite is not worth it, because income that predates this
+version is out of scope; see *Income predating this version*.
+
+**Branch 2 is load-bearing, not a safety net, and must not be dropped as dead
+code.** It is the pre-upgrade partition: a distribution whose income and every one
+of its withholding rows predate the upgrade is `None` on both sides and keys on
+the description throughout. `transactions.json` currently holds eight undeclared
+income groups in that state (2025-07-02 … 2025-12-04, all older than the app's
+first declaration), and `sync --lookback` — *Verification* step 6 — is what
+reaches them. Without branch 2 they would each be declared with a zero credit
+while their withholding sits in the same file.
+
+Verified across all 45 income and withholding rows in `transactions.json`: branch
+2 alone resolves every one of them to exactly one owner, no bucket spanning two
+distributions, no row without a key.
+
+Branch 2 also covers anything IBKR emits without an `actionID`.
 
 This removes: the matching window and its constant, the tax→owner map, the
 entity/ISIN-then-symbol two-tier fallback, the "nearest preceding income" rule,
@@ -89,11 +117,18 @@ late.
 
 ### Hold a group without tax for a bounded wait
 
-A group whose net withholding is zero is held until its income is
+The wait applies to a group that matched **no withholding row at all** — the
+answer has not arrived yet. A group that matched rows which net to zero has its
+answer: the tax was withheld and reversed, and it is declared immediately with a
+zero credit. That is the normal shape of every §871(k) distribution, so
+conflating the two would delay the most common case by `WHT_WAIT_DAYS` for
+nothing.
+
+A group with no matched row is held until its income is
 `WHT_WAIT_DAYS` old, then declared with a zero credit — the full 15% is declared
 as due, which is fiscally safe, and the permanent-failure mode is gone. A group
-is declared as soon as its net tax is non-zero, so the common case keeps today's
-latency.
+is declared as soon as any withholding row matches it, so the common case keeps
+today's latency.
 
 The wait is not load-bearing: matching does not depend on it, and a tax that
 changes later is caught by the amendment path. A wrong constant costs a delayed
@@ -113,6 +148,20 @@ new code carry those metadata fields, so earlier ones are invisible to the
 mechanism. That is the whole cutoff — no install timestamp, no migration flag, no
 version stamp, and no pass over historical periods.
 
+### Income predating this version
+
+Nothing here is built to work for dividend income that arrived before this
+version. The version being replaced generated a declaration as soon as the income
+appeared, so no income group is expected to straddle the upgrade.
+
+The consequence to accept: a withholding reversal that arrives **after** the
+upgrade for a dividend that arrived **before** it carries an `actionID` its
+dividend does not have, keys on branch 1 while the dividend keys on branch 2, and
+therefore does not join it. Such a reversal is ignored — the declaration keeps the
+credit it was created with, and no amendment is generated. Its own declaration was
+already created and predates the metadata the amendment path compares, so it is
+invisible to that path anyway. This is a decision, not a defect to design around.
+
 ### Accepted limitations
 
 - income older than the window is not generated; `sync --lookback N` reaches it.
@@ -121,6 +170,8 @@ version stamp, and no pass over historical periods.
   USD/EUR/GBP/RSD (src/models.rs:39-44), all published daily by NBS, and
   `get_rate` already looks back 10 days.
 - declarations predating this change are never amended.
+- income predating this version, and a late reversal belonging to it, are out of
+  scope; see above.
 - an amendment is generated, not filed; the taxpayer submits it.
 
 ## Constants
@@ -129,8 +180,8 @@ version stamp, and no pass over historical periods.
 const WHT_WAIT_DAYS: i64 = 7;   // src/report_income.rs
 ```
 
-How long a group with no withholding tax is held before being declared with a
-zero credit. Replaces both `Duration::days(7)` occurrences
+How long a group for which no withholding row matched at all is held before being
+declared with a zero credit. A group whose matched rows net to zero never waits. Replaces both `Duration::days(7)` occurrences
 (src/report_income.rs:115, :237), whose meanings — pool bound and matching window
 — both disappear. The PP-OPO deadline is 30 days from the income date, so 7
 leaves 23 to file. The deadline is not a code constant; it is the reason for this
@@ -162,6 +213,12 @@ pub action_id: Option<String>,
 on `Transaction` (src/models.rs:198-220). `#[serde(default)]` keeps existing
 `transactions.json` loading unchanged. `is_identical_to` is **not** modified —
 see *Design*.
+
+`Transaction` derives no `Default`, so the new field breaks all 31 struct
+literals across 13 files — `src/fetch.rs`, `src/ibkr_csv.rs`, `src/ibkr_flex.rs`,
+`src/models.rs`, `src/sync.rs` and seven test files including
+`tests/test_python_compat.rs`. Mechanical `action_id: None`, but it is the bulk of
+the diff.
 
 ### 3. report_income.rs
 
@@ -203,18 +260,24 @@ lookup. Accepted: `--force` is an explicit request for approximate rates.
 **Pipeline:**
 
 1. Index every `WithholdingTax` transaction by `distribution_key`, no date
-   filter.
-2. Bucket income transactions in `[start, end]` by group key. The key comes from
-   the raw transaction, so already-declared groups never touch NBS.
-3. Sum the signed taxes whose key matches an income in the group.
+   filter. Rows whose key is `None` are dropped from the index, not bucketed
+   together.
+2. Bucket income transactions in `[start, end]` by group key, summing their
+   signed amounts. The key comes from the raw transaction, so already-declared
+   groups never touch NBS.
+3. Sum the signed taxes whose key matches an income in the group, and keep
+   whether *any* row matched — that, not the sum being zero, is what the wait
+   in step 5 tests.
 4. Already declared: source amounts unchanged → skip silently; changed → emit a
    report with `amends` set to the original's id.
 5. Not declared, resolve rates:
    - any rate error → notice, continue with the other groups;
-   - net tax zero and `date + WHT_WAIT_DAYS >= opts.today` → notice, retried next
-     sync;
-   - net tax zero and the wait elapsed → generate with a zero credit;
-   - otherwise generate.
+   - no withholding row matched and `date + WHT_WAIT_DAYS >= opts.today` →
+     notice, retried next sync;
+   - no withholding row matched and the wait elapsed → generate with a zero
+     credit;
+   - otherwise generate — including when the matched rows net to zero, which
+     needs no wait.
 
 The wait is measured from the income date, not from when the transaction appeared
 in storage, so income imported long after its date finalizes immediately. It does
@@ -397,9 +460,16 @@ are counted by `pending_new_declarations` like any other.
 
 - `wht_matched_by_action_id` — two dividends of one symbol inside one wait window,
   each with its own tax under its own `actionID` → each credited its own.
-- `wht_matched_by_description_when_action_id_absent` — `action_id: None`, matched
-  on the `PER SHARE` prefix. The state of every transaction already in storage.
+- `wht_matched_by_description_when_action_id_absent` — income and tax both with
+  `action_id: None`, matched on the `PER SHARE` prefix. Covers a distribution
+  IBKR emits without an `actionID`, and a distribution wholly predating the
+  upgrade. A mixed pair — one side `None`, the other `Some` — is deliberately not
+  tested, because it is out of scope.
 - `wht_matched_by_interest_token`.
+- `interest_tax_does_not_cross_currencies` — USD and EUR interest for the same
+  month, one USD tax → credited to the USD group only.
+- `reversed_income_nets_to_zero` — a dividend and its reversal in one group give
+  zero gross, not `2X`.
 - `wht_reversal_nets_to_zero` — `-X` and `+X` under one key give zero, not `2X`.
   The regression test for defect 1.
 - `late_reversal_produces_amendment`.
@@ -408,9 +478,12 @@ are counted by `pending_new_declarations` like any other.
 - `metadata_carries_source_currency_amounts` — `gross_income_ccy`,
   `foreign_tax_paid_ccy`, `currency` and `exchange_rate` present and matching the
   broker's figures, not the converted ones.
-- `zero_wht_finalizes_after_wait_elapses` — credit `0`.
-- `zero_wht_waits_while_window_open`, and the same with `force_rates: true` still
+- `no_wht_finalizes_after_wait_elapses` — credit `0`.
+- `no_wht_waits_while_window_open`, and the same with `force_rates: true` still
   waiting.
+- `netted_wht_does_not_wait` — a reversal pair inside the wait window is declared
+  at once with a zero credit, not held. Distinguishes "no answer yet" from "the
+  answer is zero".
 - `already_declared_group_is_skipped`.
 
 **Existing `tests/test_reports.rs` work** — 12 call sites (lines 438, 508, 554,
@@ -419,7 +492,7 @@ explicit `today` past their fixtures; none may read the real clock. Two need
 more:
 
 - `test_zero_wht_force_false_errors` (:852) asserts the removed `Err` and becomes
-  `zero_wht_finalizes_after_wait_elapses`;
+  `no_wht_finalizes_after_wait_elapses`;
 - `test_wht_not_found_beyond_7_day_window` (:616) tests a window that no longer
   exists. Its fixture — dividend 2025-12-24, tax 2026-01-02 — is the year-end
   gap, so rewrite it as `wht_across_year_end_is_credited`, asserting the tax **is**
@@ -441,11 +514,15 @@ test helper (:143-155) plus `print_income_error` (:202) need the new field.
 New `specs/spec-income-declarations.md`, rules only:
 
 - a withholding tax belongs to the distribution it names; amounts within one
-  distribution are summed with their sign, so a reversal cancels its original;
+  distribution are summed with their sign, so a reversal cancels its original,
+  on the income side as well as the tax side;
+- broker interest belongs to its month **and its currency**; a tax on one
+  currency's interest is never credited to another's;
 - a declaration is generated for every undeclared income group inside the rescan
   window; a group that already has one is never regenerated;
-- a group without withholding tax is held for a bounded wait, then declared
-  without a foreign-tax credit;
+- a group for which no withholding tax was found at all is held for a bounded
+  wait, then declared without a foreign-tax credit; a group whose withholding
+  nets to zero is declared at once, because that is an answer, not a gap;
 - when a declared group's source amounts change, an amendment is generated;
   declarations predating this rule are never amended;
 - a group missing an exchange rate is reported and retried next sync;
@@ -469,6 +546,8 @@ rs-cyr, uk).
 - Reporting income older than the window.
 - Amending declarations created before this change; any retroactive pass over
   historical periods.
+- Income predating this version, including a withholding reversal that arrives
+  after the upgrade for a dividend that arrived before it. See *Design*.
 - Detecting or reporting a broken join. See *Design*.
 - Submitting an amendment.
 - Splitting one withholding tax across several income groups — the distribution
@@ -486,9 +565,11 @@ Manual, on real data:
 2. an income transaction dated inside the window (`sync --file` with an older
    Flex XML) produces its declaration on the next sync — defect 2;
 3. a Treasury-ETF distribution whose withholding is reversed is declared with a
-   zero credit and the full 15% due — defect 1;
-4. a dividend younger than `WHT_WAIT_DAYS` with no tax shows the waiting notice;
-   once its tax arrives the next sync declares it with the credit;
+   zero credit and the full 15% due, immediately and without the wait — defect 1;
+4. a dividend younger than `WHT_WAIT_DAYS` with no tax row at all shows the
+   waiting notice; once its tax arrives the next sync declares it with the credit;
 5. a reversal arriving after its declaration produces an amendment naming the
    income date;
-6. `sync --lookback 365` generates for income older than the window.
+6. `sync --lookback 365` generates for the eight income groups of 2025-07-02 …
+   2025-12-04 that sit undeclared in `transactions.json`, each with the credit
+   its stored withholding gives it — the branch-2 path end to end.
