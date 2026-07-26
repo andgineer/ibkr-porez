@@ -72,28 +72,34 @@ of one symbol 20 days apart carry different `actionID`s; a cancellation arriving
 15 days after its interest still finds its owner, because the date takes no part
 in the join.
 
-**Storage and its merge are not touched at all.** `is_identical_to`
-(src/models.rs:461) does not compare new fields and the merge skips identical rows
-(src/storage.rs:594), so a re-fetched report never writes `action_id` onto
-transactions already in `transactions.json` — they keep `None` for good. Reaching
-into the merge (XML supremacy, key matching, CSV handling — the most delicate code
-in the repo) to force a rewrite is not worth it, because income that predates this
-version is out of scope; see *Income predating this version*.
+**Settled: `action_id` is recorded going forward and never backfilled.** Storage
+and its merge are not touched. `is_identical_to` (src/models.rs:461) does not
+compare new fields and the merge skips identical rows (src/storage.rs:594), so a
+re-fetched report never writes `action_id` onto transactions already in
+`transactions.json` — they keep `None` for good. This is the decision, not a
+limitation to engineer around, and it is not to be reopened:
 
-**Branch 2 is load-bearing, not a safety net, and must not be dropped as dead
-code.** It is the pre-upgrade partition: a distribution whose income and every one
-of its withholding rows predate the upgrade is `None` on both sides and keys on
-the description throughout. `transactions.json` currently holds eight undeclared
-income groups in that state (2025-07-02 … 2025-12-04, all older than the app's
-first declaration), and `sync --lookback` — *Verification* step 6 — is what
-reaches them. Without branch 2 they would each be declared with a zero credit
-while their withholding sits in the same file.
+- backfilling changes nothing that matters. The field serves income declarations
+  only; capital-gains declarations never consult it, and every dividend group
+  older than this version already has its declaration;
+- it cannot be done completely in any case. A CSV activity statement carries no
+  such field, and a Flex Query does not reach back far enough to re-supply those
+  years, so `None` is permanent for part of the history no matter what;
+- the alternative is worse. Forcing a rewrite means reaching into the merge — XML
+  supremacy, key matching, CSV handling, the most delicate code in the repo — to
+  buy a property branch 2 already provides in three lines.
+
+**Branch 2 is therefore permanent and must not be dropped as dead code.** It is
+the key for every row without an `actionID`: everything already in storage,
+everything from CSV, and anything IBKR emits without one. `transactions.json`
+currently holds eight undeclared income groups in that state (2025-07-02 …
+2025-12-04, all older than the app's first declaration), and `sync --lookback` —
+*Verification* step 6 — is what reaches them. Without branch 2 they would each be
+declared with a zero credit while their withholding sits in the same file.
 
 Verified across all 45 income and withholding rows in `transactions.json`: branch
 2 alone resolves every one of them to exactly one owner, no bucket spanning two
 distributions, no row without a key.
-
-Branch 2 also covers anything IBKR emits without an `actionID`.
 
 This removes: the matching window and its constant, the tax→owner map, the
 entity/ISIN-then-symbol two-tier fallback, the "nearest preceding income" rule,
@@ -199,16 +205,16 @@ never asked to match.
 ### Income predating this version
 
 Nothing here is built to work for dividend income that arrived before this
-version. The version being replaced generated a declaration as soon as the income
-appeared, so no income group is expected to straddle the upgrade.
+version, and nothing needs to be. The version being replaced generated a
+declaration as soon as the income appeared, so every such group already has one.
 
-The consequence to accept: a withholding reversal that arrives **after** the
+The one consequence, accepted: a withholding reversal arriving **after** the
 upgrade for a dividend that arrived **before** it carries an `actionID` its
-dividend does not have, keys on branch 1 while the dividend keys on branch 2, and
-therefore does not join it. Such a reversal is ignored — the declaration keeps the
-credit it was created with, and no amendment is generated. Its own declaration was
-already created and predates the metadata the amendment path compares, so it is
-invisible to that path anyway. This is a decision, not a defect to design around.
+dividend does not have, so it keys on branch 1 while the dividend keys on branch 2
+and the two do not join. Such a reversal is ignored — the declaration keeps the
+credit it was created with, and no amendment is generated. That declaration
+predates the metadata the amendment path compares, so it is invisible to that path
+regardless. See *Settled* above for why this is not closed by backfilling.
 
 ### Accepted limitations
 
@@ -385,8 +391,9 @@ than once: IXUS 2025-12-19 carries `-12.25`, `+12.25` and `-12.23`.
 
 ### PP-OPO schema: what actually marks an amendment
 
-From `PPOPO-Prijava.xsd` published by PURS. `PodaciOPrijavi` is an `xs:sequence`,
-so element order is fixed:
+Sources are recorded in `specs/spec-income-declarations.md`; do not re-derive
+them. `PodaciOPrijavi` is an `xs:sequence`, so element order is fixed, and these
+are the accepted enumerations as the schema states them:
 
 ```
 KlijentskaOznakaDeklaracije   optional
@@ -410,6 +417,8 @@ so nothing existing moves:
 
 - `VrstaIzmenePrijave` = `1` — измена по члану 40. ЗПППА, the voluntary
   correction. `2` is by audit order and `9` is a storno; neither is ours.
+  Confirmed against the schema, the rulebook and the ePorezi entry form, all
+  three of which agree on `1`, `2` and `9`.
 - `IdentifikatorPrijave` — the PURS number of the declaration being amended.
   Numeric, so `submit --number` must reject anything that is not up to 19
   digits. Optional in the schema, so it is simply omitted when unknown; ePorezi
@@ -422,7 +431,10 @@ written.
 
 `VrstaPrijave` is hardcoded `"1"` today (src/declaration_income_xml.rs:52).
 Per the PP-OPO rulebook, `1` is an општа пријава — filed **before or on** the due
-date — and `3` is a пријава по члану 182б ЗПППА, filed after it has passed.
+date — and `3` is a пријава по члану 182б ЗПППА, filed after it has passed. Both
+are confirmed against the schema, the rulebook and the ePorezi entry form. The
+three sources diverge only on codes this app never writes; see
+`specs/spec-income-declarations.md`.
 
 Hardcoding `1` therefore asserts timeliness that may be false. It is already
 wrong today for a declaration generated on day 40 of a 30-day deadline, and this
@@ -444,6 +456,12 @@ taxpayer files late — which is the assumption the app already makes. It never
 claims timeliness for a return the app itself knows is overdue. Amendments need
 no special case: generated months after the income, they come out as `3`
 naturally.
+
+`VrstaPrijave` and `VrstaIzmenePrijave` are independent — settled, do not
+re-derive. Neither codebook references the other and neither value constrains the
+other, so an amendment filed after the deadline writes `3` and `1` together and
+the date comparison above is the whole rule. See `specs/spec-income-declarations.md`,
+*Sources*, for the trap that makes this look otherwise.
 
 `generate_income_xml` therefore takes `today: NaiveDate`, threaded from
 `IncomeGenOptions.today`. **This is not optional for the golden tests:** without

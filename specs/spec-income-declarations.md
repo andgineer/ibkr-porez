@@ -32,11 +32,19 @@ The distribution is identified, in order:
    currency is essential: the tax description does not name it, and without it a
    month's tax on one currency's interest would be credited to another's.
 
-The second rule is not dead weight. The broker's identifier, though present on
-every dividend and every dividend withholding row observed, is not listed in the
-published Flex Query field reference and carries no stability promise. Should it
-ever stop being emitted, matching by description keeps working silently and
-correctly.
+The second rule is permanent, not a transitional fallback, and carries a large
+share of the stored history on its own. The identifier is recorded when a
+transaction first arrives and is never added to a transaction already stored:
+rewriting stored history to backfill it is deliberately not done. Much of that
+history could not be backfilled in any case — a CSV activity statement has no such
+field at all, and a Flex Query does not reach far enough back to re-supply those
+years. Matching by description is what serves every row without an identifier, and
+it is equally what covers anything the broker emits without one: the field is not
+listed in the published Flex Query reference and carries no stability promise.
+
+Within one distribution the rules do not mix. Income and withholding that both
+predate the identifier match by description on both sides; a distribution that
+carries it carries it on both sides.
 
 Amounts within one distribution are summed **with their sign**, so a reversal
 cancels what it reverses. This holds on the income side as well as the tax side: a
@@ -114,6 +122,11 @@ The app never claims a return is timely when it knows the deadline has passed.
 Every amendment is late by nature, as is every declaration produced for income
 old enough to need an explicitly widened window.
 
+Timeliness and amendment are two independent facts recorded in two independent
+fields, each with its own codebook, and neither constrains the other. An amendment
+filed after the deadline records both: late, and amending. There is no combined
+code and no case where one field changes what the other may hold.
+
 A late return also owes interest. The app does not compute it and does not claim
 to: the interest fields are left empty for ePorezi and the taxpayer to complete,
 as with the declaration number.
@@ -122,13 +135,54 @@ as with the declaration number.
 
 - An amendment is generated, not filed. The taxpayer submits it, and records the
   original's PURS number so the amendment can reference it.
-- A withholding reversal for income that predates this rule is ignored: the
-  original income carries no distribution identifier while the reversal does, so
-  the two do not meet. Income of that age was declared as it arrived, and its
-  declaration stands.
+- A withholding reversal is ignored when the income it belongs to carries no
+  distribution identifier and the reversal does. Income that old was declared as
+  it arrived and its declaration stands, so the credit it was created with is what
+  it keeps. Backfilling the identifier onto stored income to close this is
+  deliberately not done: it would rewrite settled history to change declarations
+  that are already filed.
 - Income imported from CSV is never declared. See `spec-transaction-sources.md`.
 - If distribution matching ever breaks entirely, groups see no tax and are
   declared with no credit — the taxpayer overpays. This is deliberate: it errs
   toward overpaying rather than underpaying, and it announces itself, because
   declarations that were always zero suddenly demand payment. The app carries no
   machinery to detect a broken match.
+
+## Sources
+
+The form's structure and its field codes come from three places, which agree on
+every code the application writes:
+
+- the official schema and sample document,
+  [`PPOPO-Prijava.xsd`](https://www.purs.gov.rs/upload/media/2025/2/4/609118/PPOPO-Prijava.xsd)
+  and [`PPOPO.XML`](https://www.purs.gov.rs/upload/media/2025/2/4/609119/PPOPO.XML),
+  both linked from [PURS, Упутства и обрасци](https://www.purs.gov.rs/sr/e-porezi/Uputstva.html).
+  The schema fixes element order and the accepted codes, and validates the
+  uploaded document;
+- the [rulebook on self-assessed
+  tax](https://www.paragraf.rs/propisi/pravilnik-o-poreskoj-prijavi-o-obracunatom-porezu-samooporezivanjem-i-pripadajucim-doprinosima-na-zaradu.html),
+  which gives each code its meaning, form position by form position;
+- the ePorezi portal's own entry form, which is what a taxpayer sees.
+
+Relevant meanings, position by position: **1.1 Врста пријаве** — `1` општа
+пријава, filed on or before the due date; `3` пријава по члану 182б ЗПППА, filed
+after it; `4` по налогу контроле and `5` по одлуци суда, neither of which the
+application produces. **1.5 Измена пријаве** — `1` измена по члану 40. ЗПППА, the
+voluntary correction, which is what an amendment carries; `2` по налогу контроле
+and `9` сторно, neither of which the application produces. **1.5a
+Идентификациони број пријаве** — the PURS number of the declaration being changed.
+
+The three sources diverge on codes the application never writes: the portal offers
+a code under 1.1 that the schema rejects, and the schema accepts codes that neither
+the rulebook nor the portal lists. This divergence is known and does not affect the
+application, whose entire output uses codes confirmed by all three.
+
+**1.1 and 1.5 are independent, and this is settled — do not re-derive it.** Each
+has its own codebook; neither codebook references the other; no value in one
+restricts, defaults or excludes any value in the other. An amendment filed after
+the deadline carries `3` under 1.1 and `1` under 1.5 at the same time. In
+particular, position 1.4a lists situations for deciding whether to fill 1.4a
+itself — general returns, returns under article 182б, amendments under article 40,
+and others. That list is not a taxonomy of 1.1 values and implies no relationship
+between the two fields. Reading one into it is a mistake that has been made and
+corrected.
