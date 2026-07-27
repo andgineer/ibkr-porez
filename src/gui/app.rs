@@ -22,12 +22,9 @@ use super::styles;
 use super::submit_dialog::SubmitDialog;
 use super::sync_file_dialog::SyncFileDialog;
 
-fn notify_new_declarations(result: &Result<crate::sync::SyncResult, String>) {
-    let Ok(r) = result else { return };
-    let count = r.created_declarations.len();
-    if count == 0 {
-        return;
-    }
+// Must stay on the UI thread: macOS delivers through AppKit, which aborts the
+// process when reached from a worker.
+fn notify_new_declarations(count: u32) {
     let body = if count == 1 {
         "1 new declaration was created".to_string()
     } else {
@@ -430,7 +427,6 @@ impl App {
             };
             let result = crate::sync::run_sync(&storage, &nbs, &config, &holidays, &opts, &ibkr)
                 .map_err(|e| format!("{e:#}"));
-            notify_new_declarations(&result);
             let _ = tx.send(BackgroundResult::SyncDone(result));
             ctx.request_repaint();
         });
@@ -458,7 +454,6 @@ impl App {
             let result =
                 crate::sync::run_sync_from_file(&path, &storage, &nbs, &config, &holidays, &opts)
                     .map_err(|e| format!("{e:#}"));
-            notify_new_declarations(&result);
             let _ = tx.send(BackgroundResult::SyncDone(result));
             ctx.request_repaint();
         });
@@ -802,7 +797,11 @@ impl App {
             });
         }
 
+        let pending_before = self.pending_new_declarations;
         self.poll_background();
+        if self.pending_new_declarations > pending_before {
+            notify_new_declarations(self.pending_new_declarations - pending_before);
+        }
 
         let modal_open = self.config_dialog.is_some()
             || self.import_dialog.is_some()

@@ -61,7 +61,7 @@ impl Storage {
             declarations_file: data_dir.join(DECLARATIONS_FILENAME),
             capital_losses_file: data_dir.join(CAPITAL_LOSSES_FILENAME),
             declarations_dir: data_dir.join(DECLARATIONS_DIR),
-            flex_queries_dir: app_data_dir.join(FLEX_QUERIES_DIR),
+            flex_queries_dir: data_dir.join(FLEX_QUERIES_DIR),
             data_dir,
         };
         s.ensure_dirs();

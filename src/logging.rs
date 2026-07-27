@@ -7,10 +7,7 @@ use tracing_subscriber::{Layer, fmt};
 
 #[must_use]
 pub fn log_dir() -> PathBuf {
-    dirs::config_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("ibkr-porez")
-        .join("logs")
+    crate::config::config_dir().join("logs")
 }
 
 #[must_use]
@@ -71,6 +68,13 @@ fn cleanup_old_logs(dir: &Path) {
 mod tests {
     use super::*;
     use chrono::NaiveDate;
+
+    #[test]
+    fn logs_follow_the_config_dir() {
+        // Resolving the base independently would ignore IBKR_POREZ_CONFIG_DIR and
+        // write into the real profile even under an isolated run.
+        assert!(log_dir().starts_with(crate::config::config_dir()));
+    }
 
     #[test]
     fn cleanup_removes_old_files() {

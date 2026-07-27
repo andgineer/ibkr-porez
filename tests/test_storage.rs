@@ -461,3 +461,28 @@ fn test_remove_carryforward_vintage() {
     assert!(storage.find_carryforward_vintage("CF-1").is_none());
     assert!(storage.get_carryforward_vintages().is_empty());
 }
+
+#[test]
+fn test_with_config_keeps_every_path_under_the_configured_data_dir() {
+    let dir = TempDir::new().unwrap();
+    let config = UserConfig {
+        data_dir: Some(dir.path().to_string_lossy().into_owned()),
+        ..UserConfig::default()
+    };
+
+    let storage = Storage::with_config(&config);
+
+    // A configured data_dir must contain the whole store, otherwise an isolated
+    // run still reads and writes the real one.
+    for path in [
+        storage.data_dir(),
+        storage.declarations_dir(),
+        storage.flex_queries_dir(),
+    ] {
+        assert!(
+            path.starts_with(dir.path()),
+            "{} escapes the configured data dir",
+            path.display()
+        );
+    }
+}

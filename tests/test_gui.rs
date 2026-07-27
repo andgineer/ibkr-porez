@@ -1340,3 +1340,87 @@ fn stale_issue_has_earlier_timestamp_than_success() {
         "income notice timestamp should be >= success timestamp so it stays visible"
     );
 }
+
+// ── Desktop notification placement ───────────────────────────
+
+/// Byte range of the `{ .. }` block starting at or after `from`, ignoring
+/// braces inside string literals and line comments.
+fn block_at(src: &str, from: usize) -> std::ops::Range<usize> {
+    let bytes = src.as_bytes();
+    let mut i = from;
+    let mut depth = 0usize;
+    let mut start = 0usize;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'"' => {
+                i += 1;
+                while i < bytes.len() && bytes[i] != b'"' {
+                    i += usize::from(bytes[i] == b'\\') + 1;
+                }
+            }
+            b'/' if bytes.get(i + 1) == Some(&b'/') => {
+                while i < bytes.len() && bytes[i] != b'\n' {
+                    i += 1;
+                }
+            }
+            b'{' => {
+                if depth == 0 {
+                    start = i;
+                }
+                depth += 1;
+            }
+            b'}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return start..i;
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    panic!("unterminated block from byte {from}");
+}
+
+/// `notify_rust` reaches `AppKit` on macOS, which aborts the whole process when
+/// called off the main thread — from a worker, or from a libtest thread on a
+/// headless session. Pin the single call site to the UI-thread path.
+#[test]
+fn desktop_notification_stays_on_the_ui_thread() {
+    let src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/gui/app.rs"),
+    )
+    .unwrap();
+
+    assert_eq!(
+        src.matches("notify_rust::").count(),
+        1,
+        "notify_rust must be reached through notify_new_declarations only"
+    );
+
+    let calls: Vec<usize> = src
+        .match_indices("notify_new_declarations(")
+        .map(|(i, _)| i)
+        .filter(|i| !src[..*i].ends_with("fn "))
+        .collect();
+    assert_eq!(
+        calls.len(),
+        1,
+        "expected exactly one call site, found {}",
+        calls.len()
+    );
+    let call = calls[0];
+
+    let render = block_at(&src, src.find("pub fn render(").expect("render not found"));
+    assert!(
+        render.contains(&call),
+        "the notification must fire from render, which eframe drives on the main thread"
+    );
+
+    for (spawn, _) in src.match_indices("std::thread::spawn(") {
+        assert!(
+            !block_at(&src, spawn).contains(&call),
+            "the notification must not fire from a spawned thread"
+        );
+    }
+}
