@@ -78,6 +78,15 @@ Does the same as [fetch](#fetch-data-fetch):
 
 Then creates all necessary declarations for the last 45 days (if they haven't been created already).
 
+Income that reaches the application late — after a failed connection, a missing exchange rate, or simply because IBKR reported it a few days after the fact — is picked up by the next `sync` while its date is still inside those 45 days. Nothing records "already synced up to here", so late data is never skipped.
+
+Income older than that is not declared on the application's own initiative: its filing deadline has passed, so filing it is your decision. Ask for it explicitly by widening the window:
+
+```bash
+# declare undeclared income of the last 400 days
+ibkr-porez sync --lookback 400
+```
+
 > 💡 If the connection to IBKR fails, `sync` still creates declarations from the transactions already stored locally and prints a warning; it exits successfully, and in the GUI keeps retrying for fresh data on the next cycle.
 
 You can then [Manage created declarations](#declaration-management).
@@ -337,7 +346,7 @@ ibkr-porez delete <id> --yes
 ibkr-porez delete <id> --yes --force
 ```
 
-Deletes a declaration and undoes its carryforward-ledger effects: any carryforward it consumed is returned to the source vintages, and its own recognized-loss vintage (created by `assess`) is removed. If you deleted it to fix an error, run `sync` afterwards to rebuild the period from stored transactions.
+Deletes a declaration and undoes its carryforward-ledger effects: any carryforward it consumed is returned to the source vintages, and its own recognized-loss vintage (created by `assess`) is removed. If you deleted it to fix an error, run `sync` afterwards to rebuild the period from stored transactions — for a PP OPO whose income date is more than 45 days old, `sync --lookback N` is what reaches it.
 
 Without `--yes` it only prints what would be deleted. `--force` is required to delete a declaration that is not a draft. Only the most recent PPDG-3R can be deleted — deleting an earlier one would leave later declarations' carryforward dangling; PP OPO declarations can be deleted at any time.
 

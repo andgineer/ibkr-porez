@@ -52,12 +52,12 @@ fn app_with_decls(decls: Vec<Declaration>) -> (App, tempfile::TempDir) {
     (app, tmp)
 }
 
-fn sync_result(created: Vec<Declaration>, income_error: Option<String>) -> SyncResult {
+fn sync_result(created: Vec<Declaration>, income_notices: Vec<String>) -> SyncResult {
     SyncResult {
         created_declarations: created,
         gains_skipped: false,
         income_skipped: false,
-        income_error,
+        income_notices,
         fetch_error: None,
         end_period: NaiveDate::from_ymd_opt(2024, 6, 30).unwrap(),
     }
@@ -552,8 +552,11 @@ fn poll_sync_done_success() {
     app.progress_text = Some("Syncing…".into());
     app.last_sync_issue = Some((chrono::Local::now().naive_local(), "stale issue".into()));
 
-    tx.send(BackgroundResult::SyncDone(Ok(sync_result(vec![], None))))
-        .unwrap();
+    tx.send(BackgroundResult::SyncDone(Ok(sync_result(
+        vec![],
+        Vec::new(),
+    ))))
+    .unwrap();
 
     app.poll_background();
 
@@ -579,7 +582,7 @@ fn poll_sync_done_with_declarations() {
             make_decl("DECL-1", DeclarationStatus::Draft),
             make_decl("DECL-2", DeclarationStatus::Draft),
         ],
-        None,
+        Vec::new(),
     ))))
     .unwrap();
 
@@ -591,7 +594,7 @@ fn poll_sync_done_with_declarations() {
 }
 
 #[test]
-fn poll_sync_done_with_income_error() {
+fn poll_sync_done_with_income_notices() {
     let (mut app, _tmp) = app_with_decls(Vec::new());
     let (tx, rx) = mpsc::channel();
     app.bg_receiver = Some(rx);
@@ -599,7 +602,7 @@ fn poll_sync_done_with_income_error() {
 
     tx.send(BackgroundResult::SyncDone(Ok(sync_result(
         vec![],
-        Some("tax calc failed".into()),
+        vec!["VOO 2026-03-01: no NBS exchange rate".into()],
     ))))
     .unwrap();
 
@@ -609,7 +612,7 @@ fn poll_sync_done_with_income_error() {
     assert!(app.error_dialog.is_none());
     assert!(app.last_sync_success.is_some());
     let (_, msg) = app.last_sync_issue.as_ref().unwrap();
-    assert_eq!(msg, "tax calc failed");
+    assert_eq!(msg, "1 income group pending");
 }
 
 #[test]
@@ -968,7 +971,7 @@ fn poll_sync_fetch_error_keeps_retrying_but_surfaces_declarations() {
     app.bg_receiver = Some(rx);
     app.bg_busy = true;
 
-    let mut result = sync_result(vec![make_decl("1", DeclarationStatus::Draft)], None);
+    let mut result = sync_result(vec![make_decl("1", DeclarationStatus::Draft)], Vec::new());
     result.fetch_error = Some("IBKR SendRequest failed: connection reset".into());
     tx.send(BackgroundResult::SyncDone(Ok(result))).unwrap();
     app.poll_background();
@@ -1183,7 +1186,7 @@ fn poll_sync_success_then_recheck_does_not_resync_same_day() {
 
     tx.send(BackgroundResult::SyncDone(Ok(sync_result(
         Vec::new(),
-        None,
+        Vec::new(),
     ))))
     .unwrap();
     app.poll_background();
@@ -1209,7 +1212,7 @@ fn poll_sync_error_after_success_today_does_not_claim_hourly_retry() {
     app.bg_busy = true;
     tx1.send(BackgroundResult::SyncDone(Ok(sync_result(
         Vec::new(),
-        None,
+        Vec::new(),
     ))))
     .unwrap();
     app.poll_background();
@@ -1278,7 +1281,7 @@ fn poll_sync_success_after_error_clears_visible_issue() {
     app.bg_busy = true;
     tx2.send(BackgroundResult::SyncDone(Ok(sync_result(
         Vec::new(),
-        None,
+        Vec::new(),
     ))))
     .unwrap();
     app.poll_background();
@@ -1294,16 +1297,15 @@ fn poll_sync_success_after_error_clears_visible_issue() {
 fn stale_issue_has_earlier_timestamp_than_success() {
     // Verify the timestamp ordering invariant that sync_status_line relies on:
     // when a success clears the issue, last_sync_issue is None.
-    // When an income error is set, both timestamps are equal (same `now`).
+    // When an income notice is set, both timestamps are equal (same `now`).
     let (mut app, _tmp) = app_with_decls(Vec::new());
     let (tx, rx) = mpsc::channel();
     app.bg_receiver = Some(rx);
     app.bg_busy = true;
 
-    let income_err = "no NBS exchange rate for 2025-01-01".to_string();
     tx.send(BackgroundResult::SyncDone(Ok(sync_result(
         Vec::new(),
-        Some(income_err.clone()),
+        vec!["VOO 2025-01-01: no NBS exchange rate".into()],
     ))))
     .unwrap();
     app.poll_background();
@@ -1312,6 +1314,6 @@ fn stale_issue_has_earlier_timestamp_than_success() {
     let (issue_at, _) = app.last_sync_issue.as_ref().unwrap();
     assert!(
         *issue_at >= success_at,
-        "income error timestamp should be >= success timestamp so it stays visible"
+        "income notice timestamp should be >= success timestamp so it stays visible"
     );
 }

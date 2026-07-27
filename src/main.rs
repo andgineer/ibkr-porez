@@ -50,6 +50,7 @@ enum Commands {
     Sync {
         #[arg(short, long)]
         output: Option<PathBuf>,
+        /// Declare undeclared income of the last N days instead of the default 45
         #[arg(short, long, value_parser = clap::value_parser!(i64).range(1..))]
         lookback: Option<i64>,
         /// Import from a locally downloaded Flex Query XML file instead of calling IBKR API

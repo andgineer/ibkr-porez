@@ -90,9 +90,14 @@ Every error is retried automatically at least once a day — there is no
 ## Persistence
 
 The timestamp of the last successful sync, the timestamp and message of the
-most recent issue (covering both fetch failures and tax-calculation issues
-from an otherwise-successful sync), and the count of declarations created
-since the user last dismissed the banner all survive app restarts.
+most recent issue (covering both fetch failures and income notices from an
+otherwise-successful sync), and the count of declarations created since the
+user last dismissed the banner all survive app restarts.
+
+Income notices reuse that same status line, counted rather than listed, and
+are recomputed from scratch on every sync: a notice disappears as soon as its
+cause does, and none of them is ever a one-time signal that has to be
+dismissed. The detail behind the count is in the CLI's `sync` output.
 
 ## New-declarations banner and notification
 

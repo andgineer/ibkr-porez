@@ -115,15 +115,15 @@ fn print_sync_result(result: &SyncResult) {
         }
     }
 
-    if let Some(ref err_msg) = result.income_error {
-        output::error(&format!("Income report generation failed: {err_msg}"));
+    for notice in &result.income_notices {
+        output::dim(&format!("  {notice}"));
     }
 
     if result.gains_skipped {
         output::dim("  (gains report skipped — no taxable sales in period)");
     }
     if result.income_skipped {
-        output::dim("  (income report skipped — no income in period)");
+        output::dim("  (income report skipped — no undeclared income in period)");
     }
 
     println!();
@@ -144,13 +144,13 @@ mod tests {
         decls: Vec<Declaration>,
         gains_skipped: bool,
         income_skipped: bool,
-        income_error: Option<String>,
+        income_notices: Vec<String>,
     ) -> SyncResult {
         SyncResult {
             created_declarations: decls,
             gains_skipped,
             income_skipped,
-            income_error,
+            income_notices,
             fetch_error: None,
             end_period: NaiveDate::from_ymd_opt(2025, 6, 30).unwrap(),
         }
@@ -176,45 +176,50 @@ mod tests {
 
     #[test]
     fn print_no_declarations() {
-        let result = make_sync_result(vec![], false, false, None);
+        let result = make_sync_result(vec![], false, false, Vec::new());
         print_sync_result(&result);
     }
 
     #[test]
     fn print_gains_skipped() {
-        let result = make_sync_result(vec![], true, false, None);
+        let result = make_sync_result(vec![], true, false, Vec::new());
         print_sync_result(&result);
     }
 
     #[test]
     fn print_income_skipped() {
-        let result = make_sync_result(vec![], false, true, None);
+        let result = make_sync_result(vec![], false, true, Vec::new());
         print_sync_result(&result);
     }
 
     #[test]
     fn print_both_skipped() {
-        let result = make_sync_result(vec![], true, true, None);
+        let result = make_sync_result(vec![], true, true, Vec::new());
         print_sync_result(&result);
     }
 
     #[test]
-    fn print_income_error() {
-        let result = make_sync_result(vec![], false, false, Some("NBS rate missing".into()));
+    fn print_income_notices() {
+        let result = make_sync_result(
+            vec![],
+            false,
+            false,
+            vec!["VOO 2026-03-01: no NBS exchange rate".into()],
+        );
         print_sync_result(&result);
     }
 
     #[test]
     fn print_created_ppdg3r_declaration() {
         let decl = sample_declaration("gains-1", DeclarationType::Ppdg3r);
-        let result = make_sync_result(vec![decl], false, false, None);
+        let result = make_sync_result(vec![decl], false, false, Vec::new());
         print_sync_result(&result);
     }
 
     #[test]
     fn print_created_ppo_declaration() {
         let decl = sample_declaration("income-1", DeclarationType::Ppo);
-        let result = make_sync_result(vec![decl], false, false, None);
+        let result = make_sync_result(vec![decl], false, false, Vec::new());
         print_sync_result(&result);
     }
 
@@ -236,7 +241,7 @@ mod tests {
             is_tax_exempt: false,
         };
         decl.report_data = Some(vec![serde_json::to_value(entry).unwrap()]);
-        let result = make_sync_result(vec![decl], false, false, None);
+        let result = make_sync_result(vec![decl], false, false, Vec::new());
         print_sync_result(&result);
     }
 
@@ -254,7 +259,7 @@ mod tests {
             porez_za_uplatu: rust_decimal::Decimal::ZERO,
         };
         decl.report_data = Some(vec![serde_json::to_value(entry).unwrap()]);
-        let result = make_sync_result(vec![decl], false, false, None);
+        let result = make_sync_result(vec![decl], false, false, Vec::new());
         print_sync_result(&result);
     }
 }

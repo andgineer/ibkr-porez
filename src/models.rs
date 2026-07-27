@@ -365,7 +365,7 @@ pub struct DeclarationsFile {
 }
 
 /// The most recent problem noticed since the last successful sync —
-/// either a fetch failure or an `income_error` from an otherwise-successful sync.
+/// either a fetch failure or income notices from an otherwise-successful sync.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct SyncIssue {
     pub at: String,

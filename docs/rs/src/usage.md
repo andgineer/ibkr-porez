@@ -78,6 +78,15 @@ Radi sve isto što i [fetch](#preuzimanje-podataka-fetch):
 
 Nakon toga kreira sve potrebne prijave za poslednjih 45 dana (ako već nisu kreirane).
 
+Prihod koji stigne u aplikaciju sa zakašnjenjem — posle neuspele veze, zbog kursa koji nedostaje ili prosto zato što ga je IBKR prijavio nekoliko dana kasnije — biće obuhvaćen sledećim `sync`-om dok je njegov datum još unutar tih 45 dana. Ne postoji oznaka „sinhronizovano do ovog dana”, pa zakasneli podaci nikada ne bivaju preskočeni.
+
+Stariji prihod aplikacija ne prijavljuje na sopstvenu inicijativu: rok za podnošenje je prošao, pa je podnošenje vaša odluka. Zatražite ga izričito, proširivanjem prozora:
+
+```bash
+# prijavi neprijavljen prihod poslednjih 400 dana
+ibkr-porez sync --lookback 400
+```
+
 > 💡 Ako veza sa IBKR-om ne uspe, `sync` i dalje kreira prijave iz već lokalno sačuvanih transakcija i ispisuje upozorenje; komanda se završava uspešno, a u GUI-ju se ponovni pokušaji za svežim podacima nastavljaju automatski u sledećem ciklusu.
 
 Zatim možete [Upravljati kreiranim prijavama](#upravljanje-prijavama).
@@ -332,7 +341,7 @@ ibkr-porez delete <id> --yes
 ibkr-porez delete <id> --yes --force
 ```
 
-Briše prijavu i poništava njen uticaj na knjigu prenosa: prenos gubitka koji je iskoristila vraća se izvornim „tranšama”, a njena sopstvena tranša priznatog gubitka (napravljena preko `assess`) se uklanja. Ako ste je obrisali da biste ispravili grešku, zatim pokrenite `sync` da ponovo napravite period iz sačuvanih transakcija.
+Briše prijavu i poništava njen uticaj na knjigu prenosa: prenos gubitka koji je iskoristila vraća se izvornim „tranšama”, a njena sopstvena tranša priznatog gubitka (napravljena preko `assess`) se uklanja. Ako ste je obrisali da biste ispravili grešku, zatim pokrenite `sync` da ponovo napravite period iz sačuvanih transakcija — do PP OPO prijave čiji je datum prihoda stariji od 45 dana dopire `sync --lookback N`.
 
 Bez `--yes` samo ispisuje šta bi bilo obrisano. `--force` je neophodan za brisanje prijave koja nije nacrt. Može se obrisati samo najnoviji PPDG-3R — brisanje starijeg ostavilo bi „viseći” prenos kod kasnijih prijava; PP OPO prijave se mogu brisati u bilo kom trenutku.
 

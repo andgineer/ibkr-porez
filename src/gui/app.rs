@@ -574,9 +574,12 @@ impl App {
                     let _ = self.storage.set_last_sync_success(now);
                     self.last_sync_success = Some(now);
                     self.last_sync_fatal = false;
-                    if let Some(msg) = &r.income_error {
-                        let _ = self.storage.set_last_sync_issue(now, msg);
-                        self.last_sync_issue = Some((now, msg.clone()));
+                    if !r.income_notices.is_empty() {
+                        // One short string only: an NBS outage produces a
+                        // notice per group. The detail is in the CLI.
+                        let msg = income_notice_summary(r.income_notices.len());
+                        let _ = self.storage.set_last_sync_issue(now, &msg);
+                        self.last_sync_issue = Some((now, msg));
                     } else {
                         let _ = self.storage.clear_last_sync_issue();
                         self.last_sync_issue = None;
@@ -591,6 +594,14 @@ impl App {
                 self.last_sync_fatal = !should_retry;
             }
         }
+    }
+}
+
+fn income_notice_summary(count: usize) -> String {
+    if count == 1 {
+        "1 income group pending".to_string()
+    } else {
+        format!("{count} income groups pending")
     }
 }
 

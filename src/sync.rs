@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
@@ -6,7 +7,7 @@ use tracing::{debug, info, warn};
 
 use crate::config;
 use crate::fetch;
-use crate::holidays::HolidayCalendar;
+use crate::holidays::{HolidayCalendar, HolidayError};
 use crate::ibkr_flex::IBKRClient;
 use crate::models::CarryforwardSource;
 #[cfg(test)]
@@ -15,8 +16,8 @@ use crate::models::{Declaration, DeclarationStatus, DeclarationType, UserConfig}
 use crate::nbs::NBSClient;
 use crate::report_gains::generate_gains_report;
 use crate::report_income::{
-    GroupAction, RenderOptions, collect_income_groups, decide, income_report_filename,
-    render_income_report,
+    GroupAction, GroupKey, RenderOptions, collect_income_groups, decide, render_income_report,
+    wait_expires_on,
 };
 use crate::storage::Storage;
 
@@ -33,7 +34,7 @@ pub struct SyncResult {
     pub created_declarations: Vec<Declaration>,
     pub gains_skipped: bool,
     pub income_skipped: bool,
-    pub income_error: Option<String>,
+    pub income_notices: Vec<String>,
     /// Set when the IBKR fetch failed but declarations were still generated
     /// from already-stored transactions.
     pub fetch_error: Option<String>,
@@ -123,8 +124,6 @@ fn generate_declarations(
 
     let mut created_declarations = Vec::new();
     let mut gains_skipped = false;
-    let mut income_skipped = false;
-    let mut income_error = None;
 
     match generate_and_save_gains(
         storage,
@@ -147,7 +146,7 @@ fn generate_declarations(
         }
     }
 
-    match generate_and_save_income(
+    let income = generate_and_save_income(
         storage,
         nbs,
         config,
@@ -155,36 +154,19 @@ fn generate_declarations(
         end_period,
         &output_dir,
         options,
-    ) {
-        Ok(IncomeOutcome::Created(decls)) => created_declarations.extend(decls),
-        Ok(IncomeOutcome::NoIncome) => {
-            debug!("no income in period, skipping");
-            income_skipped = true;
-        }
-        Err(e) => {
-            let msg = e.to_string();
-            if msg.contains("no NBS exchange rate") {
-                debug!(error = %e, "income report NBS error collected");
-                income_error = Some(msg);
-            } else {
-                return Err(e.context("PP-OPO generation failed"));
-            }
-        }
-    }
+    )
+    .context("PP-OPO generation failed")?;
 
-    let current_last = storage.get_last_declaration_date();
-    if current_last.is_none_or(|d| d < end_period) {
-        storage
-            .set_last_declaration_date(end_period)
-            .with_context(|| storage.io_error_hint())?;
-        debug!(%end_period, "updated last_declaration_date");
+    if income.empty {
+        debug!("no undeclared income in period, skipping");
     }
+    created_declarations.extend(income.created);
 
     Ok(SyncResult {
         created_declarations,
         gains_skipped,
-        income_skipped,
-        income_error,
+        income_skipped: income.empty,
+        income_notices: income.notices,
         fetch_error: None,
         end_period,
     })
@@ -215,26 +197,31 @@ fn determine_gains_period(end_period: NaiveDate) -> (NaiveDate, NaiveDate) {
     }
 }
 
+/// `(scan_start, creation_start, end)`. The two spans are not the same thing:
+/// income is declared only inside `[creation_start, end]`, while transactions
+/// are read from `scan_start` so an already-declared group can be re-checked.
 fn determine_income_period(
-    storage: &Storage,
     end_period: NaiveDate,
     options: &SyncOptions,
-) -> Option<(NaiveDate, NaiveDate)> {
-    if let Some(lookback) = options.forced_lookback_days {
-        let start = end_period - Duration::days(lookback - 1);
-        return Some((start, end_period));
-    }
+) -> (NaiveDate, NaiveDate, NaiveDate) {
+    let lookback = options
+        .forced_lookback_days
+        .unwrap_or(DEFAULT_LOOKBACK_DAYS);
+    let creation_start = end_period - Duration::days(lookback - 1);
+    (
+        scan_start(end_period, creation_start),
+        creation_start,
+        end_period,
+    )
+}
 
-    let last = storage.get_last_declaration_date();
-    let start = match last {
-        Some(d) => d + Duration::days(1),
-        None => end_period - Duration::days(DEFAULT_LOOKBACK_DAYS - 1),
-    };
-
-    if start > end_period {
-        return None;
-    }
-    Some((start, end_period))
+/// Withholding for a distribution of tax year Y is corrected up to the 1042-S
+/// filing in March of Y+1, so a full previous calendar year keeps every
+/// correctable date in view.
+fn scan_start(end_period: NaiveDate, creation_start: NaiveDate) -> NaiveDate {
+    NaiveDate::from_ymd_opt(end_period.year() - 1, 1, 1)
+        .unwrap()
+        .min(creation_start)
 }
 
 fn generate_and_save_gains(
@@ -308,9 +295,11 @@ fn generate_and_save_gains(
     Ok(vec![decl])
 }
 
-enum IncomeOutcome {
-    Created(Vec<Declaration>),
-    NoIncome,
+struct IncomeOutcome {
+    created: Vec<Declaration>,
+    notices: Vec<String>,
+    /// Nothing created and nothing to report.
+    empty: bool,
 }
 
 fn generate_and_save_income(
@@ -322,16 +311,10 @@ fn generate_and_save_income(
     output_dir: &Path,
     options: &SyncOptions,
 ) -> Result<IncomeOutcome> {
-    let Some((income_start, income_end)) = determine_income_period(storage, end_period, options)
-    else {
-        debug!("income period is empty, skipping");
-        return Ok(IncomeOutcome::NoIncome);
-    };
+    let (scan_start, creation_start, income_end) = determine_income_period(end_period, options);
 
-    let groups = collect_income_groups(&storage.load_transactions(), income_start, income_end);
-    if groups.is_empty() {
-        return Ok(IncomeOutcome::NoIncome);
-    }
+    let groups = collect_income_groups(&storage.load_transactions(), scan_start, income_end);
+    let declared = declared_income_groups(storage);
 
     // One clock reading for the whole run: a second `Local::now()` here could
     // land past midnight and disagree with `end_period`.
@@ -342,47 +325,92 @@ fn generate_and_save_income(
     };
 
     let mut created = Vec::new();
+    let mut notices = Vec::new();
     for group in &groups {
-        let filename = income_report_filename(&group.key);
-        let already_declared = is_duplicate(storage, &filename, &DeclarationType::Ppo);
-
-        match decide(group, already_declared, income_start, today) {
+        match decide(group, declared.contains(&group.key), creation_start, today) {
             GroupAction::Skip => {}
             GroupAction::Wait => {
                 info!(
-                    %filename,
+                    symbol = %group.key.1,
+                    date = %group.key.0,
                     "no withholding tax matched yet; holding the declaration back"
                 );
+                notices.push(format!(
+                    "{} {}: no withholding tax yet, declared with a zero credit from {}",
+                    group.key.1,
+                    group.key.0.format("%Y-%m-%d"),
+                    wait_expires_on(group).format("%Y-%m-%d"),
+                ));
             }
             GroupAction::Create => {
-                let report = render_income_report(group, nbs, config, holidays, &opts)?;
+                match render_income_report(group, nbs, config, holidays, &opts) {
+                    Ok(report) => {
+                        let decl = save_declaration(
+                            storage,
+                            &report.filename,
+                            &report.xml_content,
+                            DeclarationType::Ppo,
+                            report.declaration_date,
+                            report.declaration_date,
+                            &report.entries,
+                            &report.metadata(),
+                            output_dir,
+                        )?;
 
-                let decl = save_declaration(
-                    storage,
-                    &report.filename,
-                    &report.xml_content,
-                    DeclarationType::Ppo,
-                    report.declaration_date,
-                    report.declaration_date,
-                    &report.entries,
-                    &report.metadata(),
-                    output_dir,
-                )?;
-
-                // A zero credit reads the same in the document whether the tax
-                // was withheld and reversed or never arrived at all; the log is
-                // where the two are told apart.
-                info!(
-                    filename = %report.filename,
-                    matched_any_tax = group.matched_any_tax,
-                    "created PP-OPO declaration"
-                );
-                created.push(decl);
+                        // A zero credit reads the same in the document whether the
+                        // tax was withheld and reversed or never arrived at all;
+                        // the log is where the two are told apart.
+                        info!(
+                            filename = %report.filename,
+                            matched_any_tax = group.matched_any_tax,
+                            "created PP-OPO declaration"
+                        );
+                        created.push(decl);
+                    }
+                    // Running out of holiday data is not a per-group problem:
+                    // generating with wrong holiday handling is worse than failing.
+                    Err(e) if e.downcast_ref::<HolidayError>().is_some() => return Err(e),
+                    Err(e) => notices.push(format!(
+                        "{} {}: {e:#}",
+                        group.key.1,
+                        group.key.0.format("%Y-%m-%d"),
+                    )),
+                }
             }
         }
     }
 
-    Ok(IncomeOutcome::Created(created))
+    let empty = created.is_empty() && notices.is_empty();
+    Ok(IncomeOutcome {
+        created,
+        notices,
+        empty,
+    })
+}
+
+/// Every income group that already has a PP-OPO, keyed exactly as
+/// `collect_income_groups` keys its groups so the two sides cannot drift apart.
+fn declared_income_groups(storage: &Storage) -> HashSet<GroupKey> {
+    let mut keys = HashSet::new();
+    for decl in storage.get_declarations(None, Some(&DeclarationType::Ppo)) {
+        let symbol = decl.metadata.get("symbol").and_then(|v| v.as_str());
+        let income_type = decl.metadata.get("income_type").and_then(|v| v.as_str());
+        if let (Some(symbol), Some(income_type)) = (symbol, income_type) {
+            keys.insert((
+                decl.period_start,
+                symbol.to_uppercase(),
+                income_type.to_string(),
+            ));
+        } else {
+            // Nothing else identifies the group, so it reads as undeclared and
+            // is declared again; the warning is what points at the edited file.
+            warn!(
+                declaration_id = %decl.declaration_id,
+                "PP-OPO without symbol/income_type metadata, cannot match it to an income group"
+            );
+        }
+    }
+    keys
 }
 
 fn is_duplicate(storage: &Storage, generator_filename: &str, decl_type: &DeclarationType) -> bool {
@@ -489,65 +517,52 @@ mod tests {
     }
 
     #[test]
-    fn test_income_period_no_last_date() {
-        let tmp = tempfile::TempDir::new().unwrap();
-        let storage = Storage::with_dir(tmp.path());
+    fn income_period_is_fixed_window() {
         let end = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
         let opts = SyncOptions::default();
 
-        let result = determine_income_period(&storage, end, &opts);
-        assert!(result.is_some());
-        let (start, pend) = result.unwrap();
-        assert_eq!(pend, end);
-        assert_eq!(start, end - Duration::days(DEFAULT_LOOKBACK_DAYS - 1));
-    }
-
-    #[test]
-    fn test_income_period_with_last_date() {
-        let tmp = tempfile::TempDir::new().unwrap();
-        let storage = Storage::with_dir(tmp.path());
-        let last = NaiveDate::from_ymd_opt(2026, 2, 15).unwrap();
-        storage.set_last_declaration_date(last).unwrap();
-
-        let end = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
-        let opts = SyncOptions::default();
-
-        let result = determine_income_period(&storage, end, &opts);
-        assert!(result.is_some());
-        let (start, pend) = result.unwrap();
-        assert_eq!(start, NaiveDate::from_ymd_opt(2026, 2, 16).unwrap());
-        assert_eq!(pend, end);
-    }
-
-    #[test]
-    fn test_income_period_last_date_equals_end() {
-        let tmp = tempfile::TempDir::new().unwrap();
-        let storage = Storage::with_dir(tmp.path());
-        let date = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
-        storage.set_last_declaration_date(date).unwrap();
-
-        let opts = SyncOptions::default();
-        let result = determine_income_period(&storage, date, &opts);
-        assert!(result.is_none(), "start > end should yield None");
+        let (_, creation_start, period_end) = determine_income_period(end, &opts);
+        assert_eq!(period_end, end);
+        assert_eq!(creation_start, end - Duration::days(44));
     }
 
     #[test]
     fn test_forced_lookback_overrides_start() {
-        let tmp = tempfile::TempDir::new().unwrap();
-        let storage = Storage::with_dir(tmp.path());
-        let last = NaiveDate::from_ymd_opt(2026, 3, 1).unwrap();
-        storage.set_last_declaration_date(last).unwrap();
-
         let end = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
         let opts = SyncOptions {
             force: false,
             forced_lookback_days: Some(90),
         };
 
-        let result = determine_income_period(&storage, end, &opts);
-        assert!(result.is_some());
-        let (start, _) = result.unwrap();
-        assert_eq!(start, end - Duration::days(89));
+        let (_, creation_start, _) = determine_income_period(end, &opts);
+        assert_eq!(creation_start, end - Duration::days(89));
+    }
+
+    #[test]
+    fn scan_horizon_is_previous_calendar_year() {
+        let opts = SyncOptions::default();
+        let jan_1_2025 = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+
+        let (scan_start, _, _) =
+            determine_income_period(NaiveDate::from_ymd_opt(2026, 7, 26).unwrap(), &opts);
+        assert_eq!(scan_start, jan_1_2025);
+
+        let (scan_start, _, _) =
+            determine_income_period(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap(), &opts);
+        assert_eq!(scan_start, jan_1_2025);
+    }
+
+    #[test]
+    fn scan_horizon_follows_a_deeper_lookback() {
+        let end = NaiveDate::from_ymd_opt(2026, 7, 26).unwrap();
+        let opts = SyncOptions {
+            force: false,
+            forced_lookback_days: Some(3650),
+        };
+
+        let (scan_start, creation_start, _) = determine_income_period(end, &opts);
+        assert_eq!(scan_start, creation_start);
+        assert!(scan_start < NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
     }
 
     #[test]
@@ -1025,6 +1040,229 @@ mod tests {
         // otherwise overwrite it.
         assert!(storage.get_declaration("3").is_some());
         assert_eq!(storage.get_declarations(None, None).len(), 3);
+    }
+
+    // -----------------------------------------------------------------
+    // Income declaration creation
+    // -----------------------------------------------------------------
+
+    fn income_txn(
+        id: &str,
+        r#type: TransactionType,
+        symbol: &str,
+        date: &str,
+        amount: Decimal,
+        description: &str,
+    ) -> Transaction {
+        Transaction {
+            transaction_id: id.to_string(),
+            date: NaiveDate::parse_from_str(date, "%Y-%m-%d").unwrap(),
+            r#type,
+            symbol: symbol.to_string(),
+            description: description.to_string(),
+            quantity: Decimal::ZERO,
+            price: Decimal::ZERO,
+            amount,
+            currency: Currency::USD,
+            open_date: None,
+            open_price: None,
+            exchange_rate: None,
+            amount_rsd: None,
+            action_id: None,
+        }
+    }
+
+    /// A dividend and its withholding row, matched by the `PER SHARE` prefix.
+    fn dividend_rows(symbol: &str, date: &str, gross: Decimal, tax: Decimal) -> Vec<Transaction> {
+        let desc = format!("{symbol}(US0000000000) CASH DIVIDEND USD 1.00 PER SHARE");
+        vec![
+            income_txn(
+                &format!("d-{symbol}-{date}"),
+                TransactionType::Dividend,
+                symbol,
+                date,
+                gross,
+                &format!("{desc} (Ordinary Dividend)"),
+            ),
+            income_txn(
+                &format!("w-{symbol}-{date}"),
+                TransactionType::WithholdingTax,
+                symbol,
+                date,
+                tax,
+                &format!("{desc} - US TAX"),
+            ),
+        ]
+    }
+
+    fn income_test_setup() -> (
+        tempfile::TempDir,
+        Storage,
+        crate::holidays::HolidayCalendar,
+        UserConfig,
+        std::path::PathBuf,
+    ) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let storage = Storage::with_dir(tmp.path());
+        let mut cal = crate::holidays::HolidayCalendar::empty();
+        cal.set_fallback(true);
+
+        let output_dir = tmp.path().join("output");
+        std::fs::create_dir_all(&output_dir).unwrap();
+        let mut cfg = valid_config();
+        cfg.output_folder = Some(output_dir.display().to_string());
+
+        (tmp, storage, cal, cfg, output_dir)
+    }
+
+    fn declared_ppo(
+        id: &str,
+        symbol: &str,
+        date: NaiveDate,
+        file_path: Option<String>,
+    ) -> Declaration {
+        let mut metadata = indexmap::IndexMap::new();
+        metadata.insert("symbol".to_string(), symbol.into());
+        metadata.insert("income_type".to_string(), "dividend".into());
+        Declaration {
+            declaration_id: id.into(),
+            r#type: DeclarationType::Ppo,
+            status: DeclarationStatus::Draft,
+            period_start: date,
+            period_end: date,
+            created_at: Local::now().naive_local(),
+            submitted_at: None,
+            paid_at: None,
+            file_path,
+            xml_content: None,
+            report_data: None,
+            metadata,
+            attached_files: indexmap::IndexMap::new(),
+        }
+    }
+
+    #[test]
+    fn late_arriving_income_gets_declared_on_next_sync() {
+        let (_tmp, storage, cal, cfg, output_dir) = income_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let opts = SyncOptions::default();
+        let end_period = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
+        seed_rates(&storage, &[("2026-03-01", "100.00")]);
+
+        let first =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert!(first.empty, "nothing stored yet");
+
+        // The same window, and a date the first run already scanned past.
+        storage
+            .save_transactions(&dividend_rows("VOO", "2026-03-01", dec!(100), dec!(-15)))
+            .unwrap();
+
+        let second =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(second.created.len(), 1);
+        assert_eq!(second.created[0].metadata["symbol"], "VOO");
+    }
+
+    #[test]
+    fn missing_rate_group_does_not_block_others() {
+        let (_tmp, storage, cal, cfg, output_dir) = income_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let opts = SyncOptions::default();
+        let end_period = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
+        // Only VOO's date has a rate; MSFT's is beyond the NBS lookback from it.
+        seed_rates(&storage, &[("2026-03-01", "100.00")]);
+
+        let mut txns = dividend_rows("VOO", "2026-03-01", dec!(100), dec!(-15));
+        txns.extend(dividend_rows("MSFT", "2026-02-05", dec!(50), dec!(-7.5)));
+        storage.save_transactions(&txns).unwrap();
+
+        let outcome =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+
+        assert_eq!(outcome.created.len(), 1);
+        assert_eq!(outcome.created[0].metadata["symbol"], "VOO");
+        assert_eq!(outcome.notices.len(), 1);
+        assert!(outcome.notices[0].contains("MSFT"));
+    }
+
+    #[test]
+    fn deleted_income_declaration_is_regenerated() {
+        let (_tmp, storage, cal, cfg, output_dir) = income_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let opts = SyncOptions::default();
+        let end_period = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
+        seed_rates(&storage, &[("2026-03-01", "100.00")]);
+        storage
+            .save_transactions(&dividend_rows("VOO", "2026-03-01", dec!(100), dec!(-15)))
+            .unwrap();
+
+        let first =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(first.created.len(), 1);
+
+        let second =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert!(second.empty, "an existing declaration is not repeated");
+
+        storage
+            .delete_declaration(&first.created[0].declaration_id)
+            .unwrap();
+
+        let third =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(third.created.len(), 1);
+    }
+
+    #[test]
+    fn declaration_without_file_path_is_not_regenerated() {
+        let (_tmp, storage, cal, cfg, output_dir) = income_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let opts = SyncOptions::default();
+        let end_period = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
+        let income_date = NaiveDate::from_ymd_opt(2026, 3, 1).unwrap();
+        seed_rates(&storage, &[("2026-03-01", "100.00")]);
+        storage
+            .save_transactions(&dividend_rows("VOO", "2026-03-01", dec!(100), dec!(-15)))
+            .unwrap();
+
+        storage
+            .save_declaration(&declared_ppo("1", "VOO", income_date, None))
+            .unwrap();
+
+        let outcome =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert!(
+            outcome.empty,
+            "the group is keyed by metadata, not by a file name"
+        );
+    }
+
+    #[test]
+    fn no_watermark_is_written() {
+        let (_tmp, storage, cal, cfg, _output_dir) = income_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let opts = SyncOptions::default();
+        // `generate_declarations` reads the clock, so the income has to be
+        // dated relative to it to land inside the creation window.
+        let income_date = (Local::now().date_naive() - Duration::days(3))
+            .format("%Y-%m-%d")
+            .to_string();
+        seed_rates(&storage, &[(&income_date, "100.00")]);
+        storage
+            .save_transactions(&dividend_rows("VOO", &income_date, dec!(100), dec!(-15)))
+            .unwrap();
+
+        let result = generate_declarations(&storage, &nbs, &cfg, &cal, &opts).unwrap();
+        assert_eq!(result.created_declarations.len(), 1);
+        assert!(storage.get_last_declaration_date().is_none());
     }
 
     #[test]
