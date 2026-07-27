@@ -740,8 +740,8 @@ mod tests {
         let tmp = tempfile::TempDir::new().unwrap();
         let storage = Storage::with_dir(tmp.path());
         let cal = crate::holidays::HolidayCalendar::load_embedded();
-        let nbs = crate::nbs::NBSClient::with_base_url(&storage, &cal, "http://127.0.0.1:1");
-        let ibkr = IBKRClient::with_base_url("tok", "qid", "http://127.0.0.1:1");
+        let nbs = crate::nbs::NBSClient::with_base_url(&storage, &cal, "offline://nbs");
+        let ibkr = IBKRClient::with_base_url("tok", "qid", "offline://ibkr");
         let cfg = UserConfig::default();
         let opts = SyncOptions::default();
 
@@ -795,7 +795,7 @@ mod tests {
             .create();
         let ibkr = IBKRClient::with_base_url("tok", "qid", &ibkr_server.url());
 
-        let nbs = crate::nbs::NBSClient::with_base_url(&storage, &cal, "http://127.0.0.1:1");
+        let nbs = crate::nbs::NBSClient::with_base_url(&storage, &cal, "offline://nbs");
 
         let opts = SyncOptions::default();
         // A failed IBKR fetch must not abort generation: run_sync still returns
@@ -879,7 +879,7 @@ mod tests {
         storage: &'a Storage,
         cal: &'a crate::holidays::HolidayCalendar,
     ) -> crate::nbs::NBSClient<'a> {
-        crate::nbs::NBSClient::with_base_url(storage, cal, "http://127.0.0.1:1")
+        crate::nbs::NBSClient::with_base_url(storage, cal, "offline://nbs")
             .with_retries(1, std::time::Duration::ZERO)
     }
 

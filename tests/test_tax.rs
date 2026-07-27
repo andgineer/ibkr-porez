@@ -32,8 +32,10 @@ fn make_trade(
     }
 }
 
-/// Unreachable URL so tests never accidentally hit the real NBS API.
-const FAKE_NBS_URL: &str = "http://127.0.0.1:1";
+/// Unroutable scheme so tests never hit the real NBS API. reqwest rejects it
+/// before opening a socket, which a dead port does not: on Windows connecting
+/// to one blocks for seconds instead of being refused outright.
+const FAKE_NBS_URL: &str = "offline://nbs";
 
 fn setup_with_rates(rates: &[(&str, &str, &str)]) -> (tempfile::TempDir, Storage, HolidayCalendar) {
     let tmp = tempfile::TempDir::new().unwrap();
@@ -53,8 +55,8 @@ fn setup_with_rates(rates: &[(&str, &str, &str)]) -> (tempfile::TempDir, Storage
 }
 
 fn nbs_offline<'a>(storage: &'a Storage, cal: &'a HolidayCalendar) -> NBSClient<'a> {
-    // Single attempt with no delay: the connection to FAKE_NBS_URL fails instantly,
-    // so the production retry-with-backoff would otherwise add seconds per lookup.
+    // Single attempt with no delay: the production retry-with-backoff would
+    // otherwise add seconds per lookup.
     NBSClient::with_base_url(storage, cal, FAKE_NBS_URL).with_retries(1, std::time::Duration::ZERO)
 }
 

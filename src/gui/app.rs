@@ -22,7 +22,12 @@ use super::styles;
 use super::submit_dialog::SubmitDialog;
 use super::sync_file_dialog::SyncFileDialog;
 
-fn notify_new_declarations(count: usize) {
+fn notify_new_declarations(result: &Result<crate::sync::SyncResult, String>) {
+    let Ok(r) = result else { return };
+    let count = r.created_declarations.len();
+    if count == 0 {
+        return;
+    }
     let body = if count == 1 {
         "1 new declaration was created".to_string()
     } else {
@@ -425,6 +430,7 @@ impl App {
             };
             let result = crate::sync::run_sync(&storage, &nbs, &config, &holidays, &opts, &ibkr)
                 .map_err(|e| format!("{e:#}"));
+            notify_new_declarations(&result);
             let _ = tx.send(BackgroundResult::SyncDone(result));
             ctx.request_repaint();
         });
@@ -452,6 +458,7 @@ impl App {
             let result =
                 crate::sync::run_sync_from_file(&path, &storage, &nbs, &config, &holidays, &opts)
                     .map_err(|e| format!("{e:#}"));
+            notify_new_declarations(&result);
             let _ = tx.send(BackgroundResult::SyncDone(result));
             ctx.request_repaint();
         });
@@ -561,7 +568,6 @@ impl App {
                     let count_u32 = u32::try_from(count).unwrap_or(u32::MAX);
                     let _ = self.storage.add_pending_new_declarations(count_u32);
                     self.pending_new_declarations = self.storage.get_pending_new_declarations();
-                    notify_new_declarations(count);
                 }
 
                 if let Some(fetch_err) = &r.fetch_error {

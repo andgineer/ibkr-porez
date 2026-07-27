@@ -213,8 +213,8 @@ mod tests {
         let tmp = tempfile::TempDir::new().unwrap();
         let storage = Storage::with_dir(tmp.path());
         let cal = HolidayCalendar::load_embedded();
-        let nbs = NBSClient::with_base_url(&storage, &cal, "http://127.0.0.1:1");
-        let ibkr = IBKRClient::with_base_url("tok", "qid", "http://127.0.0.1:1");
+        let nbs = NBSClient::with_base_url(&storage, &cal, "offline://nbs");
+        let ibkr = IBKRClient::with_base_url("tok", "qid", "offline://ibkr");
         let cfg = make_config("", "");
 
         let result = fetch_and_import(&storage, &nbs, &cfg, &ibkr);
