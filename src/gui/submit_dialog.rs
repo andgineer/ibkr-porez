@@ -52,7 +52,7 @@ pub fn show(ctx: &egui::Context, app: &mut App) {
 
             ui.add_space(10.0);
             ui.horizontal(|ui| {
-                if ui.button("Submit").clicked() {
+                if ui.button("Mark as submitted").clicked() {
                     submit = true;
                 }
                 if ui.button("Cancel").clicked() {

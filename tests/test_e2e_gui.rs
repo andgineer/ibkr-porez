@@ -358,6 +358,96 @@ fn select_all_and_apply_submit() {
     }
 }
 
+// ── Submit dialog ────────────────────────────────────────────
+
+/// The bulk-action combo also renders the word "Submit"; switching it away
+/// leaves the row button as the only match.
+fn app_with_one_draft_row() -> (App, tempfile::TempDir) {
+    let (mut app, tmp) = setup_app(vec![make_decl("row-sub", DeclarationStatus::Draft)], vec![]);
+    app.bulk_action = ibkr_porez::gui::app::BulkAction::Pay;
+    (app, tmp)
+}
+
+#[test]
+fn row_submit_opens_the_dialog_and_records_the_number() {
+    let (app, _tmp) = app_with_one_draft_row();
+    let mut harness = harness_for(app);
+
+    assert!(harness.state().submit_dialog.is_none());
+    harness.get_by_label("Submit").click();
+    harness.run();
+    assert!(
+        harness.state().submit_dialog.is_some(),
+        "the row button opens the confirmation dialog"
+    );
+
+    // What the dialog actually shows.
+    assert!(
+        harness
+            .query_by_label_contains("Mark declaration row-sub as submitted")
+            .is_some()
+    );
+    assert!(
+        harness
+            .query_by_label_contains("Declaration number at PURS")
+            .is_some()
+    );
+    assert!(
+        harness
+            .query_by_label_contains("Optional, 1\u{2013}19 digits")
+            .is_some(),
+        "the dialog states the accepted format"
+    );
+
+    harness
+        .state_mut()
+        .submit_dialog
+        .as_mut()
+        .unwrap()
+        .number
+        .push_str("1234567890");
+    harness.run();
+
+    harness.get_by_label("Mark as submitted").click();
+    harness.run();
+
+    assert!(harness.state().submit_dialog.is_none());
+    assert!(harness.state().error_dialog.is_none());
+    let decl = harness.state().storage.get_declaration("row-sub").unwrap();
+    assert_eq!(decl.status, DeclarationStatus::Submitted);
+    assert_eq!(decl.metadata["purs_number"], "1234567890");
+}
+
+#[test]
+fn submit_dialog_without_a_number_still_submits() {
+    let (app, _tmp) = app_with_one_draft_row();
+    let mut harness = harness_for(app);
+
+    harness.get_by_label("Submit").click();
+    harness.run();
+    harness.get_by_label("Mark as submitted").click();
+    harness.run();
+
+    let decl = harness.state().storage.get_declaration("row-sub").unwrap();
+    assert_eq!(decl.status, DeclarationStatus::Submitted);
+    assert!(!decl.metadata.contains_key("purs_number"));
+}
+
+#[test]
+fn submit_dialog_cancel_changes_nothing() {
+    let (app, _tmp) = app_with_one_draft_row();
+    let mut harness = harness_for(app);
+
+    harness.get_by_label("Submit").click();
+    harness.run();
+    harness.get_by_label("Cancel").click();
+    harness.run();
+
+    assert!(harness.state().submit_dialog.is_none());
+    let decl = harness.state().storage.get_declaration("row-sub").unwrap();
+    assert_eq!(decl.status, DeclarationStatus::Draft);
+}
+
 // ── Status bar ───────────────────────────────────────────────
 
 #[test]
