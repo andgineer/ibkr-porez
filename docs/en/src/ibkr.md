@@ -99,3 +99,5 @@ export data to CSV:
 2.  **Period**: Select **Custom Date Range** and specify the entire period since account opening.
 3.  Click **Download CSV**.
 4.  This file can be used with the [import ↗](usage.md#import-historical-data-import) command.
+
+A CSV import supplies purchase history for the capital-gains calculation and nothing else. Dividends, interest and withholding tax it carries never produce income declarations (PP OPO) — those are generated only from the Flex Query report.

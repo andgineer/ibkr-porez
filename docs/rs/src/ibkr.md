@@ -99,3 +99,5 @@ izvezite podatke u CSV:
 2.  **Period**: Izaberite **Custom Date Range** i navedite ceo period od otvaranja računa.
 3.  Kliknite **Download CSV**.
 4.  Ovaj fajl se može koristiti sa komandom [import ↗](usage.md#uvoz-istorijskih-podataka-import).
+
+CSV uvoz obezbeđuje istoriju kupovina za obračun kapitalnog dobitka i ništa više. Dividende, kamate i porez po odbitku koje nosi nikada ne stvaraju prijave o prihodu (PP OPO) — one se generišu samo iz Flex Query izveštaja.

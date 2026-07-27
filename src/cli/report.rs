@@ -1,18 +1,21 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use chrono::NaiveDate;
+use chrono::{Local, NaiveDate};
 
 use super::{
     LibReportType, init_calendar, load_config_or_exit, make_nbs, make_storage, output,
     resolve_gains_period, resolve_income_period, tables,
 };
 use ibkr_porez::config as app_config;
-use ibkr_porez::holidays::HolidayCalendar;
+use ibkr_porez::holidays::{HolidayCalendar, HolidayError};
 use ibkr_porez::models::UserConfig;
 use ibkr_porez::nbs::NBSClient;
 use ibkr_porez::report_gains::generate_gains_report;
-use ibkr_porez::report_income::generate_income_reports;
+use ibkr_porez::report_income::{
+    GroupAction, RenderOptions, collect_income_groups, decide, render_income_report,
+    wait_expires_on,
+};
 use ibkr_porez::storage::Storage;
 
 #[allow(clippy::needless_pass_by_value)]
@@ -167,16 +170,53 @@ fn run_income(
         );
     }
 
-    let reports =
-        match generate_income_reports(storage, nbs, cfg, cal, period_start, period_end, force) {
-            Ok(r) => r,
-            Err(e) => {
-                output::error(&format!("{e:#}"));
-                return Ok(());
-            }
-        };
+    let groups = collect_income_groups(&storage.load_transactions(), period_start, period_end);
+    let opts = RenderOptions {
+        today: Local::now().date_naive(),
+        force_rates: force,
+    };
 
-    if reports.is_empty() {
+    let mut written = 0usize;
+    let mut notices = Vec::new();
+
+    for group in &groups {
+        // The period the user asked for is the creation window here: nothing
+        // inside it may be dropped as out-of-window.
+        match decide(group, false, period_start, opts.today) {
+            GroupAction::Skip => {}
+            GroupAction::Wait => notices.push(format!(
+                "{} {}: no withholding tax yet, declared with a zero credit from {}",
+                group.key.1,
+                group.key.0.format("%Y-%m-%d"),
+                wait_expires_on(group).format("%Y-%m-%d"),
+            )),
+            GroupAction::Create => match render_income_report(group, nbs, cfg, cal, &opts) {
+                Ok(report) => {
+                    let dest = dest_dir.join(&report.filename);
+                    std::fs::write(&dest, &report.xml_content)?;
+                    output::success(&format!(
+                        "Report written to {} ({} entries)",
+                        dest.display(),
+                        report.entries.len(),
+                    ));
+                    for entry in &report.entries {
+                        tables::print_income_entry(entry);
+                    }
+                    written += 1;
+                }
+                // Running out of holiday data is not a per-group problem:
+                // generating with wrong holiday handling is worse than failing.
+                Err(e) if e.downcast_ref::<HolidayError>().is_some() => return Err(e),
+                Err(e) => notices.push(format!(
+                    "{} {}: {e:#}",
+                    group.key.1,
+                    group.key.0.format("%Y-%m-%d"),
+                )),
+            },
+        }
+    }
+
+    if written == 0 && notices.is_empty() {
         output::warning(&format!(
             "No income found in period {} to {}.",
             period_start.format("%Y-%m-%d"),
@@ -185,17 +225,8 @@ fn run_income(
         return Ok(());
     }
 
-    for report in &reports {
-        let dest = dest_dir.join(&report.filename);
-        std::fs::write(&dest, &report.xml_content)?;
-        output::success(&format!(
-            "Report written to {} ({} entries)",
-            dest.display(),
-            report.entries.len(),
-        ));
-        for entry in &report.entries {
-            tables::print_income_entry(entry);
-        }
+    for notice in &notices {
+        output::dim(notice);
     }
 
     Ok(())

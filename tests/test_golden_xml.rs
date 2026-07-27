@@ -199,7 +199,7 @@ fn test_ppopo_xml_ixus_values_match_golden() {
         bruto_prihod: dec!(4087.08),
         osnovica_za_porez: dec!(4087.08),
         obracunati_porez: dec!(613.06),
-        porez_placen_drugoj_drzavi: dec!(3677.57),
+        porez_placen_drugoj_drzavi: dec!(1224.52),
         porez_za_uplatu: dec!(0.00),
     };
 

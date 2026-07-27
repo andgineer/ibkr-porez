@@ -14,7 +14,10 @@ use crate::models::{CarryforwardVintage, Currency, Transaction, TransactionType}
 use crate::models::{Declaration, DeclarationStatus, DeclarationType, UserConfig};
 use crate::nbs::NBSClient;
 use crate::report_gains::generate_gains_report;
-use crate::report_income::generate_income_reports;
+use crate::report_income::{
+    GroupAction, RenderOptions, collect_income_groups, decide, income_report_filename,
+    render_income_report,
+};
 use crate::storage::Storage;
 
 const DEFAULT_LOOKBACK_DAYS: i64 = 45;
@@ -163,9 +166,6 @@ fn generate_declarations(
             if msg.contains("no NBS exchange rate") {
                 debug!(error = %e, "income report NBS error collected");
                 income_error = Some(msg);
-            } else if msg.contains("withholding tax") && !options.force {
-                warn!(error = %e, "missing withholding tax; use --force to override");
-                return Err(e);
             } else {
                 return Err(e.context("PP-OPO generation failed"));
             }
@@ -328,44 +328,58 @@ fn generate_and_save_income(
         return Ok(IncomeOutcome::NoIncome);
     };
 
-    let reports = generate_income_reports(
-        storage,
-        nbs,
-        config,
-        holidays,
-        income_start,
-        income_end,
-        options.force,
-    )?;
-
-    if reports.is_empty() {
+    let groups = collect_income_groups(&storage.load_transactions(), income_start, income_end);
+    if groups.is_empty() {
         return Ok(IncomeOutcome::NoIncome);
     }
 
+    // One clock reading for the whole run: a second `Local::now()` here could
+    // land past midnight and disagree with `end_period`.
+    let today = end_period + Duration::days(1);
+    let opts = RenderOptions {
+        today,
+        force_rates: options.force,
+    };
+
     let mut created = Vec::new();
-    for report in &reports {
-        if is_duplicate(storage, &report.filename, &DeclarationType::Ppo) {
-            debug!(filename = %report.filename, "income declaration already exists, skipping");
-            continue;
+    for group in &groups {
+        let filename = income_report_filename(&group.key);
+        let already_declared = is_duplicate(storage, &filename, &DeclarationType::Ppo);
+
+        match decide(group, already_declared, income_start, today) {
+            GroupAction::Skip => {}
+            GroupAction::Wait => {
+                info!(
+                    %filename,
+                    "no withholding tax matched yet; holding the declaration back"
+                );
+            }
+            GroupAction::Create => {
+                let report = render_income_report(group, nbs, config, holidays, &opts)?;
+
+                let decl = save_declaration(
+                    storage,
+                    &report.filename,
+                    &report.xml_content,
+                    DeclarationType::Ppo,
+                    report.declaration_date,
+                    report.declaration_date,
+                    &report.entries,
+                    &report.metadata(),
+                    output_dir,
+                )?;
+
+                // A zero credit reads the same in the document whether the tax
+                // was withheld and reversed or never arrived at all; the log is
+                // where the two are told apart.
+                info!(
+                    filename = %report.filename,
+                    matched_any_tax = group.matched_any_tax,
+                    "created PP-OPO declaration"
+                );
+                created.push(decl);
+            }
         }
-
-        let period_start = report.declaration_date;
-        let period_end = report.declaration_date;
-
-        let decl = save_declaration(
-            storage,
-            &report.filename,
-            &report.xml_content,
-            DeclarationType::Ppo,
-            period_start,
-            period_end,
-            &report.entries,
-            &report.metadata(),
-            output_dir,
-        )?;
-
-        info!(filename = %report.filename, "created PP-OPO declaration");
-        created.push(decl);
     }
 
     Ok(IncomeOutcome::Created(created))

@@ -7,7 +7,9 @@ use ibkr_porez::models::{
 };
 use ibkr_porez::nbs::NBSClient;
 use ibkr_porez::report_gains::{compute_carryforward_application, generate_gains_report};
-use ibkr_porez::report_income::generate_income_reports;
+use ibkr_porez::report_income::{
+    GroupAction, IncomeReport, RenderOptions, collect_income_groups, decide, render_income_report,
+};
 use ibkr_porez::storage::Storage;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
@@ -397,13 +399,45 @@ fn test_carryforward_zero_or_negative_base_consumes_nothing() {
     let v = storage.find_carryforward_vintage("CF-1").unwrap();
     assert_eq!(v.remaining_loss_rsd, dec!(1000));
 }
+// ---------------------------------------------------------------------------
+// PP-OPO income reports – only what needs an exchange rate or storage;
+// matching and netting are unit-tested in src/report_income.rs.
+// ---------------------------------------------------------------------------
+
+fn dividend_desc(symbol: &str, isin: &str, per_share: &str) -> String {
+    format!("{symbol}({isin}) CASH DIVIDEND USD {per_share} PER SHARE (Ordinary Dividend)")
+}
+
+fn tax_desc(symbol: &str, isin: &str, per_share: &str) -> String {
+    format!("{symbol}({isin}) CASH DIVIDEND USD {per_share} PER SHARE - US TAX")
+}
+
+fn income_reports(
+    storage: &Storage,
+    nbs: &NBSClient,
+    cal: &HolidayCalendar,
+    start: &str,
+    end: &str,
+    today: &str,
+    force: bool,
+) -> Vec<IncomeReport> {
+    let day = |s: &str| NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap();
+    let (start, end, today) = (day(start), day(end), day(today));
+    let opts = RenderOptions {
+        today,
+        force_rates: force,
+    };
+
+    collect_income_groups(&storage.load_transactions(), start, end)
+        .iter()
+        .filter(|group| decide(group, false, start, today) == GroupAction::Create)
+        .map(|group| render_income_report(group, nbs, &test_config(), cal, &opts).unwrap())
+        .collect()
+}
 
 #[test]
 fn test_income_reports_dividend_grouping() {
-    let (_tmp, storage, cal) = setup_with_rates(&[
-        ("2023-07-15", "USD", "108.00"),
-        ("2023-07-17", "USD", "108.00"),
-    ]);
+    let (_tmp, storage, cal) = setup_with_rates(&[("2023-07-15", "USD", "108.00")]);
 
     let txns = vec![
         make_txn(
@@ -415,7 +449,7 @@ fn test_income_reports_dividend_grouping() {
             Decimal::ZERO,
             dec!(50.0),
             Currency::USD,
-            "VOO.US(US9229083632) Cash Dividend",
+            &dividend_desc("VOO", "US9229083632", "1.74"),
         ),
         make_txn(
             "w1",
@@ -426,17 +460,21 @@ fn test_income_reports_dividend_grouping() {
             Decimal::ZERO,
             dec!(-7.50),
             Currency::USD,
-            "VOO.US(US9229083632) Tax",
+            &tax_desc("VOO", "US9229083632", "1.74"),
         ),
     ];
     storage.save_transactions(&txns).unwrap();
 
     let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2023, 7, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2023, 7, 31).unwrap();
-
-    let reports =
-        generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, true).unwrap();
+    let reports = income_reports(
+        &storage,
+        &nbs,
+        &cal,
+        "2023-07-01",
+        "2023-07-31",
+        "2023-08-15",
+        true,
+    );
 
     assert_eq!(reports.len(), 1);
     assert!(reports[0].filename.contains("ppopo"));
@@ -449,64 +487,55 @@ fn test_income_reports_coupon_groups_by_currency() {
     let (_tmp, storage, cal) = setup_with_rates(&[
         ("2023-07-15", "USD", "108.00"),
         ("2023-07-15", "EUR", "117.00"),
-        ("2023-07-17", "USD", "108.00"),
-        ("2023-07-17", "EUR", "117.00"),
     ]);
 
     let txns = vec![
         make_txn(
             "i1",
             TransactionType::Interest,
-            "BOND-USD",
+            "",
             "2023-07-15",
             Decimal::ZERO,
             Decimal::ZERO,
             dec!(100.0),
             Currency::USD,
-            "Bond interest USD",
+            "USD CREDIT INT FOR JUN-2023",
         ),
         make_txn(
             "i2",
             TransactionType::Interest,
-            "BOND-EUR",
+            "",
             "2023-07-15",
             Decimal::ZERO,
             Decimal::ZERO,
             dec!(80.0),
             Currency::EUR,
-            "Bond interest EUR",
+            "EUR CREDIT INT FOR JUN-2023",
         ),
         make_txn(
             "w1",
             TransactionType::WithholdingTax,
-            "BOND-USD",
-            "2023-07-17",
+            "",
+            "2023-07-15",
             Decimal::ZERO,
             Decimal::ZERO,
             dec!(-15.0),
             Currency::USD,
-            "Bond WHT USD",
-        ),
-        make_txn(
-            "w2",
-            TransactionType::WithholdingTax,
-            "BOND-EUR",
-            "2023-07-17",
-            Decimal::ZERO,
-            Decimal::ZERO,
-            dec!(-12.0),
-            Currency::EUR,
-            "Bond WHT EUR",
+            "WITHHOLDING @ 30% ON CREDIT INT FOR JUN-2023",
         ),
     ];
     storage.save_transactions(&txns).unwrap();
 
     let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2023, 7, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2023, 7, 31).unwrap();
-
-    let reports =
-        generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, true).unwrap();
+    let reports = income_reports(
+        &storage,
+        &nbs,
+        &cal,
+        "2023-07-01",
+        "2023-07-31",
+        "2023-08-15",
+        true,
+    );
 
     assert_eq!(reports.len(), 2, "should group coupons by currency");
     let filenames: Vec<&str> = reports.iter().map(|r| r.filename.as_str()).collect();
@@ -516,10 +545,7 @@ fn test_income_reports_coupon_groups_by_currency() {
 
 #[test]
 fn test_income_report_metadata() {
-    let (_tmp, storage, cal) = setup_with_rates(&[
-        ("2023-07-15", "USD", "108.00"),
-        ("2023-07-17", "USD", "108.00"),
-    ]);
+    let (_tmp, storage, cal) = setup_with_rates(&[("2023-07-15", "USD", "108.00")]);
 
     let txns = vec![
         make_txn(
@@ -531,28 +557,32 @@ fn test_income_report_metadata() {
             Decimal::ZERO,
             dec!(100.0),
             Currency::USD,
-            "VOO.US(US9229083632) Cash Dividend",
+            &dividend_desc("VOO", "US9229083632", "1.74"),
         ),
         make_txn(
             "w1",
             TransactionType::WithholdingTax,
             "VOO",
-            "2023-07-17",
+            "2023-07-15",
             Decimal::ZERO,
             Decimal::ZERO,
             dec!(-15.0),
             Currency::USD,
-            "VOO.US(US9229083632) Tax",
+            &tax_desc("VOO", "US9229083632", "1.74"),
         ),
     ];
     storage.save_transactions(&txns).unwrap();
 
     let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2023, 7, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2023, 7, 31).unwrap();
-
-    let reports =
-        generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, true).unwrap();
+    let reports = income_reports(
+        &storage,
+        &nbs,
+        &cal,
+        "2023-07-01",
+        "2023-07-31",
+        "2023-08-15",
+        true,
+    );
     assert!(!reports.is_empty());
 
     let meta = reports[0].metadata();
@@ -560,17 +590,11 @@ fn test_income_report_metadata() {
     assert_eq!(meta["symbol"], "VOO");
 }
 
-// ---------------------------------------------------------------------------
-// WHT matching tests – ported from Python test_withholding_tax_matching.py
-// ---------------------------------------------------------------------------
-
-// Python: test_find_tax_in_subsequent_days – WHT 2 days after income, rate=100
+// The whole group is converted at the income date's rate, the tax included:
+// a withholding row posted days later carries no rate of its own.
 #[test]
-fn test_wht_found_within_7_day_window() {
-    let (_tmp, storage, cal) = setup_with_rates(&[
-        ("2025-12-24", "USD", "100.00"),
-        ("2025-12-26", "USD", "100.00"),
-    ]);
+fn test_income_credit_converted_at_income_date_rate() {
+    let (_tmp, storage, cal) = setup_with_rates(&[("2025-12-24", "USD", "100.00")]);
 
     let txns = vec![
         make_txn(
@@ -582,7 +606,7 @@ fn test_wht_found_within_7_day_window() {
             Decimal::ZERO,
             dec!(100.0),
             Currency::USD,
-            "VOO(US9229083632) CASH DIVIDEND",
+            &dividend_desc("VOO", "US9229083632", "1.771"),
         ),
         make_txn(
             "w1",
@@ -593,291 +617,91 @@ fn test_wht_found_within_7_day_window() {
             Decimal::ZERO,
             dec!(-15.0),
             Currency::USD,
-            "VOO(US9229083632) US TAX",
+            &tax_desc("VOO", "US9229083632", "1.771"),
         ),
     ];
     storage.save_transactions(&txns).unwrap();
 
     let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
+    let reports = income_reports(
+        &storage,
+        &nbs,
+        &cal,
+        "2025-12-01",
+        "2025-12-31",
+        "2026-01-20",
+        false,
+    );
 
-    let reports =
-        generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, true).unwrap();
     assert_eq!(reports.len(), 1);
-    // WHT 15 * 100 = 1500 RSD
+    assert_eq!(reports[0].entries[0].bruto_prihod, dec!(10000.00));
     assert_eq!(
         reports[0].entries[0].porez_placen_drugoj_drzavi,
         dec!(1500.00)
     );
 }
 
-// Python: test_find_tax_not_found_beyond_range – WHT 9 days after income
+// The §871(k) shape of golden-003: withholding taken and given back on the same
+// day nets to zero, so the full 15% is due -- not credited twice.
 #[test]
-fn test_wht_not_found_beyond_7_day_window() {
-    let (_tmp, storage, cal) = setup_with_rates(&[
-        ("2025-12-24", "USD", "100.00"),
-        ("2026-01-02", "USD", "100.00"),
-    ]);
+fn test_reversed_withholding_declares_zero_credit_and_full_tax() {
+    let (_tmp, storage, cal) = setup_with_rates(&[("2025-12-24", "USD", "99.4483")]);
 
     let txns = vec![
         make_txn(
             "d1",
             TransactionType::Dividend,
-            "VOO",
+            "SGOV",
             "2025-12-24",
             Decimal::ZERO,
             Decimal::ZERO,
-            dec!(100.0),
+            dec!(87.55),
             Currency::USD,
-            "VOO(US9229083632) CASH DIVIDEND",
+            &dividend_desc("SGOV", "US46436E7186", "0.323046"),
         ),
         make_txn(
             "w1",
             TransactionType::WithholdingTax,
-            "VOO",
-            "2026-01-02",
-            Decimal::ZERO,
-            Decimal::ZERO,
-            dec!(-15.0),
-            Currency::USD,
-            "VOO(US9229083632) US TAX",
-        ),
-    ];
-    storage.save_transactions(&txns).unwrap();
-
-    let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
-
-    let reports =
-        generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, true).unwrap();
-    assert_eq!(reports.len(), 1);
-    // WHT beyond window → zero
-    assert_eq!(reports[0].entries[0].porez_placen_drugoj_drzavi, dec!(0));
-}
-
-// Python: test_match_dividend_by_entity_name_isin – different symbol, same ISIN
-#[test]
-fn test_wht_matched_by_entity_isin_not_symbol() {
-    let (_tmp, storage, cal) = setup_with_rates(&[("2025-12-24", "USD", "100.00")]);
-
-    let txns = vec![
-        make_txn(
-            "d1",
-            TransactionType::Dividend,
-            "VOO",
+            "SGOV",
             "2025-12-24",
             Decimal::ZERO,
             Decimal::ZERO,
-            dec!(100.0),
+            dec!(-26.27),
             Currency::USD,
-            "VOO (US9229083632) CASH DIVIDEND",
-        ),
-        make_txn(
-            "w1",
-            TransactionType::WithholdingTax,
-            "DIFFERENT",
-            "2025-12-24",
-            Decimal::ZERO,
-            Decimal::ZERO,
-            dec!(-15.0),
-            Currency::USD,
-            "VOO (US9229083632) US TAX",
-        ),
-    ];
-    storage.save_transactions(&txns).unwrap();
-
-    let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
-
-    let reports =
-        generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, true).unwrap();
-    assert_eq!(reports.len(), 1);
-    assert_eq!(
-        reports[0].entries[0].porez_placen_drugoj_drzavi,
-        dec!(1500.00)
-    );
-}
-
-// Python: test_match_dividend_fallback_to_symbol – no ISIN, matches by symbol
-#[test]
-fn test_wht_fallback_to_symbol_match() {
-    let (_tmp, storage, cal) = setup_with_rates(&[("2025-12-24", "USD", "100.00")]);
-
-    let txns = vec![
-        make_txn(
-            "d1",
-            TransactionType::Dividend,
-            "VOO",
-            "2025-12-24",
-            Decimal::ZERO,
-            Decimal::ZERO,
-            dec!(100.0),
-            Currency::USD,
-            "VOO CASH DIVIDEND",
-        ),
-        make_txn(
-            "w1",
-            TransactionType::WithholdingTax,
-            "VOO",
-            "2025-12-24",
-            Decimal::ZERO,
-            Decimal::ZERO,
-            dec!(-15.0),
-            Currency::USD,
-            "VOO US TAX",
-        ),
-    ];
-    storage.save_transactions(&txns).unwrap();
-
-    let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
-
-    let reports =
-        generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, true).unwrap();
-    assert_eq!(reports.len(), 1);
-    assert_eq!(
-        reports[0].entries[0].porez_placen_drugoj_drzavi,
-        dec!(1500.00)
-    );
-}
-
-// Python: test_match_interest_by_currency – coupons match by currency
-#[test]
-fn test_wht_interest_matched_by_currency() {
-    let (_tmp, storage, cal) = setup_with_rates(&[("2025-12-24", "USD", "100.00")]);
-
-    let txns = vec![
-        make_txn(
-            "i1",
-            TransactionType::Interest,
-            "",
-            "2025-12-24",
-            Decimal::ZERO,
-            Decimal::ZERO,
-            dec!(100.0),
-            Currency::USD,
-            "USD Credit Interest for Account",
-        ),
-        make_txn(
-            "w1",
-            TransactionType::WithholdingTax,
-            "DIFFERENT",
-            "2025-12-24",
-            Decimal::ZERO,
-            Decimal::ZERO,
-            dec!(-15.0),
-            Currency::USD,
-            "USD Interest Tax",
-        ),
-    ];
-    storage.save_transactions(&txns).unwrap();
-
-    let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
-
-    let reports =
-        generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, true).unwrap();
-    assert_eq!(reports.len(), 1);
-    assert_eq!(
-        reports[0].entries[0].porez_placen_drugoj_drzavi,
-        dec!(1500.00)
-    );
-}
-
-// Python: test_multiple_taxes_summed
-#[test]
-fn test_wht_multiple_taxes_summed() {
-    let (_tmp, storage, cal) = setup_with_rates(&[
-        ("2025-12-24", "USD", "100.00"),
-        ("2025-12-25", "USD", "100.00"),
-    ]);
-
-    let txns = vec![
-        make_txn(
-            "d1",
-            TransactionType::Dividend,
-            "VOO",
-            "2025-12-24",
-            Decimal::ZERO,
-            Decimal::ZERO,
-            dec!(100.0),
-            Currency::USD,
-            "VOO CASH DIVIDEND",
-        ),
-        make_txn(
-            "w1",
-            TransactionType::WithholdingTax,
-            "VOO",
-            "2025-12-24",
-            Decimal::ZERO,
-            Decimal::ZERO,
-            dec!(-10.0),
-            Currency::USD,
-            "VOO US TAX 1",
+            &tax_desc("SGOV", "US46436E7186", "0.323046"),
         ),
         make_txn(
             "w2",
             TransactionType::WithholdingTax,
-            "VOO",
-            "2025-12-25",
+            "SGOV",
+            "2025-12-24",
             Decimal::ZERO,
             Decimal::ZERO,
-            dec!(-5.0),
+            dec!(26.27),
             Currency::USD,
-            "VOO US TAX 2",
+            &tax_desc("SGOV", "US46436E7186", "0.323046"),
         ),
     ];
     storage.save_transactions(&txns).unwrap();
 
     let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
-
-    let reports =
-        generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, true).unwrap();
-    assert_eq!(reports.len(), 1);
-    // (10 + 5) * 100 = 1500 RSD
-    assert_eq!(
-        reports[0].entries[0].porez_placen_drugoj_drzavi,
-        dec!(1500.00)
+    let reports = income_reports(
+        &storage,
+        &nbs,
+        &cal,
+        "2025-12-01",
+        "2025-12-31",
+        "2026-01-20",
+        false,
     );
+
+    assert_eq!(reports.len(), 1);
+    let entry = &reports[0].entries[0];
+    assert_eq!(entry.bruto_prihod, dec!(8706.70));
+    assert_eq!(entry.porez_placen_drugoj_drzavi, dec!(0.00));
+    assert_eq!(entry.porez_za_uplatu, dec!(1306.01));
 }
 
-// Python: zero WHT + force=false → error
-#[test]
-fn test_zero_wht_force_false_errors() {
-    let (_tmp, storage, cal) = setup_with_rates(&[("2025-12-24", "USD", "100.00")]);
-
-    let txns = vec![make_txn(
-        "d1",
-        TransactionType::Dividend,
-        "VOO",
-        "2025-12-24",
-        Decimal::ZERO,
-        Decimal::ZERO,
-        dec!(100.0),
-        Currency::USD,
-        "VOO CASH DIVIDEND",
-    )];
-    storage.save_transactions(&txns).unwrap();
-
-    let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
-
-    let result = generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, false);
-    let err = result
-        .err()
-        .expect("should error on zero WHT without force");
-    assert!(err.to_string().contains("withholding tax"));
-}
-
-// Python: interest grouping by currency – two symbols same currency → one report
 #[test]
 fn test_interest_grouped_by_currency_not_symbol() {
     let (_tmp, storage, cal) = setup_with_rates(&[("2025-12-24", "USD", "100.00")]);
@@ -892,7 +716,7 @@ fn test_interest_grouped_by_currency_not_symbol() {
             Decimal::ZERO,
             dec!(100.0),
             Currency::USD,
-            "USD Credit Interest",
+            "USD CREDIT INT FOR NOV-2025",
         ),
         make_txn(
             "i2",
@@ -903,7 +727,7 @@ fn test_interest_grouped_by_currency_not_symbol() {
             Decimal::ZERO,
             dec!(50.0),
             Currency::USD,
-            "USD Debit Interest",
+            "USD CREDIT INT FOR NOV-2025",
         ),
         make_txn(
             "w1",
@@ -914,17 +738,22 @@ fn test_interest_grouped_by_currency_not_symbol() {
             Decimal::ZERO,
             dec!(-15.0),
             Currency::USD,
-            "USD Interest Tax",
+            "WITHHOLDING @ 30% ON CREDIT INT FOR NOV-2025",
         ),
     ];
     storage.save_transactions(&txns).unwrap();
 
     let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
+    let reports = income_reports(
+        &storage,
+        &nbs,
+        &cal,
+        "2025-12-01",
+        "2025-12-31",
+        "2026-01-20",
+        true,
+    );
 
-    let reports =
-        generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, true).unwrap();
     // Both interest entries share USD currency → one declaration
     assert_eq!(reports.len(), 1);
     // total bruto = (100 + 50) * 100 = 15000 RSD
@@ -946,7 +775,7 @@ fn test_income_tax_calculation_matches_python() {
             Decimal::ZERO,
             dec!(21.25),
             Currency::USD,
-            "VOO(US9229083632) CASH DIVIDEND",
+            &dividend_desc("VOO", "US9229083632", "1.771"),
         ),
         make_txn(
             "d2",
@@ -957,7 +786,7 @@ fn test_income_tax_calculation_matches_python() {
             Decimal::ZERO,
             dec!(87.55),
             Currency::USD,
-            "SGOV(US46436E7186) CASH DIVIDEND",
+            &dividend_desc("SGOV", "US46436E7186", "0.323046"),
         ),
         make_txn(
             "w1",
@@ -968,7 +797,7 @@ fn test_income_tax_calculation_matches_python() {
             Decimal::ZERO,
             dec!(-5.0),
             Currency::USD,
-            "VOO(US9229083632) TAX",
+            &tax_desc("VOO", "US9229083632", "1.771"),
         ),
         make_txn(
             "w2",
@@ -979,17 +808,22 @@ fn test_income_tax_calculation_matches_python() {
             Decimal::ZERO,
             dec!(-5.0),
             Currency::USD,
-            "SGOV(US46436E7186) TAX",
+            &tax_desc("SGOV", "US46436E7186", "0.323046"),
         ),
     ];
     storage.save_transactions(&txns).unwrap();
 
     let nbs = nbs_offline(&storage, &cal);
-    let start = NaiveDate::from_ymd_opt(2025, 12, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
+    let reports = income_reports(
+        &storage,
+        &nbs,
+        &cal,
+        "2025-12-01",
+        "2025-12-31",
+        "2026-01-20",
+        true,
+    );
 
-    let reports =
-        generate_income_reports(&storage, &nbs, &test_config(), &cal, start, end, true).unwrap();
     // VOO and SGOV are different symbols, same date → 2 separate reports
     assert_eq!(reports.len(), 2);
 

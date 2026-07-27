@@ -1,7 +1,7 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::LazyLock;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use chrono::{Duration, NaiveDate};
 use regex::Regex;
 use rust_decimal::Decimal;
@@ -11,16 +11,49 @@ use tracing::debug;
 use crate::declaration_income_xml::generate_income_xml;
 use crate::holidays::HolidayCalendar;
 use crate::models::{
-    Currency, INCOME_CODE_COUPON, INCOME_CODE_DIVIDEND, IncomeDeclarationEntry, IncomeEntry,
-    Transaction, TransactionType, UserConfig,
+    Currency, INCOME_CODE_COUPON, INCOME_CODE_DIVIDEND, IncomeDeclarationEntry, Transaction,
+    TransactionType, UserConfig,
 };
 use crate::nbs::NBSClient;
-use crate::storage::Storage;
 
-type GroupKey = (NaiveDate, String, String);
+/// A group that matched no withholding row at all is held this long before it
+/// is declared with a zero credit. The PP-OPO deadline is 30 days from the
+/// income date, so this leaves 23 days to file.
+pub const WHT_WAIT_DAYS: i64 = 7;
 
-static ENTITY_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^([0-9A-Za-z.]+)\s*\(([0-9A-Za-z]+)\)").unwrap());
+/// `(date, SYMBOL-or-CURRENCY upper, income_type)`
+pub type GroupKey = (NaiveDate, String, String);
+
+const PER_SHARE: &str = "PER SHARE";
+
+static INTEREST_MONTH_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"CREDIT INT FOR [A-Z]{3}-\d{4}").unwrap());
+
+/// One income group in the broker's own currency. No exchange rate involved.
+#[derive(Debug, Clone)]
+pub struct IncomeGroup {
+    pub key: GroupKey,
+    /// The first income row's; a group is one currency.
+    pub currency: Currency,
+    /// Signed sum of the group's income rows.
+    pub gross_ccy: Decimal,
+    /// Credit, clamped to zero from below.
+    pub tax_ccy: Decimal,
+    /// A withholding row joined, whatever it summed to.
+    pub matched_any_tax: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GroupAction {
+    Create,
+    Skip,
+    Wait,
+}
+
+pub struct RenderOptions {
+    pub today: NaiveDate,
+    pub force_rates: bool,
+}
 
 pub struct IncomeReport {
     pub filename: String,
@@ -82,199 +115,192 @@ impl IncomeReport {
     }
 }
 
-/// Generate PP-OPO income declarations for dividends and interest in the given period.
-pub fn generate_income_reports(
-    storage: &Storage,
-    nbs: &NBSClient,
-    config: &UserConfig,
-    holidays: &HolidayCalendar,
-    start: NaiveDate,
-    end: NaiveDate,
-    force: bool,
-) -> Result<Vec<IncomeReport>> {
-    let all_txns = storage.load_transactions();
-
-    let income_txns: Vec<&Transaction> = all_txns
-        .iter()
-        .filter(|t| {
-            (t.r#type == TransactionType::Dividend || t.r#type == TransactionType::Interest)
-                && t.date >= start
-                && t.date <= end
-        })
-        .collect();
-
-    if income_txns.is_empty() {
-        return Ok(Vec::new());
+/// The distribution a transaction belongs to: a dividend and every withholding
+/// row taken from it -- reversals included -- share this key.
+fn distribution_key(txn: &Transaction) -> Option<String> {
+    if let Some(action_id) = &txn.action_id {
+        return Some(format!("action:{action_id}"));
     }
 
-    let wht_pool: Vec<&Transaction> = all_txns
-        .iter()
-        .filter(|t| {
-            t.r#type == TransactionType::WithholdingTax
-                && t.date >= start
-                && t.date <= end + Duration::days(7)
-        })
-        .collect();
+    let desc = txn.description.to_uppercase();
+    if let Some(pos) = desc.find(PER_SHARE) {
+        return Some(format!("desc:{}", &desc[..pos + PER_SHARE.len()]));
+    }
 
-    let groups = build_income_groups(&income_txns, &wht_pool, nbs, force)?;
-    build_income_reports(&groups, config, holidays, force)
+    INTEREST_MONTH_RE
+        .find(&desc)
+        .map(|m| format!("int:{}:{}", txn.currency.as_code(), m.as_str()))
 }
 
-fn build_income_groups<'a>(
-    income_txns: &[&'a Transaction],
-    wht_pool: &[&'a Transaction],
-    nbs: &NBSClient,
-    force: bool,
-) -> Result<BTreeMap<GroupKey, Vec<IncomeEntry>>> {
-    let mut groups: BTreeMap<GroupKey, Vec<IncomeEntry>> = BTreeMap::new();
+struct GroupBuilder {
+    currency: Currency,
+    gross_ccy: Decimal,
+    distribution_keys: Vec<String>,
+}
 
-    for txn in income_txns {
+/// Group income in `[scan_start, end]` and join each group's withholding tax by
+/// distribution. Pure: no storage, no exchange rate, no clock.
+#[must_use]
+pub fn collect_income_groups(
+    txns: &[Transaction],
+    scan_start: NaiveDate,
+    end: NaiveDate,
+) -> Vec<IncomeGroup> {
+    let mut taxes: HashMap<String, Vec<&Transaction>> = HashMap::new();
+    for txn in txns.iter().filter(|t| {
+        t.r#type == TransactionType::WithholdingTax && t.date >= scan_start && !t.is_csv_sourced()
+    }) {
+        if let Some(key) = distribution_key(txn) {
+            taxes.entry(key).or_default().push(txn);
+        }
+    }
+
+    let mut builders: BTreeMap<GroupKey, GroupBuilder> = BTreeMap::new();
+    for txn in txns
+        .iter()
+        .filter(|t| t.date >= scan_start && t.date <= end && !t.is_csv_sourced())
+    {
         let income_type = match txn.r#type {
             TransactionType::Dividend => "dividend",
             TransactionType::Interest => "coupon",
             _ => continue,
         };
-
-        let rate = get_rate_or_force(nbs, txn.date, &txn.currency, force)?;
-        let amount_rsd = round2(txn.amount.abs() * rate);
-
-        let wht_rsd = find_withholding_tax(wht_pool, txn, income_type, nbs, force)?;
-
-        let group_key_symbol = if income_type == "dividend" {
-            txn.symbol.clone()
+        let sym_or_currency = if income_type == "dividend" {
+            txn.symbol.to_uppercase()
         } else {
-            txn.currency.as_code().to_string()
+            txn.currency.as_code().to_uppercase()
         };
 
-        let ie = IncomeEntry {
-            date: txn.date,
-            symbol: txn.symbol.clone(),
-            amount: txn.amount.abs(),
-            currency: txn.currency.clone(),
-            amount_rsd,
-            exchange_rate: round4(rate),
-            income_type: income_type.to_string(),
-            description: txn.description.clone(),
-            withholding_tax_usd: Decimal::ZERO,
-            withholding_tax_rsd: wht_rsd,
-        };
-
-        let key = (txn.date, group_key_symbol, income_type.to_string());
-        groups.entry(key).or_default().push(ie);
+        let builder = builders
+            .entry((txn.date, sym_or_currency, income_type.to_string()))
+            .or_insert_with(|| GroupBuilder {
+                currency: txn.currency.clone(),
+                gross_ccy: Decimal::ZERO,
+                distribution_keys: Vec::new(),
+            });
+        builder.gross_ccy += txn.amount;
+        if let Some(key) = distribution_key(txn)
+            && !builder.distribution_keys.contains(&key)
+        {
+            builder.distribution_keys.push(key);
+        }
     }
 
-    Ok(groups)
+    let mut owners: HashMap<String, usize> = HashMap::new();
+    for builder in builders.values() {
+        for key in &builder.distribution_keys {
+            *owners.entry(key.clone()).or_default() += 1;
+        }
+    }
+
+    builders
+        .into_iter()
+        .map(|(key, builder)| {
+            let mut signed_tax = Decimal::ZERO;
+            let mut matched_any_tax = false;
+            for distribution in &builder.distribution_keys {
+                if owners[distribution] > 1 {
+                    continue;
+                }
+                if let Some(rows) = taxes.get(distribution) {
+                    matched_any_tax = true;
+                    signed_tax += rows.iter().map(|t| t.amount).sum::<Decimal>();
+                }
+            }
+            IncomeGroup {
+                key,
+                currency: builder.currency,
+                gross_ccy: builder.gross_ccy,
+                tax_ccy: (-signed_tax).max(Decimal::ZERO),
+                matched_any_tax,
+            }
+        })
+        .collect()
 }
 
-fn build_income_reports(
-    groups: &BTreeMap<GroupKey, Vec<IncomeEntry>>,
+/// What to do with one group. Pure: every timing rule is decided here.
+#[must_use]
+pub fn decide(
+    group: &IncomeGroup,
+    already_declared: bool,
+    creation_start: NaiveDate,
+    today: NaiveDate,
+) -> GroupAction {
+    if group.gross_ccy <= Decimal::ZERO {
+        return GroupAction::Skip;
+    }
+    if already_declared {
+        return GroupAction::Skip;
+    }
+
+    let date = group.key.0;
+    if date < creation_start {
+        return GroupAction::Skip;
+    }
+    if !group.matched_any_tax && date + Duration::days(WHT_WAIT_DAYS) >= today {
+        return GroupAction::Wait;
+    }
+    GroupAction::Create
+}
+
+/// The day a waiting group stops waiting and is declared with a zero credit.
+#[must_use]
+pub fn wait_expires_on(group: &IncomeGroup) -> NaiveDate {
+    group.key.0 + Duration::days(WHT_WAIT_DAYS + 1)
+}
+
+#[must_use]
+pub fn income_report_filename(key: &GroupKey) -> String {
+    let (date, sym_or_currency, _) = key;
+    format!(
+        "ppopo-{}-{}.xml",
+        sym_or_currency.to_lowercase(),
+        date.format("%Y-%m%d")
+    )
+}
+
+/// Resolve the exchange rate and build the PP-OPO document for one group.
+pub fn render_income_report(
+    group: &IncomeGroup,
+    nbs: &NBSClient,
     config: &UserConfig,
     holidays: &HolidayCalendar,
-    force: bool,
-) -> Result<Vec<IncomeReport>> {
-    let mut reports = Vec::new();
+    opts: &RenderOptions,
+) -> Result<IncomeReport> {
+    let (date, sym_or_currency, income_type) = &group.key;
 
-    for ((date, sym_or_cur, income_type), group) in groups {
-        let total_bruto: Decimal = round2(group.iter().map(|e| e.amount_rsd).sum());
-        let total_wht_rsd: Decimal = round2(group.iter().map(|e| e.withholding_tax_rsd).sum());
+    let rate = get_rate_or_force(nbs, *date, &group.currency, opts.force_rates)?;
 
-        if total_wht_rsd == Decimal::ZERO && !force {
-            bail!(
-                "zero withholding tax for {sym_or_cur} on {date} -- \
-                 tax may arrive later; use --force to override"
-            );
-        }
+    let total_bruto = round2(group.gross_ccy * rate);
+    let porez_placen = round2(group.tax_ccy * rate);
+    let obracunati = round2_half_up(total_bruto * Decimal::new(15, 2));
 
-        let sifra = if income_type == "dividend" {
-            INCOME_CODE_DIVIDEND
+    let decl_entry = IncomeDeclarationEntry {
+        date: *date,
+        symbol_or_currency: Some(sym_or_currency.clone()),
+        sifra_vrste_prihoda: if income_type == "dividend" {
+            INCOME_CODE_DIVIDEND.to_string()
         } else {
-            INCOME_CODE_COUPON
-        };
+            INCOME_CODE_COUPON.to_string()
+        },
+        bruto_prihod: total_bruto,
+        osnovica_za_porez: total_bruto,
+        obracunati_porez: obracunati,
+        porez_placen_drugoj_drzavi: porez_placen,
+        porez_za_uplatu: round2((obracunati - porez_placen).max(Decimal::ZERO)),
+    };
 
-        let osnovica = total_bruto;
-        let obracunati = round2_half_up(osnovica * Decimal::new(15, 2));
-        let porez_placen = total_wht_rsd;
-        let porez_za_uplatu = round2((obracunati - porez_placen).max(Decimal::ZERO));
+    let xml = generate_income_xml(&decl_entry, config, holidays);
+    let filename = income_report_filename(&group.key);
 
-        let decl_entry = IncomeDeclarationEntry {
-            date: *date,
-            symbol_or_currency: Some(sym_or_cur.clone()),
-            sifra_vrste_prihoda: sifra.to_string(),
-            bruto_prihod: total_bruto,
-            osnovica_za_porez: osnovica,
-            obracunati_porez: obracunati,
-            porez_placen_drugoj_drzavi: porez_placen,
-            porez_za_uplatu,
-        };
+    debug!(%filename, %total_bruto, %porez_placen, "generated income declaration");
 
-        let xml = generate_income_xml(&decl_entry, config, holidays);
-
-        let key_lower = sym_or_cur.to_lowercase();
-        let date_part = date.format("%Y-%m%d").to_string();
-        let filename = format!("ppopo-{key_lower}-{date_part}.xml");
-
-        debug!(%filename, %total_bruto, %porez_za_uplatu, "generated income declaration");
-
-        reports.push(IncomeReport {
-            filename,
-            xml_content: xml,
-            entries: vec![decl_entry],
-            declaration_date: *date,
-        });
-    }
-
-    Ok(reports)
-}
-
-fn find_withholding_tax(
-    wht_pool: &[&Transaction],
-    income_txn: &Transaction,
-    income_type: &str,
-    nbs: &NBSClient,
-    force: bool,
-) -> Result<Decimal> {
-    let window_start = income_txn.date;
-    let window_end = income_txn.date + Duration::days(7);
-
-    let candidates: Vec<&&Transaction> = wht_pool
-        .iter()
-        .filter(|wht| wht.date >= window_start && wht.date <= window_end)
-        .collect();
-
-    let mut matched_rsd = Decimal::ZERO;
-
-    if income_type == "dividend" {
-        if let Some(caps) = ENTITY_RE.captures(&income_txn.description) {
-            let entity_name = caps.get(1).map_or("", |m| m.as_str());
-            let entity_isin = caps.get(2).map_or("", |m| m.as_str());
-
-            for wht in &candidates {
-                let desc = &wht.description;
-                if desc.contains(entity_name) || desc.contains(entity_isin) {
-                    let rate = get_rate_or_force(nbs, wht.date, &wht.currency, force)?;
-                    matched_rsd += round2(wht.amount.abs() * rate);
-                }
-            }
-        }
-
-        if matched_rsd == Decimal::ZERO {
-            for wht in &candidates {
-                if wht.symbol == income_txn.symbol {
-                    let rate = get_rate_or_force(nbs, wht.date, &wht.currency, force)?;
-                    matched_rsd += round2(wht.amount.abs() * rate);
-                }
-            }
-        }
-    } else {
-        for wht in &candidates {
-            if wht.currency == income_txn.currency {
-                let rate = get_rate_or_force(nbs, wht.date, &wht.currency, force)?;
-                matched_rsd += round2(wht.amount.abs() * rate);
-            }
-        }
-    }
-
-    Ok(matched_rsd)
+    Ok(IncomeReport {
+        filename,
+        xml_content: xml,
+        entries: vec![decl_entry],
+        declaration_date: *date,
+    })
 }
 
 const FORCE_LOOKBACK_DAYS: u32 = 365;
@@ -324,14 +350,496 @@ fn round2(d: Decimal) -> Decimal {
     d.round_dp(2)
 }
 
-fn round4(d: Decimal) -> Decimal {
-    d.round_dp(4)
-}
-
 fn round2_half_up(d: Decimal) -> Decimal {
     d.round_dp_with_strategy(2, RoundingStrategy::MidpointAwayFromZero)
 }
 
 fn fmt_date(d: NaiveDate) -> String {
     d.format("%Y-%m-%d").to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rust_decimal_macros::dec;
+
+    fn date(s: &str) -> NaiveDate {
+        NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap()
+    }
+
+    fn txn(
+        id: &str,
+        r#type: TransactionType,
+        symbol: &str,
+        on: &str,
+        amount: Decimal,
+        description: &str,
+    ) -> Transaction {
+        Transaction {
+            transaction_id: id.to_string(),
+            date: date(on),
+            r#type,
+            symbol: symbol.to_string(),
+            description: description.to_string(),
+            quantity: Decimal::ZERO,
+            price: Decimal::ZERO,
+            amount,
+            currency: Currency::USD,
+            open_date: None,
+            open_price: None,
+            exchange_rate: None,
+            amount_rsd: None,
+            action_id: None,
+        }
+    }
+
+    fn with_action_id(mut t: Transaction, action_id: &str) -> Transaction {
+        t.action_id = Some(action_id.to_string());
+        t
+    }
+
+    fn with_currency(mut t: Transaction, currency: Currency) -> Transaction {
+        t.currency = currency;
+        t
+    }
+
+    fn dividend_desc(symbol: &str, isin: &str, per_share: &str) -> String {
+        format!("{symbol}({isin}) CASH DIVIDEND USD {per_share} PER SHARE (Ordinary Dividend)")
+    }
+
+    fn tax_desc(symbol: &str, isin: &str, per_share: &str) -> String {
+        format!("{symbol}({isin}) CASH DIVIDEND USD {per_share} PER SHARE - US TAX")
+    }
+
+    fn collect(txns: &[Transaction]) -> Vec<IncomeGroup> {
+        collect_income_groups(txns, date("2000-01-01"), date("2099-12-31"))
+    }
+
+    fn only(txns: &[Transaction]) -> IncomeGroup {
+        let groups = collect(txns);
+        assert_eq!(groups.len(), 1, "expected exactly one group: {groups:?}");
+        groups.into_iter().next().unwrap()
+    }
+
+    // -----------------------------------------------------------------
+    // Matching and netting -- collect_income_groups
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn wht_matched_by_action_id() {
+        let txns = vec![
+            with_action_id(
+                txn(
+                    "d1",
+                    TransactionType::Dividend,
+                    "SGOV",
+                    "2025-12-19",
+                    dec!(40.82),
+                    &dividend_desc("SGOV", "US46436E7186", "1.570153"),
+                ),
+                "111",
+            ),
+            with_action_id(
+                txn(
+                    "w1",
+                    TransactionType::WithholdingTax,
+                    "SGOV",
+                    "2025-12-19",
+                    dec!(-12.25),
+                    &tax_desc("SGOV", "US46436E7186", "1.570153"),
+                ),
+                "111",
+            ),
+            with_action_id(
+                txn(
+                    "d2",
+                    TransactionType::Dividend,
+                    "SGOV",
+                    "2025-12-24",
+                    dec!(87.55),
+                    &dividend_desc("SGOV", "US46436E7186", "1.570153"),
+                ),
+                "222",
+            ),
+            with_action_id(
+                txn(
+                    "w2",
+                    TransactionType::WithholdingTax,
+                    "SGOV",
+                    "2025-12-24",
+                    dec!(-26.27),
+                    &tax_desc("SGOV", "US46436E7186", "1.570153"),
+                ),
+                "222",
+            ),
+        ];
+
+        let groups = collect(&txns);
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[0].tax_ccy, dec!(12.25));
+        assert_eq!(groups[1].tax_ccy, dec!(26.27));
+    }
+
+    #[test]
+    fn wht_matched_by_description_when_action_id_absent() {
+        let group = only(&[
+            txn(
+                "d1",
+                TransactionType::Dividend,
+                "VOO",
+                "2025-10-01",
+                dec!(17.40),
+                &dividend_desc("VOO", "US9229083632", "1.74"),
+            ),
+            txn(
+                "w1",
+                TransactionType::WithholdingTax,
+                "VOO",
+                "2025-10-01",
+                dec!(-5.22),
+                &tax_desc("VOO", "US9229083632", "1.74"),
+            ),
+        ]);
+
+        assert_eq!(group.tax_ccy, dec!(5.22));
+        assert!(group.matched_any_tax);
+    }
+
+    #[test]
+    fn wht_matched_by_interest_token() {
+        let group = only(&[
+            txn(
+                "i1",
+                TransactionType::Interest,
+                "",
+                "2025-08-05",
+                dec!(0.03),
+                "USD CREDIT INT FOR JUL-2025",
+            ),
+            txn(
+                "w1",
+                TransactionType::WithholdingTax,
+                "",
+                "2025-08-05",
+                dec!(-0.01),
+                "WITHHOLDING @ 30% ON CREDIT INT FOR JUL-2025",
+            ),
+        ]);
+
+        assert_eq!(group.key.1, "USD");
+        assert_eq!(group.tax_ccy, dec!(0.01));
+    }
+
+    #[test]
+    fn interest_tax_does_not_cross_currencies() {
+        let txns = vec![
+            txn(
+                "i1",
+                TransactionType::Interest,
+                "",
+                "2025-08-05",
+                dec!(0.03),
+                "USD CREDIT INT FOR JUL-2025",
+            ),
+            with_currency(
+                txn(
+                    "i2",
+                    TransactionType::Interest,
+                    "",
+                    "2025-08-05",
+                    dec!(0.05),
+                    "EUR CREDIT INT FOR JUL-2025",
+                ),
+                Currency::EUR,
+            ),
+            txn(
+                "w1",
+                TransactionType::WithholdingTax,
+                "",
+                "2025-08-05",
+                dec!(-0.01),
+                "WITHHOLDING @ 30% ON CREDIT INT FOR JUL-2025",
+            ),
+        ];
+
+        let groups = collect(&txns);
+        assert_eq!(groups.len(), 2);
+
+        let usd = groups.iter().find(|g| g.key.1 == "USD").unwrap();
+        let eur = groups.iter().find(|g| g.key.1 == "EUR").unwrap();
+        assert_eq!(usd.tax_ccy, dec!(0.01));
+        assert_eq!(eur.tax_ccy, Decimal::ZERO);
+        assert!(!eur.matched_any_tax);
+    }
+
+    #[test]
+    fn wht_across_year_end_is_credited() {
+        let group = only(&[
+            txn(
+                "d1",
+                TransactionType::Dividend,
+                "VOO",
+                "2025-12-24",
+                dec!(100),
+                &dividend_desc("VOO", "US9229083632", "1.771"),
+            ),
+            txn(
+                "w1",
+                TransactionType::WithholdingTax,
+                "VOO",
+                "2026-01-02",
+                dec!(-15),
+                &tax_desc("VOO", "US9229083632", "1.771"),
+            ),
+        ]);
+
+        assert_eq!(group.tax_ccy, dec!(15));
+    }
+
+    #[test]
+    fn reversed_income_nets_to_zero() {
+        let group = only(&[
+            txn(
+                "d1",
+                TransactionType::Dividend,
+                "VOO",
+                "2025-12-24",
+                dec!(21.25),
+                &dividend_desc("VOO", "US9229083632", "1.771"),
+            ),
+            txn(
+                "d2",
+                TransactionType::Dividend,
+                "VOO",
+                "2025-12-24",
+                dec!(-21.25),
+                &dividend_desc("VOO", "US9229083632", "1.771"),
+            ),
+        ]);
+
+        assert_eq!(group.gross_ccy, Decimal::ZERO);
+    }
+
+    #[test]
+    fn wht_reversal_nets_to_zero() {
+        let group = only(&[
+            txn(
+                "d1",
+                TransactionType::Dividend,
+                "SGOV",
+                "2025-12-24",
+                dec!(87.55),
+                &dividend_desc("SGOV", "US46436E7186", "0.323046"),
+            ),
+            txn(
+                "w1",
+                TransactionType::WithholdingTax,
+                "SGOV",
+                "2025-12-24",
+                dec!(-26.27),
+                &tax_desc("SGOV", "US46436E7186", "0.323046"),
+            ),
+            txn(
+                "w2",
+                TransactionType::WithholdingTax,
+                "SGOV",
+                "2025-12-24",
+                dec!(26.27),
+                &tax_desc("SGOV", "US46436E7186", "0.323046"),
+            ),
+        ]);
+
+        assert_eq!(group.tax_ccy, Decimal::ZERO);
+        assert!(group.matched_any_tax);
+    }
+
+    #[test]
+    fn reversals_exceeding_withholding_clamp_to_zero() {
+        let group = only(&[
+            txn(
+                "d1",
+                TransactionType::Dividend,
+                "SGOV",
+                "2025-12-24",
+                dec!(87.55),
+                &dividend_desc("SGOV", "US46436E7186", "0.323046"),
+            ),
+            txn(
+                "w1",
+                TransactionType::WithholdingTax,
+                "SGOV",
+                "2025-12-24",
+                dec!(-26.27),
+                &tax_desc("SGOV", "US46436E7186", "0.323046"),
+            ),
+            txn(
+                "w2",
+                TransactionType::WithholdingTax,
+                "SGOV",
+                "2025-12-24",
+                dec!(52.54),
+                &tax_desc("SGOV", "US46436E7186", "0.323046"),
+            ),
+        ]);
+
+        assert_eq!(group.tax_ccy, Decimal::ZERO);
+    }
+
+    #[test]
+    fn csv_rows_are_excluded_on_both_sides() {
+        let groups = collect(&[
+            txn(
+                "csv-d1",
+                TransactionType::Dividend,
+                "VOO",
+                "2023-05-10",
+                dec!(17.40),
+                &dividend_desc("VOO", "US9229083632", "1.74"),
+            ),
+            txn(
+                "csv-w1",
+                TransactionType::WithholdingTax,
+                "VOO",
+                "2023-05-10",
+                dec!(-5.22),
+                &tax_desc("VOO", "US9229083632", "1.74"),
+            ),
+        ]);
+
+        assert!(groups.is_empty());
+    }
+
+    #[test]
+    fn ambiguous_key_credits_neither_group() {
+        let groups = collect(&[
+            txn(
+                "d1",
+                TransactionType::Dividend,
+                "VOO",
+                "2025-10-01",
+                dec!(17.40),
+                &dividend_desc("VOO", "US9229083632", "1.74"),
+            ),
+            txn(
+                "d2",
+                TransactionType::Dividend,
+                "VOO",
+                "2025-12-24",
+                dec!(17.40),
+                &dividend_desc("VOO", "US9229083632", "1.74"),
+            ),
+            txn(
+                "w1",
+                TransactionType::WithholdingTax,
+                "VOO",
+                "2025-10-01",
+                dec!(-5.22),
+                &tax_desc("VOO", "US9229083632", "1.74"),
+            ),
+        ]);
+
+        assert_eq!(groups.len(), 2);
+        for group in &groups {
+            assert_eq!(group.tax_ccy, Decimal::ZERO);
+            assert!(!group.matched_any_tax);
+        }
+    }
+
+    #[test]
+    fn group_key_is_upper_cased() {
+        let group = only(&[txn(
+            "d1",
+            TransactionType::Dividend,
+            "voo",
+            "2025-10-01",
+            dec!(17.40),
+            &dividend_desc("VOO", "US9229083632", "1.74"),
+        )]);
+
+        assert_eq!(group.key.1, "VOO");
+    }
+
+    #[test]
+    fn income_outside_the_scan_span_is_not_grouped() {
+        let txns = vec![txn(
+            "d1",
+            TransactionType::Dividend,
+            "VOO",
+            "2025-10-01",
+            dec!(17.40),
+            &dividend_desc("VOO", "US9229083632", "1.74"),
+        )];
+
+        assert!(collect_income_groups(&txns, date("2025-10-02"), date("2025-12-31")).is_empty());
+        assert!(collect_income_groups(&txns, date("2025-01-01"), date("2025-09-30")).is_empty());
+    }
+
+    // -----------------------------------------------------------------
+    // Decisions -- decide
+    // -----------------------------------------------------------------
+
+    fn group_on(on: &str, gross: Decimal, tax: Decimal, matched_any_tax: bool) -> IncomeGroup {
+        IncomeGroup {
+            key: (date(on), "VOO".into(), "dividend".into()),
+            currency: Currency::USD,
+            gross_ccy: gross,
+            tax_ccy: tax,
+            matched_any_tax,
+        }
+    }
+
+    #[test]
+    fn no_wht_waits_while_window_open() {
+        let group = group_on("2026-03-10", dec!(100), Decimal::ZERO, false);
+        assert_eq!(
+            decide(&group, false, date("2026-01-01"), date("2026-03-17")),
+            GroupAction::Wait
+        );
+    }
+
+    #[test]
+    fn no_wht_finalizes_after_wait_elapses() {
+        let group = group_on("2026-03-10", dec!(100), Decimal::ZERO, false);
+        assert_eq!(
+            decide(&group, false, date("2026-01-01"), date("2026-03-18")),
+            GroupAction::Create
+        );
+        assert_eq!(wait_expires_on(&group), date("2026-03-18"));
+    }
+
+    #[test]
+    fn netted_wht_does_not_wait() {
+        let group = group_on("2026-03-10", dec!(100), Decimal::ZERO, true);
+        assert_eq!(
+            decide(&group, false, date("2026-01-01"), date("2026-03-11")),
+            GroupAction::Create
+        );
+    }
+
+    #[test]
+    fn fully_reversed_income_is_never_declared() {
+        let group = group_on("2026-03-10", Decimal::ZERO, Decimal::ZERO, true);
+        assert_eq!(
+            decide(&group, false, date("2026-01-01"), date("2026-03-20")),
+            GroupAction::Skip
+        );
+    }
+
+    #[test]
+    fn already_declared_is_skipped() {
+        let group = group_on("2026-03-10", dec!(100), dec!(15), true);
+        assert_eq!(
+            decide(&group, true, date("2026-01-01"), date("2026-03-20")),
+            GroupAction::Skip
+        );
+    }
+
+    #[test]
+    fn outside_creation_window_is_skipped_when_undeclared() {
+        let group = group_on("2025-07-02", dec!(100), dec!(15), true);
+        assert_eq!(
+            decide(&group, false, date("2026-01-01"), date("2026-03-20")),
+            GroupAction::Skip
+        );
+    }
 }
