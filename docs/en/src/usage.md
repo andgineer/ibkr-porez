@@ -111,6 +111,16 @@ See [how to download the Flex Query XML ↗](ibkr.md#download-flex-query-xml-for
 
 In the GUI, the same option is available in the **☰** hamburger menu as **Sync from Flex Query XML…**.
 
+### Amended Declarations
+
+The tax withheld abroad on a distribution is not final. After a year closes, a US fund reports the final tax character of that year's distributions to the broker, which reverses the tax it took — a Treasury ETF whose distribution turns out to be an interest-related dividend is the usual case — and withholds anew if the corrected character calls for it. This happens between a few weeks and roughly fifteen months after the payment.
+
+When the amounts behind a PP OPO that `sync` has already created change, the next `sync` generates an amendment (измењена пријава). It is an ordinary declaration in every respect: it appears in [list](#list-declarations-list), gets its own XML in the output folder, and is submitted and paid like any other. Under the "Created declaration" line, `sync` prints the date of income realization and the original's number — the two things that locate the original in the ePorezi table.
+
+The amendment has to be filed: it replaces the original return. If you recorded the original's number with [`submit --number`](#submit-declaration-submit), it is already in the document; otherwise you fill it in at ePorezi, finding the original by its date of income realization.
+
+The comparison is made in the income's own currency, so a changed exchange rate never produces an amendment. `sync` looks for such changes back to 1 January of the previous year, whatever window governs the creation of new declarations.
+
 ## View Statistics (`stat`)
 
 ```bash
@@ -198,6 +208,9 @@ Displays:
 ### Submit Declaration (`submit`)
 ```bash
 ibkr-porez submit <id> [<id> ...]
+
+# record the number the tax portal assigned to the declaration
+ibkr-porez submit <id> --number 1234567890
 ```
 
 Marks the declaration as submitted (imported to the tax portal).
@@ -208,6 +221,10 @@ Behavior depends on declaration type:
 *   `PP OPO` after `submit`:
     *   moves to `submitted` if tax is due;
     *   moves directly to `finalized` if tax due is `0`.
+
+`--number` records the declaration's number at the tax portal — 1 to 19 digits, for one declaration at a time. If the declaration is later [amended](#amended-declarations), the amendment carries this number so the authority can tell which return it replaces. Without it the amendment is still generated, and you fill the number in at ePorezi.
+
+In the GUI, the **Submit** button opens a confirmation dialog with the same optional field.
 
 ### Pay Declaration (`pay`)
 ```bash

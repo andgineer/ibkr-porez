@@ -124,7 +124,7 @@ fn test_ppopo_xml_structure_matches_golden() {
         porez_za_uplatu: dec!(0.00),
     };
 
-    let rust_xml = generate_income_xml(&entry, &golden_config(), &holidays());
+    let rust_xml = generate_income_xml(&entry, &golden_config(), &holidays(), entry.date, None);
     let rust_children = extract_top_level_children(&rust_xml);
 
     assert_eq!(
@@ -150,7 +150,7 @@ fn test_ppopo_xml_values_match_golden() {
         porez_za_uplatu: dec!(0.00),
     };
 
-    let rust_xml = generate_income_xml(&entry, &golden_config(), &holidays());
+    let rust_xml = generate_income_xml(&entry, &golden_config(), &holidays(), entry.date, None);
     let rust_elems = extract_leaf_elements(&rust_xml);
     let rust_map = elements_to_map(&rust_elems);
 
@@ -203,7 +203,7 @@ fn test_ppopo_xml_ixus_values_match_golden() {
         porez_za_uplatu: dec!(0.00),
     };
 
-    let rust_xml = generate_income_xml(&entry, &golden_config(), &holidays());
+    let rust_xml = generate_income_xml(&entry, &golden_config(), &holidays(), entry.date, None);
     let rust_elems = extract_leaf_elements(&rust_xml);
     let rust_map = elements_to_map(&rust_elems);
 

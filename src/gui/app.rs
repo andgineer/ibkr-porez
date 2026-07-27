@@ -19,6 +19,7 @@ use super::details_dialog::DetailsDialog;
 use super::import_dialog::ImportDialog;
 use super::main_window;
 use super::styles;
+use super::submit_dialog::SubmitDialog;
 use super::sync_file_dialog::SyncFileDialog;
 
 fn notify_new_declarations(count: usize) {
@@ -155,6 +156,7 @@ pub struct App {
     pub assessment_dialog: Option<AssessmentDialog>,
     pub carryforward_dialog: Option<CarryforwardDialog>,
     pub delete_dialog: Option<DeleteDialog>,
+    pub submit_dialog: Option<SubmitDialog>,
     pub error_dialog: Option<String>,
     pub show_import_hint: bool,
     pub confirm_discard_config: bool,
@@ -216,6 +218,7 @@ impl App {
             assessment_dialog: None,
             carryforward_dialog: None,
             delete_dialog: None,
+            submit_dialog: None,
             error_dialog: None,
             show_import_hint,
             confirm_discard_config: false,
@@ -318,9 +321,9 @@ impl App {
         self.refresh_declarations();
     }
 
-    pub fn row_submit(&mut self, id: &str) {
+    pub fn row_submit(&mut self, id: &str, purs_number: Option<&str>) {
         let manager = DeclarationManager::new(&self.storage);
-        if let Err(e) = manager.submit(&[id]) {
+        if let Err(e) = manager.submit_with_number(&[id], purs_number) {
             self.set_error(format!("{e:#}"));
         }
         self.refresh_declarations();
@@ -574,15 +577,15 @@ impl App {
                     let _ = self.storage.set_last_sync_success(now);
                     self.last_sync_success = Some(now);
                     self.last_sync_fatal = false;
-                    if !r.income_notices.is_empty() {
+                    if r.income_notices.is_empty() {
+                        let _ = self.storage.clear_last_sync_issue();
+                        self.last_sync_issue = None;
+                    } else {
                         // One short string only: an NBS outage produces a
                         // notice per group. The detail is in the CLI.
                         let msg = income_notice_summary(r.income_notices.len());
                         let _ = self.storage.set_last_sync_issue(now, &msg);
                         self.last_sync_issue = Some((now, msg));
-                    } else {
-                        let _ = self.storage.clear_last_sync_issue();
-                        self.last_sync_issue = None;
                     }
                 }
                 self.warning_banner = check_holiday_warning(&self.config);
@@ -671,6 +674,7 @@ impl App {
             assessment_dialog: None,
             carryforward_dialog: None,
             delete_dialog: None,
+            submit_dialog: None,
             error_dialog: None,
             show_import_hint: false,
             confirm_discard_config: false,
@@ -801,6 +805,7 @@ impl App {
             || self.assessment_dialog.is_some()
             || self.carryforward_dialog.is_some()
             || self.delete_dialog.is_some()
+            || self.submit_dialog.is_some()
             || self.error_dialog.is_some()
             || self.confirm_force_sync
             || self.confirm_discard_config;
@@ -835,6 +840,8 @@ impl App {
                 self.carryforward_dialog = None;
             } else if self.delete_dialog.is_some() {
                 self.delete_dialog = None;
+            } else if self.submit_dialog.is_some() {
+                self.submit_dialog = None;
             } else if self.details_dialog.is_some() {
                 self.details_dialog = None;
             } else if self.sync_file_dialog.is_some() {
@@ -857,6 +864,7 @@ impl App {
         super::assessment_dialog::show(ctx, self);
         super::carryforward_dialog::show(ctx, self);
         super::delete_dialog::show(ctx, self);
+        super::submit_dialog::show(ctx, self);
 
         self.show_modal_dialogs(ctx);
     }

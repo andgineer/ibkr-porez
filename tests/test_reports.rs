@@ -8,7 +8,8 @@ use ibkr_porez::models::{
 use ibkr_porez::nbs::NBSClient;
 use ibkr_porez::report_gains::{compute_carryforward_application, generate_gains_report};
 use ibkr_porez::report_income::{
-    GroupAction, IncomeReport, RenderOptions, collect_income_groups, decide, render_income_report,
+    Declared, GroupAction, IncomeReport, RenderOptions, SourceAmounts, collect_income_groups,
+    decide, render_income_report,
 };
 use ibkr_porez::storage::Storage;
 use rust_decimal::Decimal;
@@ -430,8 +431,8 @@ fn income_reports(
 
     collect_income_groups(&storage.load_transactions(), start, end)
         .iter()
-        .filter(|group| decide(group, false, start, today) == GroupAction::Create)
-        .map(|group| render_income_report(group, nbs, &test_config(), cal, &opts).unwrap())
+        .filter(|group| decide(group, Declared::No, start, today) == GroupAction::Create)
+        .map(|group| render_income_report(group, None, nbs, &test_config(), cal, &opts).unwrap())
         .collect()
 }
 
@@ -700,6 +701,121 @@ fn test_reversed_withholding_declares_zero_credit_and_full_tax() {
     assert_eq!(entry.bruto_prihod, dec!(8706.70));
     assert_eq!(entry.porez_placen_drugoj_drzavi, dec!(0.00));
     assert_eq!(entry.porez_za_uplatu, dec!(1306.01));
+}
+
+fn day(s: &str) -> NaiveDate {
+    NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap()
+}
+
+fn dividend_and_tax(gross: Decimal, tax: Decimal) -> Vec<Transaction> {
+    vec![
+        make_txn(
+            "d1",
+            TransactionType::Dividend,
+            "VOO",
+            "2023-07-15",
+            Decimal::ZERO,
+            Decimal::ZERO,
+            gross,
+            Currency::USD,
+            &dividend_desc("VOO", "US9229083632", "1.74"),
+        ),
+        make_txn(
+            "w1",
+            TransactionType::WithholdingTax,
+            "VOO",
+            "2023-07-15",
+            Decimal::ZERO,
+            Decimal::ZERO,
+            tax,
+            Currency::USD,
+            &tax_desc("VOO", "US9229083632", "1.74"),
+        ),
+    ]
+}
+
+// The user sees dollars at the broker and dinars in `show`; a declaration that
+// records only the converted figures cannot be reconciled against either.
+#[test]
+fn metadata_carries_source_currency_amounts() {
+    let (_tmp, storage, cal) = setup_with_rates(&[("2023-07-15", "USD", "108.00")]);
+    storage
+        .save_transactions(&dividend_and_tax(dec!(100.0), dec!(-15.0)))
+        .unwrap();
+
+    let nbs = nbs_offline(&storage, &cal);
+    let reports = income_reports(
+        &storage,
+        &nbs,
+        &cal,
+        "2023-07-01",
+        "2023-07-31",
+        "2023-08-15",
+        false,
+    );
+    assert_eq!(reports.len(), 1);
+
+    let meta = reports[0].metadata();
+    assert_eq!(meta["gross_income_ccy"], "100.00");
+    assert_eq!(meta["foreign_tax_paid_ccy"], "15.00");
+    assert_eq!(meta["currency"], "USD");
+    assert_eq!(
+        meta["exchange_rate"]
+            .as_str()
+            .unwrap()
+            .parse::<Decimal>()
+            .unwrap(),
+        dec!(108)
+    );
+    // The RSD figures stay the converted ones, beside them.
+    assert_eq!(meta["gross_income_rsd"], "10800.00");
+    assert_eq!(meta["foreign_tax_paid_rsd"], "1620.00");
+
+    assert_eq!(
+        SourceAmounts::from_metadata(&meta).unwrap(),
+        reports[0].source,
+        "what to_metadata wrote must read back unchanged"
+    );
+}
+
+// A moved exchange rate must not look like a change in income.
+#[test]
+fn amendment_compares_source_currency_not_rsd() {
+    let (_tmp, storage, cal) = setup_with_rates(&[("2023-07-15", "USD", "108.00")]);
+    storage
+        .save_transactions(&dividend_and_tax(dec!(100.0), dec!(-15.0)))
+        .unwrap();
+
+    let nbs = nbs_offline(&storage, &cal);
+    let (start, end, today) = (day("2023-07-01"), day("2023-07-31"), day("2023-08-15"));
+    let opts = RenderOptions {
+        today,
+        force_rates: false,
+    };
+
+    let groups = collect_income_groups(&storage.load_transactions(), start, end);
+    assert_eq!(groups.len(), 1);
+    let declared_at_108 =
+        render_income_report(&groups[0], None, &nbs, &test_config(), &cal, &opts).unwrap();
+    let declared = SourceAmounts::from_metadata(&declared_at_108.metadata()).unwrap();
+
+    let mut rates = indexmap::IndexMap::new();
+    rates.insert("2023-07-15_USD".to_string(), "120.00".to_string());
+    storage.write_rates(&rates).unwrap();
+
+    let groups = collect_income_groups(&storage.load_transactions(), start, end);
+    let rendered_at_120 =
+        render_income_report(&groups[0], None, &nbs, &test_config(), &cal, &opts).unwrap();
+    assert_ne!(
+        declared_at_108.metadata()["gross_income_rsd"],
+        rendered_at_120.metadata()["gross_income_rsd"],
+        "the RSD figures did move"
+    );
+
+    assert_eq!(
+        decide(&groups[0], Declared::Yes(&declared), start, today),
+        GroupAction::Skip
+    );
 }
 
 #[test]

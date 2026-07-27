@@ -5,7 +5,8 @@ use anyhow::{Result, bail};
 
 use super::{init_calendar_with_sync, load_config_or_exit, make_nbs, make_storage, output, tables};
 use ibkr_porez::ibkr_flex::IBKRClient;
-use ibkr_porez::models::{DeclarationType, IncomeDeclarationEntry, TaxReportEntry};
+use ibkr_porez::models::{Declaration, DeclarationType, IncomeDeclarationEntry, TaxReportEntry};
+use ibkr_porez::storage::Storage;
 use ibkr_porez::sync::SyncResult;
 use ibkr_porez::sync::{SyncOptions, run_sync, run_sync_from_file, run_sync_from_xml};
 
@@ -69,11 +70,59 @@ pub fn run(
         }
     };
 
-    print_sync_result(&result);
+    print_sync_result(&result, &storage);
     Ok(())
 }
 
-fn print_sync_result(result: &SyncResult) {
+/// An amendment is printed like any other created declaration; the hint carries
+/// the two things that locate the original in the ePorezi table, where every
+/// other column is uninformative.
+fn print_amendment_hint(decl: &Declaration, storage: &Storage) {
+    let Some(amends_id) = decl.metadata.get("amends").and_then(|v| v.as_str()) else {
+        return;
+    };
+    let symbol = decl
+        .metadata
+        .get("symbol")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let meta = |d: &Declaration, key: &str| {
+        d.metadata
+            .get(key)
+            .and_then(|v| v.as_str())
+            .unwrap_or("?")
+            .to_string()
+    };
+
+    let original = storage.get_declaration(amends_id);
+    let number = original
+        .as_ref()
+        .and_then(|d| {
+            d.metadata
+                .get(ibkr_porez::declaration_manager::PURS_NUMBER_KEY)
+        })
+        .and_then(|v| v.as_str())
+        .map_or_else(
+            || "number not recorded — find it by date".to_string(),
+            |n| format!("number {n}"),
+        );
+    let credit_before = original
+        .as_ref()
+        .map_or_else(|| "?".to_string(), |d| meta(d, "foreign_tax_paid_rsd"));
+
+    output::info(&format!(
+        "Amended PP-OPO: датум остваривања прихода {}, {symbol}",
+        decl.period_start.format("%d.%m.%Y"),
+    ));
+    output::dim(&format!("  original: declaration {amends_id}, {number}"));
+    output::dim(&format!(
+        "  credit {credit_before} → {} RSD, now due {} RSD",
+        meta(decl, "foreign_tax_paid_rsd"),
+        meta(decl, "tax_due_rsd"),
+    ));
+}
+
+fn print_sync_result(result: &SyncResult, storage: &Storage) {
     if let Some(ref err_msg) = result.fetch_error {
         output::warning(&format!(
             "IBKR fetch failed ({err_msg}); generated declarations from stored transactions. Re-run `sync` later for fresh data."
@@ -89,6 +138,7 @@ fn print_sync_result(result: &SyncResult) {
                 decl.declaration_id,
                 decl.display_type()
             ));
+            print_amendment_hint(decl, storage);
 
             if let Some(ref data) = decl.report_data {
                 if decl.r#type == DeclarationType::Ppdg3r {
@@ -138,7 +188,13 @@ mod tests {
     use super::*;
 
     use chrono::NaiveDate;
-    use ibkr_porez::models::{Declaration, DeclarationStatus};
+    use ibkr_porez::models::DeclarationStatus;
+
+    fn tmp_storage() -> (tempfile::TempDir, Storage) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let storage = Storage::with_dir(tmp.path());
+        (tmp, storage)
+    }
 
     fn make_sync_result(
         decls: Vec<Declaration>,
@@ -177,25 +233,29 @@ mod tests {
     #[test]
     fn print_no_declarations() {
         let result = make_sync_result(vec![], false, false, Vec::new());
-        print_sync_result(&result);
+        let (_tmp, storage) = tmp_storage();
+        print_sync_result(&result, &storage);
     }
 
     #[test]
     fn print_gains_skipped() {
         let result = make_sync_result(vec![], true, false, Vec::new());
-        print_sync_result(&result);
+        let (_tmp, storage) = tmp_storage();
+        print_sync_result(&result, &storage);
     }
 
     #[test]
     fn print_income_skipped() {
         let result = make_sync_result(vec![], false, true, Vec::new());
-        print_sync_result(&result);
+        let (_tmp, storage) = tmp_storage();
+        print_sync_result(&result, &storage);
     }
 
     #[test]
     fn print_both_skipped() {
         let result = make_sync_result(vec![], true, true, Vec::new());
-        print_sync_result(&result);
+        let (_tmp, storage) = tmp_storage();
+        print_sync_result(&result, &storage);
     }
 
     #[test]
@@ -206,21 +266,24 @@ mod tests {
             false,
             vec!["VOO 2026-03-01: no NBS exchange rate".into()],
         );
-        print_sync_result(&result);
+        let (_tmp, storage) = tmp_storage();
+        print_sync_result(&result, &storage);
     }
 
     #[test]
     fn print_created_ppdg3r_declaration() {
         let decl = sample_declaration("gains-1", DeclarationType::Ppdg3r);
         let result = make_sync_result(vec![decl], false, false, Vec::new());
-        print_sync_result(&result);
+        let (_tmp, storage) = tmp_storage();
+        print_sync_result(&result, &storage);
     }
 
     #[test]
     fn print_created_ppo_declaration() {
         let decl = sample_declaration("income-1", DeclarationType::Ppo);
         let result = make_sync_result(vec![decl], false, false, Vec::new());
-        print_sync_result(&result);
+        let (_tmp, storage) = tmp_storage();
+        print_sync_result(&result, &storage);
     }
 
     #[test]
@@ -242,7 +305,8 @@ mod tests {
         };
         decl.report_data = Some(vec![serde_json::to_value(entry).unwrap()]);
         let result = make_sync_result(vec![decl], false, false, Vec::new());
-        print_sync_result(&result);
+        let (_tmp, storage) = tmp_storage();
+        print_sync_result(&result, &storage);
     }
 
     #[test]
@@ -260,6 +324,7 @@ mod tests {
         };
         decl.report_data = Some(vec![serde_json::to_value(entry).unwrap()]);
         let result = make_sync_result(vec![decl], false, false, Vec::new());
-        print_sync_result(&result);
+        let (_tmp, storage) = tmp_storage();
+        print_sync_result(&result, &storage);
     }
 }

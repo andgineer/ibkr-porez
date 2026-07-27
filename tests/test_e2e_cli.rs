@@ -423,6 +423,60 @@ fn submit_draft_to_pending() {
 }
 
 #[test]
+fn submit_records_the_purs_number() {
+    let (tmp, data_dir) = setup_env();
+    let storage = Storage::with_dir(&data_dir);
+    make_draft(&storage, "sub-num");
+
+    cmd()
+        .args(["submit", "sub-num", "--number", "1234567890"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .success();
+
+    let decl = storage.get_declaration("sub-num").unwrap();
+    assert_eq!(decl.metadata["purs_number"], "1234567890");
+}
+
+#[test]
+fn submit_number_is_rejected_for_several_declarations() {
+    let (tmp, data_dir) = setup_env();
+    let storage = Storage::with_dir(&data_dir);
+    make_draft(&storage, "sub-a");
+    make_draft(&storage, "sub-b");
+
+    cmd()
+        .args(["submit", "sub-a", "sub-b", "--number", "1234567890"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .failure();
+
+    // One number cannot belong to two declarations, so neither is submitted.
+    assert_eq!(
+        storage.get_declaration("sub-a").unwrap().status,
+        DeclarationStatus::Draft
+    );
+}
+
+#[test]
+fn submit_number_must_be_digits() {
+    let (tmp, data_dir) = setup_env();
+    let storage = Storage::with_dir(&data_dir);
+    make_draft(&storage, "sub-bad");
+
+    cmd()
+        .args(["submit", "sub-bad", "--number", "12345678901234567890"])
+        .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .assert()
+        .failure();
+
+    assert_eq!(
+        storage.get_declaration("sub-bad").unwrap().status,
+        DeclarationStatus::Draft
+    );
+}
+
+#[test]
 fn submit_ppo_zero_tax_finalizes() {
     let (tmp, data_dir) = setup_env();
     let storage = Storage::with_dir(&data_dir);

@@ -407,7 +407,7 @@ fn row_submit_changes_status() {
         )],
         &tmp,
     );
-    app.row_submit("rs1");
+    app.row_submit("rs1", None);
 
     assert!(app.error_dialog.is_none());
     let d = app.storage.get_declaration("rs1").unwrap();
@@ -418,9 +418,32 @@ fn row_submit_changes_status() {
 fn row_submit_non_draft_sets_error() {
     let tmp = tempfile::TempDir::new().unwrap();
     let mut app = app_in_dir(vec![make_decl("rs2", DeclarationStatus::Finalized)], &tmp);
-    app.row_submit("rs2");
+    app.row_submit("rs2", None);
 
     assert!(app.error_dialog.is_some());
+}
+
+#[test]
+fn row_submit_records_the_purs_number() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let mut app = app_in_dir(vec![make_decl("rs3", DeclarationStatus::Draft)], &tmp);
+    app.row_submit("rs3", Some("1234567890"));
+
+    assert!(app.error_dialog.is_none());
+    let d = app.storage.get_declaration("rs3").unwrap();
+    assert_eq!(d.metadata["purs_number"], "1234567890");
+}
+
+#[test]
+fn row_submit_rejects_a_malformed_purs_number() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let mut app = app_in_dir(vec![make_decl("rs4", DeclarationStatus::Draft)], &tmp);
+    app.row_submit("rs4", Some("12a45"));
+
+    assert!(app.error_dialog.is_some());
+    let d = app.storage.get_declaration("rs4").unwrap();
+    assert_eq!(d.status, DeclarationStatus::Draft);
+    assert!(!d.metadata.contains_key("purs_number"));
 }
 
 #[test]
@@ -473,7 +496,7 @@ fn refresh_prunes_stale_selection() {
     );
     app.select_all();
 
-    app.row_submit("gone");
+    app.row_submit("gone", None);
     app.filter = FilterScope::Active;
     app.refresh_declarations();
 

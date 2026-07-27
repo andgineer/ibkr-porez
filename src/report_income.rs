@@ -43,9 +43,72 @@ pub struct IncomeGroup {
     pub matched_any_tax: bool,
 }
 
+/// The metadata keys holding a declaration's source amounts, named once so the
+/// writer here and the reader in `sync.rs` cannot drift apart on a spelling.
+const KEY_GROSS_CCY: &str = "gross_income_ccy";
+const KEY_TAX_CCY: &str = "foreign_tax_paid_ccy";
+const KEY_CURRENCY: &str = "currency";
+const KEY_EXCHANGE_RATE: &str = "exchange_rate";
+const KEY_AMENDS: &str = "amends";
+
+/// What a declaration records about its own source, in the income currency.
+/// Formatted as stored: the comparison is on these strings, which fixes the
+/// threshold at 0.01 and keeps a moved exchange rate from looking like a change.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceAmounts {
+    pub gross_ccy: String,
+    pub tax_ccy: String,
+    pub currency: String,
+}
+
+impl SourceAmounts {
+    #[must_use]
+    pub fn of(group: &IncomeGroup) -> Self {
+        Self {
+            gross_ccy: format!("{:.2}", group.gross_ccy),
+            tax_ccy: format!("{:.2}", group.tax_ccy),
+            currency: group.currency.as_code().to_string(),
+        }
+    }
+
+    pub fn to_metadata(&self, m: &mut indexmap::IndexMap<String, serde_json::Value>) {
+        m.insert(KEY_GROSS_CCY.into(), self.gross_ccy.clone().into());
+        m.insert(KEY_TAX_CCY.into(), self.tax_ccy.clone().into());
+        m.insert(KEY_CURRENCY.into(), self.currency.clone().into());
+    }
+
+    #[must_use]
+    pub fn from_metadata(m: &indexmap::IndexMap<String, serde_json::Value>) -> Option<Self> {
+        let get = |key: &str| m.get(key).and_then(|v| v.as_str()).map(str::to_string);
+        Some(Self {
+            gross_ccy: get(KEY_GROSS_CCY)?,
+            tax_ccy: get(KEY_TAX_CCY)?,
+            currency: get(KEY_CURRENCY)?,
+        })
+    }
+}
+
+/// Whether this group already has a declaration, and whether that declaration
+/// can be compared at all. A declaration carrying no `SourceAmounts` is not one
+/// these rules are defined over, and `YesWithoutRecord` says so in the type.
+#[derive(Debug, Clone, Copy)]
+pub enum Declared<'a> {
+    No,
+    Yes(&'a SourceAmounts),
+    YesWithoutRecord,
+}
+
+/// The declaration an amendment replaces.
+pub struct Amends {
+    pub declaration_id: String,
+    /// The PURS number recorded at `submit`, written as `IdentifikatorPrijave`.
+    pub purs_number: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GroupAction {
     Create,
+    Amend,
     Skip,
     Wait,
 }
@@ -60,6 +123,12 @@ pub struct IncomeReport {
     pub xml_content: String,
     pub entries: Vec<IncomeDeclarationEntry>,
     pub declaration_date: NaiveDate,
+    /// The group's own figures. `entries` hold RSD only, so without these
+    /// there would be nothing for `metadata()` to record.
+    pub source: SourceAmounts,
+    pub exchange_rate: Decimal,
+    /// The `declaration_id` this report amends.
+    pub amends: Option<String>,
 }
 
 impl IncomeReport {
@@ -111,6 +180,15 @@ impl IncomeReport {
             format!("{foreign:.2}").into(),
         );
         m.insert("tax_due_rsd".into(), format!("{due:.2}").into());
+
+        self.source.to_metadata(&mut m);
+        m.insert(
+            KEY_EXCHANGE_RATE.into(),
+            self.exchange_rate.to_string().into(),
+        );
+        if let Some(amends) = &self.amends {
+            m.insert(KEY_AMENDS.into(), amends.clone().into());
+        }
         m
     }
 }
@@ -207,11 +285,18 @@ pub fn collect_income_groups(
                     signed_tax += rows.iter().map(|t| t.amount).sum::<Decimal>();
                 }
             }
+            // Not `max(ZERO)`: negating a zero sum yields a negative zero, which
+            // compares equal to zero but formats as `-0.00`.
+            let credit = -signed_tax;
             IncomeGroup {
                 key,
                 currency: builder.currency,
                 gross_ccy: builder.gross_ccy,
-                tax_ccy: (-signed_tax).max(Decimal::ZERO),
+                tax_ccy: if credit > Decimal::ZERO {
+                    credit
+                } else {
+                    Decimal::ZERO
+                },
                 matched_any_tax,
             }
         })
@@ -222,25 +307,34 @@ pub fn collect_income_groups(
 #[must_use]
 pub fn decide(
     group: &IncomeGroup,
-    already_declared: bool,
+    declared: Declared<'_>,
     creation_start: NaiveDate,
     today: NaiveDate,
 ) -> GroupAction {
     if group.gross_ccy <= Decimal::ZERO {
         return GroupAction::Skip;
     }
-    if already_declared {
-        return GroupAction::Skip;
-    }
 
-    let date = group.key.0;
-    if date < creation_start {
-        return GroupAction::Skip;
+    match declared {
+        Declared::Yes(recorded) => {
+            if *recorded == SourceAmounts::of(group) {
+                GroupAction::Skip
+            } else {
+                GroupAction::Amend
+            }
+        }
+        Declared::YesWithoutRecord => GroupAction::Skip,
+        Declared::No => {
+            let date = group.key.0;
+            if date < creation_start {
+                return GroupAction::Skip;
+            }
+            if !group.matched_any_tax && date + Duration::days(WHT_WAIT_DAYS) >= today {
+                return GroupAction::Wait;
+            }
+            GroupAction::Create
+        }
     }
-    if !group.matched_any_tax && date + Duration::days(WHT_WAIT_DAYS) >= today {
-        return GroupAction::Wait;
-    }
-    GroupAction::Create
 }
 
 /// The day a waiting group stops waiting and is declared with a zero credit.
@@ -250,10 +344,11 @@ pub fn wait_expires_on(group: &IncomeGroup) -> NaiveDate {
 }
 
 #[must_use]
-pub fn income_report_filename(key: &GroupKey) -> String {
+pub fn income_report_filename(key: &GroupKey, is_amendment: bool) -> String {
     let (date, sym_or_currency, _) = key;
+    let izmena = if is_amendment { "izmena-" } else { "" };
     format!(
-        "ppopo-{}-{}.xml",
+        "ppopo-{izmena}{}-{}.xml",
         sym_or_currency.to_lowercase(),
         date.format("%Y-%m%d")
     )
@@ -262,6 +357,7 @@ pub fn income_report_filename(key: &GroupKey) -> String {
 /// Resolve the exchange rate and build the PP-OPO document for one group.
 pub fn render_income_report(
     group: &IncomeGroup,
+    amends: Option<&Amends>,
     nbs: &NBSClient,
     config: &UserConfig,
     holidays: &HolidayCalendar,
@@ -290,8 +386,8 @@ pub fn render_income_report(
         porez_za_uplatu: round2((obracunati - porez_placen).max(Decimal::ZERO)),
     };
 
-    let xml = generate_income_xml(&decl_entry, config, holidays);
-    let filename = income_report_filename(&group.key);
+    let xml = generate_income_xml(&decl_entry, config, holidays, opts.today, amends);
+    let filename = income_report_filename(&group.key, amends.is_some());
 
     debug!(%filename, %total_bruto, %porez_placen, "generated income declaration");
 
@@ -300,6 +396,9 @@ pub fn render_income_report(
         xml_content: xml,
         entries: vec![decl_entry],
         declaration_date: *date,
+        source: SourceAmounts::of(group),
+        exchange_rate: rate,
+        amends: amends.map(|a| a.declaration_id.clone()),
     })
 }
 
@@ -651,6 +750,8 @@ mod tests {
 
         assert_eq!(group.tax_ccy, Decimal::ZERO);
         assert!(group.matched_any_tax);
+        // A negated zero compares equal to zero but would be recorded as `-0.00`.
+        assert_eq!(SourceAmounts::of(&group).tax_ccy, "0.00");
     }
 
     #[test]
@@ -788,11 +889,19 @@ mod tests {
         }
     }
 
+    fn recorded(gross_ccy: &str, tax_ccy: &str) -> SourceAmounts {
+        SourceAmounts {
+            gross_ccy: gross_ccy.into(),
+            tax_ccy: tax_ccy.into(),
+            currency: "USD".into(),
+        }
+    }
+
     #[test]
     fn no_wht_waits_while_window_open() {
         let group = group_on("2026-03-10", dec!(100), Decimal::ZERO, false);
         assert_eq!(
-            decide(&group, false, date("2026-01-01"), date("2026-03-17")),
+            decide(&group, Declared::No, date("2026-01-01"), date("2026-03-17")),
             GroupAction::Wait
         );
     }
@@ -801,7 +910,7 @@ mod tests {
     fn no_wht_finalizes_after_wait_elapses() {
         let group = group_on("2026-03-10", dec!(100), Decimal::ZERO, false);
         assert_eq!(
-            decide(&group, false, date("2026-01-01"), date("2026-03-18")),
+            decide(&group, Declared::No, date("2026-01-01"), date("2026-03-18")),
             GroupAction::Create
         );
         assert_eq!(wait_expires_on(&group), date("2026-03-18"));
@@ -811,7 +920,7 @@ mod tests {
     fn netted_wht_does_not_wait() {
         let group = group_on("2026-03-10", dec!(100), Decimal::ZERO, true);
         assert_eq!(
-            decide(&group, false, date("2026-01-01"), date("2026-03-11")),
+            decide(&group, Declared::No, date("2026-01-01"), date("2026-03-11")),
             GroupAction::Create
         );
     }
@@ -820,16 +929,52 @@ mod tests {
     fn fully_reversed_income_is_never_declared() {
         let group = group_on("2026-03-10", Decimal::ZERO, Decimal::ZERO, true);
         assert_eq!(
-            decide(&group, false, date("2026-01-01"), date("2026-03-20")),
+            decide(&group, Declared::No, date("2026-01-01"), date("2026-03-20")),
             GroupAction::Skip
         );
     }
 
     #[test]
-    fn already_declared_is_skipped() {
+    fn already_declared_unchanged_is_skipped() {
         let group = group_on("2026-03-10", dec!(100), dec!(15), true);
+        let declared = SourceAmounts::of(&group);
         assert_eq!(
-            decide(&group, true, date("2026-01-01"), date("2026-03-20")),
+            decide(
+                &group,
+                Declared::Yes(&declared),
+                date("2026-01-01"),
+                date("2026-03-20")
+            ),
+            GroupAction::Skip
+        );
+    }
+
+    #[test]
+    fn already_declared_changed_amends() {
+        // The credit was reversed after the declaration was written.
+        let group = group_on("2026-03-10", dec!(100), Decimal::ZERO, true);
+        let declared = recorded("100.00", "15.00");
+        assert_eq!(
+            decide(
+                &group,
+                Declared::Yes(&declared),
+                date("2026-01-01"),
+                date("2026-03-20")
+            ),
+            GroupAction::Amend
+        );
+    }
+
+    #[test]
+    fn declaration_without_recorded_amounts_is_never_amended() {
+        let group = group_on("2026-03-10", dec!(100), Decimal::ZERO, true);
+        assert_eq!(
+            decide(
+                &group,
+                Declared::YesWithoutRecord,
+                date("2026-01-01"),
+                date("2026-03-20")
+            ),
             GroupAction::Skip
         );
     }
@@ -838,8 +983,21 @@ mod tests {
     fn outside_creation_window_is_skipped_when_undeclared() {
         let group = group_on("2025-07-02", dec!(100), dec!(15), true);
         assert_eq!(
-            decide(&group, false, date("2026-01-01"), date("2026-03-20")),
+            decide(&group, Declared::No, date("2026-01-01"), date("2026-03-20")),
             GroupAction::Skip
+        );
+
+        // Declared and since changed, the same group is still amended: the
+        // creation window bounds what is created, not what is corrected.
+        let declared = recorded("100.00", "0.00");
+        assert_eq!(
+            decide(
+                &group,
+                Declared::Yes(&declared),
+                date("2026-01-01"),
+                date("2026-03-20")
+            ),
+            GroupAction::Amend
         );
     }
 }

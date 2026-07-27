@@ -97,6 +97,10 @@ enum Commands {
     Submit {
         /// Declaration ID(s); reads from stdin if omitted
         declaration_id: Vec<String>,
+        /// PURS number of the submitted declaration, for a single ID only.
+        /// An amendment of it references this number.
+        #[arg(long, value_parser = ibkr_porez::declaration_manager::validate_purs_number)]
+        number: Option<String>,
     },
     /// Mark declaration as paid
     Pay {
@@ -204,7 +208,10 @@ fn main() {
             ticker,
             month,
         }) => cli::stat::run(year, ticker, month),
-        Some(Commands::Submit { declaration_id }) => cli::submit::run(declaration_id),
+        Some(Commands::Submit {
+            declaration_id,
+            number,
+        }) => cli::submit::run(declaration_id, number),
         Some(Commands::Pay {
             declaration_id,
             tax,

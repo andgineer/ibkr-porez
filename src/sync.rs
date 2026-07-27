@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
@@ -6,6 +6,7 @@ use chrono::{Datelike, Duration, Local, NaiveDate};
 use tracing::{debug, info, warn};
 
 use crate::config;
+use crate::declaration_manager::PURS_NUMBER_KEY;
 use crate::fetch;
 use crate::holidays::{HolidayCalendar, HolidayError};
 use crate::ibkr_flex::IBKRClient;
@@ -16,8 +17,8 @@ use crate::models::{Declaration, DeclarationStatus, DeclarationType, UserConfig}
 use crate::nbs::NBSClient;
 use crate::report_gains::generate_gains_report;
 use crate::report_income::{
-    GroupAction, GroupKey, RenderOptions, collect_income_groups, decide, render_income_report,
-    wait_expires_on,
+    Amends, Declared, GroupAction, GroupKey, RenderOptions, SourceAmounts, collect_income_groups,
+    decide, render_income_report, wait_expires_on,
 };
 use crate::storage::Storage;
 
@@ -327,8 +328,8 @@ fn generate_and_save_income(
     let mut created = Vec::new();
     let mut notices = Vec::new();
     for group in &groups {
-        match decide(group, declared.contains(&group.key), creation_start, today) {
-            GroupAction::Skip => {}
+        let amends = match decide(group, declared.lookup(&group.key), creation_start, today) {
+            GroupAction::Skip => continue,
             GroupAction::Wait => {
                 info!(
                     symbol = %group.key.1,
@@ -341,42 +342,45 @@ fn generate_and_save_income(
                     group.key.0.format("%Y-%m-%d"),
                     wait_expires_on(group).format("%Y-%m-%d"),
                 ));
+                continue;
             }
-            GroupAction::Create => {
-                match render_income_report(group, nbs, config, holidays, &opts) {
-                    Ok(report) => {
-                        let decl = save_declaration(
-                            storage,
-                            &report.filename,
-                            &report.xml_content,
-                            DeclarationType::Ppo,
-                            report.declaration_date,
-                            report.declaration_date,
-                            &report.entries,
-                            &report.metadata(),
-                            output_dir,
-                        )?;
+            GroupAction::Create => None,
+            GroupAction::Amend => declared.amends(&group.key),
+        };
 
-                        // A zero credit reads the same in the document whether the
-                        // tax was withheld and reversed or never arrived at all;
-                        // the log is where the two are told apart.
-                        info!(
-                            filename = %report.filename,
-                            matched_any_tax = group.matched_any_tax,
-                            "created PP-OPO declaration"
-                        );
-                        created.push(decl);
-                    }
-                    // Running out of holiday data is not a per-group problem:
-                    // generating with wrong holiday handling is worse than failing.
-                    Err(e) if e.downcast_ref::<HolidayError>().is_some() => return Err(e),
-                    Err(e) => notices.push(format!(
-                        "{} {}: {e:#}",
-                        group.key.1,
-                        group.key.0.format("%Y-%m-%d"),
-                    )),
-                }
+        match render_income_report(group, amends.as_ref(), nbs, config, holidays, &opts) {
+            Ok(report) => {
+                let decl = save_declaration(
+                    storage,
+                    &report.filename,
+                    &report.xml_content,
+                    DeclarationType::Ppo,
+                    report.declaration_date,
+                    report.declaration_date,
+                    &report.entries,
+                    &report.metadata(),
+                    output_dir,
+                )?;
+
+                // A zero credit reads the same in the document whether the
+                // tax was withheld and reversed or never arrived at all;
+                // the log is where the two are told apart.
+                info!(
+                    filename = %report.filename,
+                    matched_any_tax = group.matched_any_tax,
+                    amends = ?report.amends,
+                    "created PP-OPO declaration"
+                );
+                created.push(decl);
             }
+            // Running out of holiday data is not a per-group problem:
+            // generating with wrong holiday handling is worse than failing.
+            Err(e) if e.downcast_ref::<HolidayError>().is_some() => return Err(e),
+            Err(e) => notices.push(format!(
+                "{} {}: {e:#}",
+                group.key.1,
+                group.key.0.format("%Y-%m-%d"),
+            )),
         }
     }
 
@@ -388,29 +392,82 @@ fn generate_and_save_income(
     })
 }
 
+struct DeclaredGroup {
+    declaration_id: String,
+    numeric_id: u64,
+    source: Option<SourceAmounts>,
+    purs_number: Option<String>,
+}
+
+struct DeclaredGroups(HashMap<GroupKey, DeclaredGroup>);
+
+impl DeclaredGroups {
+    fn lookup(&self, key: &GroupKey) -> Declared<'_> {
+        match self.0.get(key) {
+            None => Declared::No,
+            Some(declared) => match &declared.source {
+                Some(source) => Declared::Yes(source),
+                None => Declared::YesWithoutRecord,
+            },
+        }
+    }
+
+    fn amends(&self, key: &GroupKey) -> Option<Amends> {
+        self.0.get(key).map(|declared| Amends {
+            declaration_id: declared.declaration_id.clone(),
+            purs_number: declared.purs_number.clone(),
+        })
+    }
+}
+
 /// Every income group that already has a PP-OPO, keyed exactly as
 /// `collect_income_groups` keys its groups so the two sides cannot drift apart.
-fn declared_income_groups(storage: &Storage) -> HashSet<GroupKey> {
-    let mut keys = HashSet::new();
+///
+/// A group that has been amended holds two declarations under one key; the
+/// newest is kept, so the settled amounts are what the next sync compares
+/// against and a further amendment references the amendment before it.
+fn declared_income_groups(storage: &Storage) -> DeclaredGroups {
+    let mut groups: HashMap<GroupKey, DeclaredGroup> = HashMap::new();
     for decl in storage.get_declarations(None, Some(&DeclarationType::Ppo)) {
         let symbol = decl.metadata.get("symbol").and_then(|v| v.as_str());
         let income_type = decl.metadata.get("income_type").and_then(|v| v.as_str());
-        if let (Some(symbol), Some(income_type)) = (symbol, income_type) {
-            keys.insert((
-                decl.period_start,
-                symbol.to_uppercase(),
-                income_type.to_string(),
-            ));
-        } else {
+        let (Some(symbol), Some(income_type)) = (symbol, income_type) else {
             // Nothing else identifies the group, so it reads as undeclared and
             // is declared again; the warning is what points at the edited file.
             warn!(
                 declaration_id = %decl.declaration_id,
                 "PP-OPO without symbol/income_type metadata, cannot match it to an income group"
             );
+            continue;
+        };
+
+        let key = (
+            decl.period_start,
+            symbol.to_uppercase(),
+            income_type.to_string(),
+        );
+        let candidate = DeclaredGroup {
+            declaration_id: decl.declaration_id.clone(),
+            numeric_id: decl.declaration_id.parse::<u64>().unwrap_or(0),
+            source: SourceAmounts::from_metadata(&decl.metadata),
+            purs_number: decl
+                .metadata
+                .get(PURS_NUMBER_KEY)
+                .and_then(|v| v.as_str())
+                .map(str::to_string),
+        };
+        match groups.entry(key) {
+            std::collections::hash_map::Entry::Occupied(mut slot) => {
+                if candidate.numeric_id >= slot.get().numeric_id {
+                    slot.insert(candidate);
+                }
+            }
+            std::collections::hash_map::Entry::Vacant(slot) => {
+                slot.insert(candidate);
+            }
         }
     }
-    keys
+    DeclaredGroups(groups)
 }
 
 fn is_duplicate(storage: &Storage, generator_filename: &str, decl_type: &DeclarationType) -> bool {
@@ -1072,9 +1129,20 @@ mod tests {
         }
     }
 
+    /// A withholding row of the same distribution as [`dividend_rows`].
+    fn withholding_row(id: &str, symbol: &str, date: &str, amount: Decimal) -> Transaction {
+        income_txn(
+            id,
+            TransactionType::WithholdingTax,
+            symbol,
+            date,
+            amount,
+            &format!("{symbol}(US0000000000) CASH DIVIDEND USD 1.00 PER SHARE - US TAX"),
+        )
+    }
+
     /// A dividend and its withholding row, matched by the `PER SHARE` prefix.
     fn dividend_rows(symbol: &str, date: &str, gross: Decimal, tax: Decimal) -> Vec<Transaction> {
-        let desc = format!("{symbol}(US0000000000) CASH DIVIDEND USD 1.00 PER SHARE");
         vec![
             income_txn(
                 &format!("d-{symbol}-{date}"),
@@ -1082,16 +1150,11 @@ mod tests {
                 symbol,
                 date,
                 gross,
-                &format!("{desc} (Ordinary Dividend)"),
+                &format!(
+                    "{symbol}(US0000000000) CASH DIVIDEND USD 1.00 PER SHARE (Ordinary Dividend)"
+                ),
             ),
-            income_txn(
-                &format!("w-{symbol}-{date}"),
-                TransactionType::WithholdingTax,
-                symbol,
-                date,
-                tax,
-                &format!("{desc} - US TAX"),
-            ),
+            withholding_row(&format!("w-{symbol}-{date}"), symbol, date, tax),
         ]
     }
 
@@ -1139,6 +1202,25 @@ mod tests {
             metadata,
             attached_files: indexmap::IndexMap::new(),
         }
+    }
+
+    /// A PP-OPO carrying the source amounts a declaration produced under these
+    /// rules records -- the ones an amendment is decided by.
+    fn declared_ppo_with_source(
+        id: &str,
+        symbol: &str,
+        date: NaiveDate,
+        gross_ccy: &str,
+        tax_ccy: &str,
+    ) -> Declaration {
+        let mut decl = declared_ppo(id, symbol, date, None);
+        SourceAmounts {
+            gross_ccy: gross_ccy.into(),
+            tax_ccy: tax_ccy.into(),
+            currency: "USD".into(),
+        }
+        .to_metadata(&mut decl.metadata);
+        decl
     }
 
     #[test]
@@ -1263,6 +1345,224 @@ mod tests {
         let result = generate_declarations(&storage, &nbs, &cfg, &cal, &opts).unwrap();
         assert_eq!(result.created_declarations.len(), 1);
         assert!(storage.get_last_declaration_date().is_none());
+    }
+
+    #[test]
+    fn declaration_without_source_amounts_is_never_amended() {
+        let (_tmp, storage, cal, cfg, output_dir) = income_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let opts = SyncOptions::default();
+        let end_period = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
+        let income_date = NaiveDate::from_ymd_opt(2026, 3, 1).unwrap();
+        seed_rates(&storage, &[("2026-03-01", "100.00")]);
+        storage
+            .save_transactions(&dividend_rows("VOO", "2026-03-01", dec!(100), dec!(-15)))
+            .unwrap();
+
+        // A declaration that records no source amounts of its own is outside
+        // the domain these rules are defined over.
+        storage
+            .save_declaration(&declared_ppo("1", "VOO", income_date, None))
+            .unwrap();
+
+        storage
+            .save_transactions(&[withholding_row("w-rev", "VOO", "2026-03-01", dec!(15))])
+            .unwrap();
+
+        let outcome =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert!(outcome.empty, "nothing may be reconstructed for it");
+    }
+
+    #[test]
+    fn income_outside_creation_window_is_not_declared_but_is_compared() {
+        let (_tmp, storage, cal, cfg, output_dir) = income_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let opts = SyncOptions::default();
+        // Inside the scan horizon (1 Jan 2025), far outside the 45-day window.
+        let end_period = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
+        let income_date = NaiveDate::from_ymd_opt(2025, 7, 2).unwrap();
+        seed_rates(&storage, &[("2025-07-02", "100.00")]);
+        storage
+            .save_transactions(&dividend_rows("VOO", "2025-07-02", dec!(100), dec!(-15)))
+            .unwrap();
+
+        let undeclared =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert!(undeclared.empty, "outside the window nothing is created");
+
+        storage
+            .save_declaration(&declared_ppo_with_source(
+                "1",
+                "VOO",
+                income_date,
+                "100.00",
+                "15.00",
+            ))
+            .unwrap();
+        storage
+            .save_transactions(&[withholding_row("w-rev", "VOO", "2025-07-02", dec!(15))])
+            .unwrap();
+
+        let amended =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(amended.created.len(), 1);
+        assert_eq!(amended.created[0].metadata["amends"], "1");
+        assert_eq!(amended.created[0].metadata["foreign_tax_paid_ccy"], "0.00");
+    }
+
+    #[test]
+    fn late_reversal_produces_amendment() {
+        let (_tmp, storage, cal, cfg, output_dir) = income_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let opts = SyncOptions::default();
+        let end_period = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
+        seed_rates(&storage, &[("2026-03-01", "100.00")]);
+        storage
+            .save_transactions(&dividend_rows("VOO", "2026-03-01", dec!(100), dec!(-15)))
+            .unwrap();
+
+        let first =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(first.created.len(), 1);
+        assert_eq!(first.created[0].metadata["foreign_tax_paid_ccy"], "15.00");
+
+        // The reversal carries the date of the distribution it reverses; only
+        // the row is late, so the amendment comes from the comparison and not
+        // from the row looking new.
+        storage
+            .save_transactions(&[withholding_row("w-rev", "VOO", "2026-03-01", dec!(15))])
+            .unwrap();
+
+        let second =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(second.created.len(), 1);
+        let amendment = &second.created[0];
+        assert_eq!(
+            amendment.metadata["amends"],
+            first.created[0].declaration_id
+        );
+        assert_eq!(amendment.metadata["foreign_tax_paid_ccy"], "0.00");
+        assert!(
+            amendment.file_path.as_ref().unwrap().contains("izmena"),
+            "an amendment must not collide with the original on disk"
+        );
+        assert!(
+            amendment
+                .xml_content
+                .as_ref()
+                .unwrap()
+                .contains("<ns1:VrstaIzmenePrijave>1</ns1:VrstaIzmenePrijave>")
+        );
+    }
+
+    #[test]
+    fn amendment_is_not_regenerated_on_the_next_sync() {
+        let (_tmp, storage, cal, cfg, output_dir) = income_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let opts = SyncOptions::default();
+        let end_period = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
+        seed_rates(&storage, &[("2026-03-01", "100.00")]);
+        storage
+            .save_transactions(&dividend_rows("VOO", "2026-03-01", dec!(100), dec!(-15)))
+            .unwrap();
+
+        generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+            .unwrap();
+        storage
+            .save_transactions(&[withholding_row("w-rev", "VOO", "2026-03-01", dec!(15))])
+            .unwrap();
+
+        let amended =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(amended.created.len(), 1);
+
+        // The comparison is now against the amendment, not the original.
+        let again =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert!(again.empty, "a settled group produces nothing further");
+    }
+
+    #[test]
+    fn second_change_produces_a_second_amendment_referencing_the_first() {
+        let (_tmp, storage, cal, cfg, output_dir) = income_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let opts = SyncOptions::default();
+        let end_period = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
+        seed_rates(&storage, &[("2026-03-01", "100.00")]);
+        storage
+            .save_transactions(&dividend_rows("VOO", "2026-03-01", dec!(100), dec!(-15)))
+            .unwrap();
+
+        let first =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+
+        // The IXUS shape: -X, then +X, then -Y.
+        storage
+            .save_transactions(&[withholding_row("w-rev", "VOO", "2026-03-01", dec!(15))])
+            .unwrap();
+        let amendment =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(amendment.created.len(), 1);
+
+        storage
+            .save_transactions(&[withholding_row("w-new", "VOO", "2026-03-01", dec!(-12))])
+            .unwrap();
+        let second =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert_eq!(second.created.len(), 1);
+        assert_eq!(
+            second.created[0].metadata["amends"], amendment.created[0].declaration_id,
+            "an amendment amends the newest declaration of its group"
+        );
+        assert_ne!(
+            second.created[0].metadata["amends"],
+            first.created[0].declaration_id
+        );
+        assert_eq!(second.created[0].metadata["foreign_tax_paid_ccy"], "12.00");
+    }
+
+    #[test]
+    fn amendment_carries_the_recorded_purs_number() {
+        let (_tmp, storage, cal, cfg, output_dir) = income_test_setup();
+        let nbs = nbs_offline(&storage, &cal);
+        let opts = SyncOptions::default();
+        let end_period = NaiveDate::from_ymd_opt(2026, 3, 10).unwrap();
+        seed_rates(&storage, &[("2026-03-01", "100.00")]);
+        storage
+            .save_transactions(&dividend_rows("VOO", "2026-03-01", dec!(100), dec!(-15)))
+            .unwrap();
+
+        let first =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        crate::declaration_manager::DeclarationManager::new(&storage)
+            .submit_with_number(&[&first.created[0].declaration_id], Some("1234567890"))
+            .unwrap();
+
+        storage
+            .save_transactions(&[withholding_row("w-rev", "VOO", "2026-03-01", dec!(15))])
+            .unwrap();
+        let amended =
+            generate_and_save_income(&storage, &nbs, &cfg, &cal, end_period, &output_dir, &opts)
+                .unwrap();
+        assert!(
+            amended.created[0]
+                .xml_content
+                .as_ref()
+                .unwrap()
+                .contains("<ns1:IdentifikatorPrijave>1234567890</ns1:IdentifikatorPrijave>")
+        );
     }
 
     #[test]

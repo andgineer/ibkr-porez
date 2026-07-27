@@ -111,6 +111,16 @@ Pogledajte [kako preuzeti Flex Query XML ↗](ibkr.md#preuzimanje-flex-query-xml
 
 U GUI-u, ista opcija dostupna je u meniju **☰** kao **Sync from Flex Query XML…**.
 
+### Izmenjene prijave
+
+Porez plaćen u inostranstvu na jednu raspodelu nije konačan. Nakon zatvaranja godine američki fond prijavljuje brokeru konačan poreski karakter prošlogodišnjih raspodela, pa broker storniran porez koji je zadržao — uobičajen slučaj je ETF na trezorske zapise čija se raspodela pokaže kao dividenda kamatnog karaktera — i zadržava iznova ako novi karakter to nalaže. To se dešava od nekoliko nedelja do otprilike petnaest meseci nakon isplate.
+
+Kada se iznosi na kojima počiva već kreirana PP OPO prijava promene, sledeći `sync` kreira izmenjenu prijavu. To je obična prijava u svakom pogledu: pojavljuje se u [list](#spisak-prijava-list), dobija sopstveni XML u izlaznom folderu, podnosi se i plaća kao svaka druga. Ispod linije o kreiranoj prijavi `sync` ispisuje datum ostvarivanja prihoda i broj originala — ono po čemu se original pronalazi u tabeli ePorezi.
+
+Izmenjenu prijavu treba podneti: ona zamenjuje prvobitnu. Ako je broj originala zabeležen preko [`submit --number`](#podnošenje-prijave-submit), već je u dokumentu; u suprotnom ga upisujete na ePorezi, pronalazeći original po datumu ostvarivanja prihoda.
+
+Poređenje se radi u valuti prihoda, pa promenjen kurs nikada ne dovodi do izmenjene prijave. Takve promene `sync` traži do 1. januara prethodne godine, bez obzira na prozor za kreiranje novih prijava.
+
 ## Prikaz statistike (`stat`)
 
 ```bash
@@ -198,6 +208,9 @@ Prikazuje:
 ### Podnošenje prijave (`submit`)
 ```bash
 ibkr-porez submit <id> [<id> ...]
+
+# zabeležiti broj koji je poreski portal dodelio prijavi
+ibkr-porez submit <id> --number 1234567890
 ```
 
 Označava prijavu kao podnetu (uvezenu na poreski portal).
@@ -208,6 +221,10 @@ Ponašanje zavisi od tipa prijave:
 *   `PP OPO` nakon `submit`:
     *   prelazi u `submitted` ako postoji porez za plaćanje;
     *   prelazi direktno u `finalized` ako je porez `0`.
+
+`--number` beleži broj prijave na poreskom portalu — od 1 do 19 cifara, za jednu prijavu odjednom. Ako prijava kasnije bude [izmenjena](#izmenjene-prijave), izmenjena prijava nosi taj broj da bi poreska znala koju prijavu zamenjuje. Bez njega se izmenjena prijava svejedno kreira, a broj upisujete na ePorezi.
+
+U GUI-u, dugme **Submit** otvara dijalog potvrde sa istim opcionim poljem.
 
 ### Plaćanje prijave (`pay`)
 ```bash

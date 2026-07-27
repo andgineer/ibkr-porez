@@ -6,6 +6,7 @@ use rust_decimal::Decimal;
 use crate::due_date::next_working_day;
 use crate::holidays::HolidayCalendar;
 use crate::models::{IncomeDeclarationEntry, UserConfig};
+use crate::report_income::Amends;
 
 #[must_use]
 #[allow(clippy::missing_panics_doc)]
@@ -13,6 +14,8 @@ pub fn generate_income_xml(
     entry: &IncomeDeclarationEntry,
     config: &UserConfig,
     holidays: &HolidayCalendar,
+    today: NaiveDate,
+    amends: Option<&Amends>,
 ) -> String {
     let due_date = next_working_day(entry.date, holidays);
 
@@ -29,7 +32,7 @@ pub fn generate_income_xml(
     root.push_attribute(("xmlns:ns1", "http://pid.purs.gov.rs"));
     w.write_event(Event::Start(root)).unwrap();
 
-    write_podaci_o_prijavi(&mut w, entry, due_date);
+    write_podaci_o_prijavi(&mut w, entry, due_date, today, amends);
     write_poreski_obveznik(&mut w, config);
     write_nacin_ostvarivanja(&mut w);
     write_vrste_prihoda(&mut w, entry);
@@ -47,9 +50,14 @@ fn write_podaci_o_prijavi(
     w: &mut Writer<&mut Vec<u8>>,
     entry: &IncomeDeclarationEntry,
     due_date: NaiveDate,
+    today: NaiveDate,
+    amends: Option<&Amends>,
 ) {
     start(w, "ns1:PodaciOPrijavi");
-    text_elem(w, "ns1:VrstaPrijave", "1");
+    // 1 is an општа пријава, filed on or before the due date; 3 is a пријава
+    // по члану 182б ЗПППА, filed after it has passed.
+    let vrsta_prijave = if today <= due_date { "1" } else { "3" };
+    text_elem(w, "ns1:VrstaPrijave", vrsta_prijave);
     text_elem(
         w,
         "ns1:ObracunskiPeriod",
@@ -58,6 +66,13 @@ fn write_podaci_o_prijavi(
     text_elem(w, "ns1:DatumOstvarivanjaPrihoda", &fmt_date(entry.date));
     text_elem(w, "ns1:Rok", "1");
     text_elem(w, "ns1:DatumDospelostiObaveze", &fmt_date(due_date));
+    if let Some(amends) = amends {
+        // 1 is измена по члану 40. ЗПППА, the voluntary correction.
+        text_elem(w, "ns1:VrstaIzmenePrijave", "1");
+        if let Some(number) = &amends.purs_number {
+            text_elem(w, "ns1:IdentifikatorPrijave", number);
+        }
+    }
     end(w, "ns1:PodaciOPrijavi");
 }
 

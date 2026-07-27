@@ -8,6 +8,20 @@ use std::str::FromStr;
 use crate::models::{CarryforwardVintage, Declaration, DeclarationStatus, DeclarationType};
 use crate::storage::Storage;
 
+/// The declaration's number at PURS, recorded when the taxpayer submits it.
+/// An amendment writes the original's as `IdentifikatorPrijave`.
+pub const PURS_NUMBER_KEY: &str = "purs_number";
+
+/// `IdentifikatorPrijave` is an `xs:unsignedLong` of at most 19 digits, so a
+/// number that would fail validation at ePorezi is rejected before it is stored.
+pub fn validate_purs_number(s: &str) -> Result<String, String> {
+    let number = s.trim();
+    if number.is_empty() || number.len() > 19 || !number.chars().all(|c| c.is_ascii_digit()) {
+        return Err(format!("declaration number must be 1-19 digits, got '{s}'"));
+    }
+    Ok(number.to_string())
+}
+
 pub struct ExportResult {
     pub xml_path: Option<String>,
     pub attachment_paths: Vec<String>,
@@ -67,10 +81,18 @@ impl<'a> DeclarationManager<'a> {
     }
 
     pub fn submit(&self, ids: &[&str]) -> Result<()> {
+        self.submit_with_number(ids, None)
+    }
+
+    pub fn submit_with_number(&self, ids: &[&str], purs_number: Option<&str>) -> Result<()> {
         for id in ids {
             let mut decl = self.get_or_err(id)?;
             if decl.status != DeclarationStatus::Draft {
                 bail!("declaration {id} is not in Draft status");
+            }
+            if let Some(number) = purs_number {
+                let number = validate_purs_number(number).map_err(|e| anyhow::anyhow!(e))?;
+                decl.metadata.insert(PURS_NUMBER_KEY.into(), number.into());
             }
 
             let now = Local::now().naive_local();

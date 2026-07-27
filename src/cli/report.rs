@@ -13,7 +13,7 @@ use ibkr_porez::models::UserConfig;
 use ibkr_porez::nbs::NBSClient;
 use ibkr_porez::report_gains::generate_gains_report;
 use ibkr_porez::report_income::{
-    GroupAction, RenderOptions, collect_income_groups, decide, render_income_report,
+    Declared, GroupAction, RenderOptions, collect_income_groups, decide, render_income_report,
     wait_expires_on,
 };
 use ibkr_porez::storage::Storage;
@@ -181,16 +181,18 @@ fn run_income(
 
     for group in &groups {
         // The period the user asked for is the creation window here: nothing
-        // inside it may be dropped as out-of-window.
-        match decide(group, false, period_start, opts.today) {
-            GroupAction::Skip => {}
+        // inside it may be dropped as out-of-window. This command writes to a
+        // destination directory and does not consult declaration state, so no
+        // group is ever seen as declared and none is ever amended.
+        match decide(group, Declared::No, period_start, opts.today) {
+            GroupAction::Skip | GroupAction::Amend => {}
             GroupAction::Wait => notices.push(format!(
                 "{} {}: no withholding tax yet, declared with a zero credit from {}",
                 group.key.1,
                 group.key.0.format("%Y-%m-%d"),
                 wait_expires_on(group).format("%Y-%m-%d"),
             )),
-            GroupAction::Create => match render_income_report(group, nbs, cfg, cal, &opts) {
+            GroupAction::Create => match render_income_report(group, None, nbs, cfg, cal, &opts) {
                 Ok(report) => {
                     let dest = dest_dir.join(&report.filename);
                     std::fs::write(&dest, &report.xml_content)?;

@@ -408,7 +408,9 @@ fn declaration_table(ui: &mut egui::Ui, app: &mut App) {
     }
     if let Some(act) = action {
         match act {
-            RowAction::Submit(id) => app.row_submit(&id),
+            RowAction::Submit(id) => {
+                app.submit_dialog = Some(super::submit_dialog::SubmitDialog::new(id));
+            }
             RowAction::Pay(id) => app.row_pay(&id),
             RowAction::Revert(id) => app.row_revert(&id),
             RowAction::SetTax(id) => {
