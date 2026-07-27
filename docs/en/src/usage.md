@@ -153,6 +153,22 @@ To select a different declaration type or time period, see the documentation
 ibkr-porez report --help
 ```
 
+### PP OPO for a Period (`report --type income`)
+
+```bash
+# income of the current month so far
+ibkr-porez report --type income
+
+# an explicit period
+ibkr-porez report --type income --start 2025-07-01 --end 2025-12-31
+```
+
+Writes one PP OPO XML per income group into the output folder and does nothing else: no declaration is recorded, so these files do not appear in [list](#list-declarations-list), are not checked against what [sync](#sync-data-and-create-declarations-sync) has already created, and never produce amendments. Declarations you intend to track come from `sync`.
+
+A group whose withholding tax has not arrived yet is not written. Instead the command prints from which date it will be declared: tax usually posts within days of the income, and a document carrying a credit the broker has not finished computing is worth waiting for. Once that date passes, the group is written with a zero credit and the full 15% due — which is what you file if the tax never arrives at all.
+
+`--force` does not shorten that wait. It means only "generate with approximate data": where the National Bank has no exchange rate for a date, the nearest cached one is used, and where holiday data for the year is missing, the due date is computed from weekdays alone.
+
 ## Declaration Management
 
 After creating declarations through the [sync](#sync-data-and-create-declarations-sync) command, you can view them, change their status, and export them for upload to the tax portal.

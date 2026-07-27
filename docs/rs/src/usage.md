@@ -153,6 +153,22 @@ Da biste izabrali drugi tip prijave ili vremenski period pogledajte dokumentacij
 ibkr-porez report --help
 ```
 
+### PP OPO za period (`report --type income`)
+
+```bash
+# prihod tekućeg meseca do danas
+ibkr-porez report --type income
+
+# izričito zadat period
+ibkr-porez report --type income --start 2025-07-01 --end 2025-12-31
+```
+
+Upisuje u izlazni folder po jedan PP OPO XML za svaku grupu prihoda i ne radi ništa više: prijava se pri tome ne evidentira, pa se ti fajlovi ne pojavljuju u [list](#spisak-prijava-list), ne porede se sa onim što je [sync](#sinhronizacija-podataka-i-kreiranje-prijava-sync) već kreirao i nikada ne dovode do izmenjenih prijava. Prijave koje nameravate da vodite kreira `sync`.
+
+Grupa za koju porez po odbitku još nije stigao se ne upisuje. Umesto fajla komanda ispisuje od kog datuma će biti prijavljena: porez se obično knjiži u roku od nekoliko dana od prihoda, a dokument sa priznanjem koje broker još nije doračunao vredi sačekati. Nakon tog datuma grupa se upisuje sa nultim priznanjem i punih 15% za uplatu — upravo to podnosite ako porez nikada ne stigne.
+
+`--force` to čekanje ne skraćuje. Znači samo „generiši sa približnim podacima": gde Narodna banka nema kurs za datum, koristi se najbliži iz keša, a gde nedostaju podaci o praznicima za godinu, rok dospeća se računa samo po radnim danima.
+
 ## Upravljanje prijavama
 
 Nakon kreiranja prijava putem komande [sync](#sinhronizacija-podataka-i-kreiranje-prijava-sync) možete ih pregledati, menjati status i izvoziti za otpremanje na poreski portal.

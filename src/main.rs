@@ -68,6 +68,8 @@ enum Commands {
         start: Option<NaiveDate>,
         #[arg(short = 'e', long)]
         end: Option<NaiveDate>,
+        /// Generate with approximate data: nearest cached exchange rate, weekday-only due date.
+        /// Does not shorten the wait for withholding tax that has not arrived yet
         #[arg(long)]
         force: bool,
         #[arg(short, long)]

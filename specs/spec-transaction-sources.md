@@ -60,6 +60,12 @@ can be corrected as late as March of the following year. Corrections outside thi
 annual cycle, such as a broker-interest withholding cancelled shortly after it was
 posted, arrive sooner.
 
+A correction is dated to the distribution it corrects, not to the day it was
+issued: the reversal of a December dividend carries that December date even when
+it reaches the application months later. What arrives late is the row, not its
+date. Nothing is found by looking at recent dates, and nothing is found by looking
+at what a fetch brought in; old dates have to stay in view instead.
+
 Two requirements follow, and neither may be bounded by a window measured from the
 income date:
 
