@@ -2,7 +2,11 @@ target/
 site/
 *.swp
 .DS_Store
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/agents/
+!.claude/commands/
+!.claude/settings.json
 /plans
 .vscode/
 .idea/

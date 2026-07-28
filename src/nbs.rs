@@ -29,7 +29,8 @@ impl<'a> NBSClient<'a> {
         Self {
             storage,
             holidays,
-            base_url: DEFAULT_BASE_URL.to_string(),
+            base_url: crate::config::base_url_override(crate::config::NBS_URL_ENV)
+                .unwrap_or_else(|| DEFAULT_BASE_URL.to_string()),
             http: build_http_client(),
             max_retries: MAX_RETRIES,
             retry_delay: RETRY_DELAY,

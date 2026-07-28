@@ -17,6 +17,19 @@ fn expand_tilde(path: &str) -> PathBuf {
     PathBuf::from(path)
 }
 
+pub const FLEX_URL_ENV: &str = "IBKR_POREZ_FLEX_URL";
+pub const NBS_URL_ENV: &str = "IBKR_POREZ_NBS_URL";
+pub const HOLIDAYS_URL_ENV: &str = "IBKR_POREZ_HOLIDAYS_URL";
+
+/// Redirects an outbound service to another host. Tests that spawn the real
+/// binary set these so a run can never reach the live service — most sharply
+/// for IBKR, which counts failed attempts and locks out the real user once
+/// they pile up.
+#[must_use]
+pub fn base_url_override(env_key: &str) -> Option<String> {
+    std::env::var(env_key).ok().filter(|url| !url.is_empty())
+}
+
 // ---------------------------------------------------------------------------
 // Path helpers
 // ---------------------------------------------------------------------------

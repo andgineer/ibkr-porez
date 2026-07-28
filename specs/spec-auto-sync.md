@@ -27,11 +27,16 @@ counting the run as a clean success. This resilience is part of every `sync`
 ## Trigger condition
 
 The cycle starts once there is no successful sync recorded for the current
-local day. Trading on the US exchange ends around 22:00–23:00 Belgrade time
-depending on DST, so before local midnight a Flex Query for "yesterday" is
-rarely ready — the cycle simply does not start before midnight, since that is
-automatically true whenever today's date differs from the date of the last
-successful sync.
+local day *and* the report for the previous US trading day can plausibly
+exist.
+
+Availability is anchored to New York rather than to the user's timezone: IBKR
+processes the trading day overnight, and a Flex Query for it becomes
+answerable in the small hours New York time. The cycle therefore makes no
+attempt before 01:00 in New York on the current local date — in Belgrade that
+falls mid-morning, hours after the local day has flipped. Attempting earlier
+buys nothing: the answer is "not ready", and a run of those is actively
+harmful (see Retry schedule).
 
 ## Retry schedule
 
@@ -46,6 +51,16 @@ successful sync recorded for the current day.
   a day (the cycle self-heals automatically across midnight, even if the app
   stays open). The user can also force an immediate retry at any time with
   "Sync now".
+- IBKR counts failed attempts and blocks further requests once they pile up,
+  answering "too many failed attempts" regardless of whether the credentials
+  are correct. This block is temporary and clears on its own, so it counts as
+  transient and keeps the hourly cycle running — despite IBKR's own wording
+  pointing at the configuration. Within a single attempt the app gives up
+  immediately instead of re-polling, so it does not extend the block.
+
+Because that counter is shared across everything using the same credentials
+and network, nothing automated may exercise the live Flex endpoint — a test
+suite that fetches with throwaway credentials will lock out the real user.
 
 ## Configuration gate
 
@@ -66,8 +81,9 @@ triggered it, is handled identically: no modal error dialogs and no transient
 "sync complete" messages, only the permanent status line and a dismissible
 "new declarations" banner are updated.
 
-Transient IBKR errors (the "statement generation in progress" family) and
-network connectivity errors are shown with friendly wording rather than the
+Transient IBKR errors (the "statement generation in progress" family, the
+"too many failed attempts" block) and network connectivity errors are shown
+with friendly wording rather than the
 raw error text. Errors that indicate a configuration problem (invalid token,
 expired token, invalid query ID, and similar) are shown with their original
 IBKR error text. This phrasing also holds up once the user has since changed

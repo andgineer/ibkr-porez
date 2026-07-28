@@ -39,6 +39,7 @@ zip = "2"
 similar = "2"
 indexmap = { version = "2", features = ["serde"] }
 regex = "1"
+chrono-tz = "0.10.4"
 
 [[bin]]
 name = "ibkr-porez-gui"

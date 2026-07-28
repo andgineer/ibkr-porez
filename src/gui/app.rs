@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::mpsc;
 
-use chrono::Datelike;
+use chrono::{Datelike, NaiveDate};
 
 use crate::config as app_config;
 use crate::declaration_manager::DeclarationManager;
@@ -142,6 +142,9 @@ pub struct App {
     auto_sync_tx: mpsc::Sender<()>,
     auto_sync_rx: mpsc::Receiver<()>,
     scheduler_started: bool,
+    /// `None` in production. Pinned in tests so they depend on neither the
+    /// runner's clock nor its timezone.
+    pub auto_sync_window_override: Option<bool>,
     pub export_channel: Option<(
         mpsc::Sender<BackgroundResult>,
         mpsc::Receiver<BackgroundResult>,
@@ -209,6 +212,7 @@ impl App {
             auto_sync_tx,
             auto_sync_rx,
             scheduler_started: false,
+            auto_sync_window_override: None,
             export_channel: None,
             exporting_ids: std::collections::HashSet::new(),
             progress_text: None,
@@ -478,7 +482,10 @@ impl App {
                         .last_sync_issue
                         .as_ref()
                         .is_some_and(|(dt, _)| dt.date() == now.date());
-                if !self.bg_busy && !already_failed_fatally_today {
+                let window_open = self
+                    .auto_sync_window_override
+                    .unwrap_or_else(|| auto_sync_window_open(chrono::Utc::now(), now.date()));
+                if !self.bg_busy && !already_failed_fatally_today && window_open {
                     self.start_sync(false);
                 }
             } else {
@@ -601,6 +608,28 @@ impl App {
     }
 }
 
+/// Hour in New York after which IBKR has finished processing the previous
+/// trading day, so a Flex Query can return it.
+const REPORT_READY_HOUR_ET: u32 = 1;
+
+/// Whether the daily auto-sync may attempt yet. The cycle is keyed to the
+/// local day, but the report's availability is keyed to New York, so the
+/// window opens at `REPORT_READY_HOUR_ET` on `local_date` — which in Belgrade
+/// lands mid-morning rather than just after local midnight.
+#[must_use]
+pub fn auto_sync_window_open(now: chrono::DateTime<chrono::Utc>, local_date: NaiveDate) -> bool {
+    use chrono::TimeZone;
+
+    let Some(ready_at) = local_date.and_hms_opt(REPORT_READY_HOUR_ET, 0, 0) else {
+        return true;
+    };
+    match chrono_tz::America::New_York.from_local_datetime(&ready_at) {
+        chrono::LocalResult::None => true,
+        chrono::LocalResult::Single(t) => now >= t,
+        chrono::LocalResult::Ambiguous(earliest, _) => now >= earliest,
+    }
+}
+
 fn income_notice_summary(count: usize) -> String {
     if count == 1 {
         "1 income group pending".to_string()
@@ -617,6 +646,11 @@ fn classify_sync_error(e: &str, synced_today: bool) -> (String, bool) {
         || e.contains("IBKR API Error 1019:")
     {
         ("Flex Query temporarily unavailable".to_string(), true)
+    } else if e.contains("IBKR API Error 1025:") {
+        (
+            "IBKR temporarily blocked requests after repeated failures".to_string(),
+            true,
+        )
     } else if e.contains("IBKR SendRequest failed")
         || e.contains("IBKR GetStatement request failed")
         || e.contains("IBKR SendRequest HTTP error")
@@ -683,6 +717,7 @@ impl App {
             auto_sync_tx,
             auto_sync_rx,
             scheduler_started: true,
+            auto_sync_window_override: Some(true),
         }
     }
 

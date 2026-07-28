@@ -16,7 +16,9 @@ const VERSION: &str = "3";
 const POLL_DELAY_BUSY: std::time::Duration = std::time::Duration::from_secs(5);
 const POLL_DELAY_THROTTLED: std::time::Duration = std::time::Duration::from_secs(10);
 const MAX_POLL_ATTEMPTS: u32 = 5;
-const FATAL_ERROR_CODES: &[&str] = &[
+/// Codes for which re-polling the same reference code cannot change the
+/// outcome. Whether the *next* sync retries them is a separate decision.
+const POLL_ABORT_CODES: &[&str] = &[
     "1010", // Legacy Flex Queries no longer supported
     "1011", // Service account is inactive
     "1012", // Token has expired
@@ -26,6 +28,7 @@ const FATAL_ERROR_CODES: &[&str] = &[
     "1016", // Account is invalid
     "1017", // Reference code is invalid
     "1020", // Invalid request or unable to validate request
+    "1025", // Too many failed attempts — polling on prolongs the lockout
 ];
 
 pub struct IBKRClient {
@@ -42,6 +45,9 @@ pub struct IBKRClient {
 impl IBKRClient {
     #[must_use]
     pub fn new(token: &str, query_id: &str) -> Self {
+        if let Some(base_url) = crate::config::base_url_override(crate::config::FLEX_URL_ENV) {
+            return Self::with_base_url(token, query_id, &base_url);
+        }
         Self {
             token: token.to_string(),
             query_id: query_id.to_string(),
@@ -143,7 +149,7 @@ impl IBKRClient {
                     {
                         let msg = err_resp.error_message.as_deref().unwrap_or("Unknown");
                         let e = anyhow::anyhow!("IBKR API Error {code}: {msg}");
-                        if FATAL_ERROR_CODES.contains(&code.as_str()) {
+                        if POLL_ABORT_CODES.contains(&code.as_str()) {
                             return Err(e);
                         }
                         let delay = if code == "1018" {

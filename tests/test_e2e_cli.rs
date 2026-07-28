@@ -14,8 +14,35 @@ use std::str::FromStr;
 
 // ── Helpers ─────────────────────────────────────────────────
 
+/// Points every outbound service at a closed port. Tests that need a service
+/// to answer override its URL with a local stub; the rest fail fast rather
+/// than reaching the live one.
 fn cmd() -> Command {
-    Command::cargo_bin("ibkr-porez").unwrap()
+    const CLOSED: &str = "http://127.0.0.1:1";
+    let mut command = Command::cargo_bin("ibkr-porez").unwrap();
+    command
+        .env(ibkr_porez::config::FLEX_URL_ENV, CLOSED)
+        .env(ibkr_porez::config::NBS_URL_ENV, CLOSED)
+        .env(ibkr_porez::config::HOLIDAYS_URL_ENV, CLOSED);
+    command
+}
+
+/// A stand-in Flex endpoint that always rejects, for the tests that assert how
+/// a failed fetch is reported.
+fn rejecting_flex_server() -> mockito::ServerGuard {
+    let mut server = mockito::Server::new();
+    server
+        .mock("GET", mockito::Matcher::Regex(r"^/SendRequest\?".into()))
+        .with_status(200)
+        .with_body(
+            "<FlexStatementResponse>\
+               <Status>Fail</Status>\
+               <ErrorCode>1015</ErrorCode>\
+               <ErrorMessage>Token is invalid</ErrorMessage>\
+             </FlexStatementResponse>",
+        )
+        .create();
+    server
 }
 
 fn setup_env() -> (tempfile::TempDir, PathBuf) {
@@ -196,11 +223,14 @@ fn sync_with_invalid_credentials() {
     });
     std::fs::write(tmp.path().join("config.json"), config.to_string()).unwrap();
 
+    let flex = rejecting_flex_server();
+
     // A failed IBKR fetch no longer aborts sync: it exits success, warns about
     // the connection, and generates from whatever is stored locally.
     cmd()
         .args(["sync"])
         .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .env(ibkr_porez::config::FLEX_URL_ENV, flex.url())
         .assert()
         .success()
         .stdout(predicate::str::contains("IBKR fetch failed"));
@@ -223,10 +253,12 @@ fn sync_output_dir_override() {
     std::fs::write(tmp.path().join("config.json"), config.to_string()).unwrap();
 
     let custom_output = tmp.path().join("custom-output");
+    let flex = rejecting_flex_server();
 
     cmd()
         .args(["sync", "-o", custom_output.to_str().unwrap()])
         .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .env(ibkr_porez::config::FLEX_URL_ENV, flex.url())
         .assert()
         .success();
 }
@@ -255,9 +287,12 @@ fn fetch_with_invalid_credentials() {
     });
     std::fs::write(tmp.path().join("config.json"), config.to_string()).unwrap();
 
+    let flex = rejecting_flex_server();
+
     cmd()
         .args(["fetch"])
         .env("IBKR_POREZ_CONFIG_DIR", tmp.path())
+        .env(ibkr_porez::config::FLEX_URL_ENV, flex.url())
         .assert()
         .success()
         .stdout(predicate::str::contains("Fetching"))

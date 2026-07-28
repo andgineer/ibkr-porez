@@ -31,7 +31,8 @@ impl OpenHolidayClient {
     pub fn new() -> Self {
         Self {
             http: build_http_client(),
-            base_url: DEFAULT_BASE_URL.to_string(),
+            base_url: crate::config::base_url_override(crate::config::HOLIDAYS_URL_ENV)
+                .unwrap_or_else(|| DEFAULT_BASE_URL.to_string()),
         }
     }
 

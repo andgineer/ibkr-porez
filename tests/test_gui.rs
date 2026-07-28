@@ -4,7 +4,9 @@ use std::sync::mpsc;
 
 use chrono::NaiveDate;
 use ibkr_porez::delete::DeletePlan;
-use ibkr_porez::gui::app::{App, BackgroundResult, BulkAction, FilterScope, SortColumn};
+use ibkr_porez::gui::app::{
+    App, BackgroundResult, BulkAction, FilterScope, SortColumn, auto_sync_window_open,
+};
 use ibkr_porez::gui::assessment_dialog::AssessmentDialog;
 use ibkr_porez::gui::config_dialog::ConfigDialog;
 use ibkr_porez::gui::delete_dialog::DeleteDialog;
@@ -1126,6 +1128,109 @@ fn poll_background_skips_retry_after_fatal_error_same_day() {
         !app.bg_busy,
         "fatal error from earlier today should not be retried automatically"
     );
+}
+
+#[test]
+fn poll_sync_error_lockout_is_retried_hourly() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    let (tx, rx) = mpsc::channel();
+    app.bg_receiver = Some(rx);
+    app.bg_busy = true;
+
+    tx.send(BackgroundResult::SyncDone(Err(
+        "failed to fetch IBKR Flex Query report: IBKR API Error 1025: Too many failed attempts. \
+         Please review your configuration."
+            .into(),
+    )))
+    .unwrap();
+    app.poll_background();
+
+    let (_, msg) = app.last_sync_issue.as_ref().unwrap();
+    assert_eq!(
+        msg,
+        "IBKR temporarily blocked requests after repeated failures \u{2014} retrying automatically."
+    );
+
+    // The lockout clears on its own, so the next tick must try again.
+    app.trigger_sync_check();
+    app.poll_background();
+    assert!(
+        app.bg_busy,
+        "error 1025 is a temporary lockout and must not stop the hourly cycle"
+    );
+}
+
+// ── Morning window ───────────────────────────────────────────
+
+#[test]
+fn auto_sync_window_closed_before_new_york_processing() {
+    // 01:37 in Belgrade — the local day has flipped, but New York is still on
+    // the previous evening and the report does not exist yet.
+    let now = "2026-07-27T23:37:29Z".parse().unwrap();
+    let local_date = NaiveDate::from_ymd_opt(2026, 7, 28).unwrap();
+    assert!(!auto_sync_window_open(now, local_date));
+}
+
+#[test]
+fn auto_sync_window_opens_at_one_am_new_york() {
+    let local_date = NaiveDate::from_ymd_opt(2026, 7, 28).unwrap();
+    // 00:59 EDT
+    assert!(!auto_sync_window_open(
+        "2026-07-28T04:59:59Z".parse().unwrap(),
+        local_date
+    ));
+    // 01:00 EDT — 07:00 in Belgrade
+    assert!(auto_sync_window_open(
+        "2026-07-28T05:00:00Z".parse().unwrap(),
+        local_date
+    ));
+}
+
+#[test]
+fn auto_sync_window_follows_new_york_dst() {
+    // Winter: 01:00 EST is 06:00 UTC, an hour later than the summer boundary.
+    let local_date = NaiveDate::from_ymd_opt(2026, 1, 15).unwrap();
+    assert!(!auto_sync_window_open(
+        "2026-01-15T05:59:59Z".parse().unwrap(),
+        local_date
+    ));
+    assert!(auto_sync_window_open(
+        "2026-01-15T06:00:00Z".parse().unwrap(),
+        local_date
+    ));
+}
+
+#[test]
+fn auto_sync_window_opens_at_earliest_of_ambiguous_hour() {
+    // DST ends 2026-11-01; 01:00 in New York happens twice that night.
+    let local_date = NaiveDate::from_ymd_opt(2026, 11, 1).unwrap();
+    assert!(auto_sync_window_open(
+        "2026-11-01T05:00:00Z".parse().unwrap(),
+        local_date
+    ));
+    assert!(!auto_sync_window_open(
+        "2026-11-01T04:59:59Z".parse().unwrap(),
+        local_date
+    ));
+}
+
+#[test]
+fn poll_background_skips_tick_outside_the_morning_window() {
+    let (mut app, _tmp) = app_with_decls(Vec::new());
+    app.auto_sync_window_override = Some(false);
+
+    app.trigger_sync_check();
+    app.poll_background();
+
+    assert!(
+        !app.bg_busy,
+        "no attempt before the New York report window opens"
+    );
+
+    app.auto_sync_window_override = Some(true);
+    app.trigger_sync_check();
+    app.poll_background();
+    assert!(app.bg_busy, "attempt once the window opens");
 }
 
 #[test]

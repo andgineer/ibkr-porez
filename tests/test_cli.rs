@@ -1,8 +1,36 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 
+/// One throwaway config+data dir shared by this binary's tests. None of them
+/// writes anything meaningful, but without it they run against the user's real
+/// declarations and logs.
+fn isolated_config_dir() -> &'static std::path::Path {
+    static DIR: std::sync::LazyLock<tempfile::TempDir> = std::sync::LazyLock::new(|| {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let data_dir = tmp.path().join("data");
+        std::fs::create_dir_all(&data_dir).unwrap();
+        let config = serde_json::json!({ "data_dir": data_dir.to_str().unwrap() });
+        std::fs::write(tmp.path().join("config.json"), config.to_string()).unwrap();
+        tmp
+    });
+    DIR.path()
+}
+
 fn cmd() -> Command {
-    Command::cargo_bin("ibkr-porez").unwrap()
+    let mut command = Command::cargo_bin("ibkr-porez").unwrap();
+    command.env("IBKR_POREZ_CONFIG_DIR", isolated_config_dir());
+    offline(&mut command);
+    command
+}
+
+/// Points every outbound service at a closed port, so a test that grows a new
+/// network path fails fast instead of silently reaching the live service.
+fn offline(command: &mut Command) {
+    const CLOSED: &str = "http://127.0.0.1:1";
+    command
+        .env(ibkr_porez::config::FLEX_URL_ENV, CLOSED)
+        .env(ibkr_porez::config::NBS_URL_ENV, CLOSED)
+        .env(ibkr_porez::config::HOLIDAYS_URL_ENV, CLOSED);
 }
 
 #[test]
