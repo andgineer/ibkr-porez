@@ -92,18 +92,6 @@ pub fn show(ui: &mut egui::Ui, app: &mut App) {
     declaration_table(ui, app);
 }
 
-/// Formats the last successful sync time, using "yesterday HH:MM" for syncs
-/// exactly one day old and the full date otherwise.
-fn format_last_success(success: chrono::NaiveDateTime, synced_today: bool) -> String {
-    if synced_today {
-        success.format("%H:%M").to_string()
-    } else if chrono::Local::now().date_naive() - success.date() == chrono::Duration::days(1) {
-        format!("yesterday {}", success.format("%H:%M"))
-    } else {
-        success.format("%Y-%m-%d %H:%M").to_string()
-    }
-}
-
 /// Splits a message produced by `classify_sync_error` into the failure
 /// reason and, if present, a short retry-schedule hint.
 fn split_sync_issue(msg: &str) -> (&str, Option<&'static str>) {
@@ -143,19 +131,19 @@ fn sync_status_line(ui: &mut egui::Ui, app: &App) {
         if let Some(success) = app.last_sync_success {
             status_pill(
                 ui,
-                &format!(
-                    "\u{2714} Synced {}",
-                    format_last_success(success, synced_today)
-                ),
+                &format!("\u{2714} Synced {}", success.format("%d %b %H:%M")),
             );
         }
 
         if let Some((at, msg)) = visible_issue {
             let (reason, hint) = split_sync_issue(msg);
-            let fmt = if app.last_sync_success.is_some() {
+            let same_day_as_success = app
+                .last_sync_success
+                .is_some_and(|success| success.date() == at.date());
+            let fmt = if same_day_as_success {
                 "%H:%M"
             } else {
-                "%Y-%m-%d %H:%M"
+                "%d %b %H:%M"
             };
             status_pill(ui, &format!("\u{26a0} {}: {reason}", at.format(fmt)));
             if let Some(hint) = hint {

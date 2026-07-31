@@ -644,3 +644,83 @@ fn force_sync_confirm_dialog() {
         "force sync confirmation window should be visible"
     );
 }
+
+// ── Sync status pills ────────────────────────────────────────
+
+fn at(y: i32, m: u32, d: u32, h: u32, min: u32) -> chrono::NaiveDateTime {
+    chrono::NaiveDateTime::new(
+        NaiveDate::from_ymd_opt(y, m, d).unwrap(),
+        chrono::NaiveTime::from_hms_opt(h, min, 0).unwrap(),
+    )
+}
+
+#[test]
+fn sync_pill_shows_date_for_todays_sync() {
+    let (mut app, _tmp) = setup_app(vec![], vec![]);
+    let today = chrono::Local::now().date_naive();
+    app.last_sync_success = Some(today.and_hms_opt(7, 26, 0).unwrap());
+    let harness = harness_for(app);
+
+    let expected = format!("Synced {}", today.format("%d %b 07:26"));
+    assert!(
+        harness.query_by_label_contains(&expected).is_some(),
+        "today's sync pill must carry the date too, expected to find {expected:?}"
+    );
+}
+
+#[test]
+fn sync_pill_shows_date_for_days_old_sync() {
+    let (mut app, _tmp) = setup_app(vec![], vec![]);
+    app.last_sync_success = Some(at(2024, 3, 5, 7, 26));
+    let harness = harness_for(app);
+
+    assert!(
+        harness
+            .query_by_label_contains("Synced 05 Mar 07:26")
+            .is_some(),
+        "a days-old sync must show its own date, not a bare time"
+    );
+}
+
+#[test]
+fn sync_pill_spells_the_month_out() {
+    let (mut app, _tmp) = setup_app(vec![], vec![]);
+    app.last_sync_success = Some(at(2024, 3, 5, 7, 26));
+    let harness = harness_for(app);
+
+    // "03-05" would be unreadable: day and month are indistinguishable.
+    assert!(
+        harness.query_by_label_contains("Synced 03-05").is_none(),
+        "month must be spelled out, not numeric"
+    );
+}
+
+#[test]
+fn issue_pill_omits_date_when_same_day_as_success() {
+    let (mut app, _tmp) = setup_app(vec![], vec![]);
+    app.last_sync_success = Some(at(2024, 3, 5, 7, 26));
+    app.last_sync_issue = Some((at(2024, 3, 5, 9, 40), "IBKR unavailable".into()));
+    let harness = harness_for(app);
+
+    assert!(
+        harness
+            .query_by_label_contains("\u{26a0} 09:40: IBKR unavailable")
+            .is_some(),
+        "same-day issue should not repeat the date already shown by the Synced pill"
+    );
+}
+
+#[test]
+fn issue_pill_shows_date_when_on_another_day_than_success() {
+    let (mut app, _tmp) = setup_app(vec![], vec![]);
+    app.last_sync_success = Some(at(2024, 3, 5, 7, 26));
+    app.last_sync_issue = Some((at(2024, 3, 8, 9, 40), "IBKR unavailable".into()));
+    let harness = harness_for(app);
+
+    assert!(
+        harness
+            .query_by_label_contains("\u{26a0} 08 Mar 09:40: IBKR unavailable")
+            .is_some(),
+        "an issue from another day must be dated, or it reads as today's"
+    );
+}
