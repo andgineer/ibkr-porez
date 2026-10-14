@@ -3,7 +3,7 @@
 
 # ibkr-porez
 
-Automated PPDG-3R and PP-OPO tax reports generation for Interactive Brokers.
+Automated PPDG-3R and PP-OPO tax reports generation for Interactive Brokers users in Serbia.
 It automatically fetches your data and generates a ready-to-upload XML files with all prices converted to RSD.
 
 📖 Documentation:
