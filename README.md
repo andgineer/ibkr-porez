@@ -13,7 +13,8 @@ It automatically fetches your data and generates a ready-to-upload XML files wit
 [Srpski](https://andgineer.github.io/ibkr-porez/rs/) |
 [Српски](https://andgineer.github.io/ibkr-porez/rs-cyr/)
 
-## Development
+<details>
+<summary><b>Contributing</b></summary>
 
 ### Prerequisites
 
@@ -102,3 +103,4 @@ bash scripts/build-docs.sh
 # Serve locally (English only)
 mdbook serve docs/en
 ```
+</details>
