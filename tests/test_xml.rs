@@ -240,6 +240,9 @@ fn test_gains_xml_prior_losses_section() {
          </ns1:DatumDonosenjaResenjaOKapitalnomGubitku>"
     ));
     assert!(xml.contains(
+        "<ns1:DatumDonosenjaResenjaOKapitalnomGubitku></ns1:DatumDonosenjaResenjaOKapitalnomGubitku>"
+    ));
+    assert!(xml.contains(
         "<ns1:IznosUtvrdjenogKapitalnogGubitka>600.00</ns1:IznosUtvrdjenogKapitalnogGubitka>"
     ));
     assert!(xml.contains(

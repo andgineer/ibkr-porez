@@ -183,7 +183,7 @@ fn write_section_kapitalni_gubici(
         text_elem(
             w,
             "ns1:DatumDonosenjaResenjaOKapitalnomGubitku",
-            &p.assessment_date.map(fmt_date).unwrap_or_default(),
+            &p.assessment_date.map_or_else(String::new, fmt_date),
         );
         text_elem(
             w,

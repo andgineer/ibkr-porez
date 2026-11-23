@@ -267,10 +267,7 @@ fn main() {
 fn launch_gui() -> anyhow::Result<()> {
     let exe_path = std::env::current_exe()?;
     let resolved = std::fs::canonicalize(&exe_path).unwrap_or(exe_path);
-    let exe_dir = resolved
-        .parent()
-        .map(std::path::Path::to_path_buf)
-        .unwrap_or_default();
+    let exe_dir = resolved.parent().unwrap_or(std::path::Path::new(""));
 
     let gui_name = if cfg!(windows) {
         "ibkr-porez-gui.exe"
