@@ -469,3 +469,28 @@ fn reentering_unchanged_loss_after_own_vintage_consumed_still_reconciles() {
     assert!(err.to_string().contains("partially consumed"), "got: {err}");
     assert_eq!(remaining(&env.storage, "CF-11"), dec!(2945.67));
 }
+
+/// Revert discards the assessment, so a later tax-only assessment of the
+/// resubmitted declaration must not re-establish zero prior-loss use from it.
+#[test]
+fn tax_only_assessment_after_revert_keeps_provisional_deductions() {
+    let env = setup();
+    seed_declaration_11(&env.storage);
+    let mgr = DeclarationManager::new(&env.storage);
+    mgr.record_assessment("11", &purs_decision_11()).unwrap();
+    mgr.revert(&["11"]).unwrap();
+    mgr.submit(&["11"]).unwrap();
+
+    mgr.record_assessment(
+        "11",
+        &AssessmentInput {
+            assessed_tax_rsd: Some(dec!(1423.27)),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    assert_eq!(remaining(&env.storage, "CF-1"), dec!(34982.83));
+    let decl = env.storage.get_declaration("11").unwrap();
+    assert_eq!(prior_loss_use::assessed_deductions(&decl).unwrap(), None);
+}

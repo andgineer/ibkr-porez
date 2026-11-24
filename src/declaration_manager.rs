@@ -308,8 +308,15 @@ impl<'a> DeclarationManager<'a> {
                         .save_carryforward_ledger(&ledger)
                         .with_context(|| self.storage.io_error_hint())?;
                 }
-                decl.metadata
-                    .shift_remove(prior_loss_use::ASSESSED_SOURCES_KEY);
+                // Left behind, these would re-establish zero prior-loss use on
+                // the next assessment, even one that records only the tax.
+                for key in [
+                    prior_loss_use::ASSESSED_SOURCES_KEY,
+                    "recognized_capital_gain_rsd",
+                    "recognized_capital_loss_rsd",
+                ] {
+                    decl.metadata.shift_remove(key);
+                }
             }
             decl.status = DeclarationStatus::Draft;
             decl.submitted_at = None;

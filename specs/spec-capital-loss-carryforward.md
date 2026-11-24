@@ -103,7 +103,8 @@ the assessment is recorded separately, per originating vintage, and
 - A correction that would push a vintage's remaining balance below zero or
   above its recognized amount is refused and nothing is changed.
 - Reverting an assessed declaration to draft reapplies its original
-  deductions and discards the established prior-loss use.
+  deductions and discards the recognized gain/loss and the established
+  prior-loss use, so a later assessment starts from the original estimate.
 
 ## Declaring Carryforward in the PPDG-3R XML
 
