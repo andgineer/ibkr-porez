@@ -437,3 +437,35 @@ fn restoring_more_than_recognized_is_refused_without_changes() {
             .is_none()
     );
 }
+
+/// A later declaration already drew on the declaration's own loss: entering
+/// the same decision again must still reconcile instead of being refused.
+#[test]
+fn reentering_unchanged_loss_after_own_vintage_consumed_still_reconciles() {
+    let env = setup();
+    seed_declaration_11(&env.storage);
+    env.storage
+        .apply_carryforward_consumption(&[ibkr_porez::models::CarryforwardSource {
+            vintage_id: "CF-11".into(),
+            amount_used: dec!(1000),
+        }])
+        .unwrap();
+
+    let mgr = DeclarationManager::new(&env.storage);
+    mgr.record_assessment("11", &purs_decision_11()).unwrap();
+
+    assert_eq!(remaining(&env.storage, "CF-1"), dec!(44471.30));
+    assert_eq!(remaining(&env.storage, "CF-11"), dec!(2945.67));
+
+    let err = mgr
+        .record_assessment(
+            "11",
+            &AssessmentInput {
+                recognized_capital_loss_rsd: Some(dec!(4000)),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("partially consumed"), "got: {err}");
+    assert_eq!(remaining(&env.storage, "CF-11"), dec!(2945.67));
+}

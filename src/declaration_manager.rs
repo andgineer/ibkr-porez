@@ -458,16 +458,18 @@ fn sync_own_vintage(
 
     let vintage_id = format!("CF-{}", decl.declaration_id);
     if let Some(v) = ledger.vintages.iter_mut().find(|v| v.id == vintage_id) {
-        if v.remaining_loss_rsd != v.recognized_loss_rsd {
-            bail!(
-                "cannot update assessment for {}: its carryforward vintage {} \
-                 has already been partially consumed",
-                decl.declaration_id,
-                vintage_id
-            );
+        if v.recognized_loss_rsd != recognized_loss {
+            if v.remaining_loss_rsd != v.recognized_loss_rsd {
+                bail!(
+                    "cannot update assessment for {}: its carryforward vintage {} \
+                     has already been partially consumed",
+                    decl.declaration_id,
+                    vintage_id
+                );
+            }
+            v.recognized_loss_rsd = recognized_loss;
+            v.remaining_loss_rsd = recognized_loss;
         }
-        v.recognized_loss_rsd = recognized_loss;
-        v.remaining_loss_rsd = recognized_loss;
         if let Some(r) = &input.assessment_reference {
             v.assessment_reference = Some(r.clone());
         }
