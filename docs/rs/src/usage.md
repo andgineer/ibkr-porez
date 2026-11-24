@@ -300,6 +300,12 @@ zapis u registru [prenosa kapitalnih gubitaka](#prenos-kapitalnih-gubitaka-carry
 Prenos se uvek zasniva na gubitku priznatom od strane poreske uprave, a ne na
 izračunatom.
 
+Ako je prijava privremeno iskoristila ranije prenete gubitke, a rešenje
+pokazuje da u periodu nije bilo dobitka za umanjenje (`--gain 0` ili `--loss`
+veći od nule), to privremeno korišćenje se vraća ranijim gubicima. `show`
+zadržava prvobitni obračun pored korišćenja po rešenju. Ponovno pokretanje
+istog `assess` ne menja ništa dalje.
+
 > ⚠️ Nakon što je preneti gubitak makar delimično iskorišćen u jednoj od
 > narednih prijava, priznati gubitak se više ne može menjati putem `assess` —
 > komanda će vratiti grešku.
@@ -361,6 +367,13 @@ ibkr-porez revert <id> [<id> ...] --to submitted
 ```
 
 Vraća status prijave.
+
+Vraćanje PPDG-3R prijave u nacrt poništava i podatke unete putem `assess`:
+priznati dobitak i gubitak se brišu, sopstveni preneti gubitak prijave se
+uklanja, a raniji gubici koje je privremeno iskoristila ponovo se umanjuju
+prema prvobitnom obračunu. Vraćanje nije moguće ako je taj gubitak već
+iskorišćen u nekoj od narednih prijava. Nakon ponovnog podnošenja ponovo
+pokrenite `assess`.
 
 ### Brisanje prijave (`delete`)
 ```bash

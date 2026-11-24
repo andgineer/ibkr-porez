@@ -373,6 +373,12 @@ ibkr-porez revert <id> [<id> ...] --to submitted
 
 Reverts declaration status.
 
+Reverting a PPDG-3R to draft also discards the figures recorded by `assess`:
+the recognized gain and loss are cleared, the declaration's own carried-forward
+loss is removed, and earlier losses it provisionally used are deducted again
+as originally estimated. This is refused if a later declaration has already
+used that loss. After resubmitting, run `assess` again.
+
 ### Delete Declaration (`delete`)
 ```bash
 # Preview the plan (changes nothing)
