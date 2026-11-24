@@ -1,11 +1,14 @@
 use std::path::Path;
 
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use chrono::{Datelike, Local, NaiveDate};
 use rust_decimal::Decimal;
 use std::str::FromStr;
 
-use crate::models::{CarryforwardVintage, Declaration, DeclarationStatus, DeclarationType};
+use crate::models::{
+    CarryforwardLedger, CarryforwardVintage, Declaration, DeclarationStatus, DeclarationType,
+};
+use crate::prior_loss_use;
 use crate::storage::Storage;
 
 /// The declaration's number at PURS, recorded when the taxpayer submits it.
@@ -228,85 +231,19 @@ impl<'a> DeclarationManager<'a> {
             decl.paid_at = Some(now);
         }
 
-        // Sync the ledger *before* persisting the declaration: if this bails
-        // (e.g. vintage already partially consumed), the declaration metadata
-        // must not be saved either, so `declarations.json` and
-        // `capital_losses.json` never disagree about the recognized loss.
-        self.sync_carryforward_vintage(&decl, input)?;
+        let mut ledger = self.storage.load_carryforward_ledger();
+        let before = ledger.clone();
+        sync_own_vintage(&mut ledger, &decl, input)?;
+        reconcile_with_assessment(&mut ledger, &mut decl)?;
+
+        // Ledger first: it records which deductions its balances reflect, so a
+        // retry after a failed declaration write applies no difference twice.
+        if ledger != before {
+            self.storage
+                .save_carryforward_ledger(&ledger)
+                .with_context(|| self.storage.io_error_hint())?;
+        }
         self.storage.save_declaration(&decl)?;
-        Ok(())
-    }
-
-    /// Remove the carryforward vintage created for `decl` (if any), unless it
-    /// has already been partially or fully consumed -- in which case we bail
-    /// rather than silently leave the ledger inconsistent with declarations
-    /// that already drew from it.
-    fn remove_unconsumed_carryforward_vintage(&self, decl: &Declaration) -> Result<()> {
-        if decl.r#type != DeclarationType::Ppdg3r {
-            return Ok(());
-        }
-        let vintage_id = format!("CF-{}", decl.declaration_id);
-        let Some(v) = self.storage.find_carryforward_vintage(&vintage_id) else {
-            return Ok(());
-        };
-        if v.remaining_loss_rsd != v.recognized_loss_rsd {
-            bail!(
-                "cannot remove carryforward vintage {vintage_id} for {}: \
-                 it has already been partially consumed",
-                decl.declaration_id
-            );
-        }
-        self.storage.remove_carryforward_vintage(&vintage_id)
-    }
-
-    fn sync_carryforward_vintage(&self, decl: &Declaration, input: &AssessmentInput) -> Result<()> {
-        if decl.r#type != DeclarationType::Ppdg3r {
-            return Ok(());
-        }
-        let Some(recognized_loss) = input.recognized_capital_loss_rsd else {
-            return Ok(());
-        };
-        let vintage_id = format!("CF-{}", decl.declaration_id);
-        let existing = self.storage.find_carryforward_vintage(&vintage_id);
-
-        if recognized_loss <= Decimal::ZERO {
-            self.remove_unconsumed_carryforward_vintage(decl)?;
-            return Ok(());
-        }
-
-        if let Some(mut v) = existing {
-            if v.remaining_loss_rsd != v.recognized_loss_rsd {
-                bail!(
-                    "cannot update assessment for {}: its carryforward vintage {} \
-                     has already been partially consumed",
-                    decl.declaration_id,
-                    vintage_id
-                );
-            }
-            v.recognized_loss_rsd = recognized_loss;
-            v.remaining_loss_rsd = recognized_loss;
-            if let Some(r) = &input.assessment_reference {
-                v.assessment_reference = Some(r.clone());
-            }
-            if let Some(n) = &input.assessment_notes {
-                v.notes = Some(n.clone());
-            }
-            self.storage.upsert_carryforward_vintage(v)?;
-        } else {
-            let vintage = CarryforwardVintage {
-                id: vintage_id,
-                origin_declaration_id: decl.declaration_id.clone(),
-                assessment_reference: input.assessment_reference.clone(),
-                origin_period_start: decl.period_start,
-                origin_period_end: decl.period_end,
-                recognized_loss_rsd: recognized_loss,
-                remaining_loss_rsd: recognized_loss,
-                created_at: Local::now().naive_local(),
-                expiration_tax_year: decl.period_end.year() + 5,
-                notes: input.assessment_notes.clone(),
-            };
-            self.storage.upsert_carryforward_vintage(vintage)?;
-        }
         Ok(())
     }
 
@@ -360,7 +297,20 @@ impl<'a> DeclarationManager<'a> {
     pub fn revert(&self, ids: &[&str]) -> Result<()> {
         for id in ids {
             let mut decl = self.get_or_err(id)?;
-            self.remove_unconsumed_carryforward_vintage(&decl)?;
+            if decl.r#type == DeclarationType::Ppdg3r {
+                let mut ledger = self.storage.load_carryforward_ledger();
+                let before = ledger.clone();
+                remove_unconsumed_own_vintage(&mut ledger, &decl)?;
+                let original = prior_loss_use::original_deductions(&decl)?;
+                prior_loss_use::reconcile(&mut ledger, &decl, &original)?;
+                if ledger != before {
+                    self.storage
+                        .save_carryforward_ledger(&ledger)
+                        .with_context(|| self.storage.io_error_hint())?;
+                }
+                decl.metadata
+                    .shift_remove(prior_loss_use::ASSESSED_SOURCES_KEY);
+            }
             decl.status = DeclarationStatus::Draft;
             decl.submitted_at = None;
             decl.paid_at = None;
@@ -468,4 +418,97 @@ impl<'a> DeclarationManager<'a> {
             .get_declaration(id)
             .ok_or_else(|| anyhow::anyhow!("declaration {id} not found"))
     }
+}
+
+/// Remove the declaration's own recognized-loss vintage unless it has already
+/// been drawn on -- later declarations' snapshots would then dangle.
+fn remove_unconsumed_own_vintage(
+    ledger: &mut CarryforwardLedger,
+    decl: &Declaration,
+) -> Result<()> {
+    let vintage_id = format!("CF-{}", decl.declaration_id);
+    let Some(v) = ledger.vintages.iter().find(|v| v.id == vintage_id) else {
+        return Ok(());
+    };
+    if v.remaining_loss_rsd != v.recognized_loss_rsd {
+        bail!(
+            "cannot remove carryforward vintage {vintage_id} for {}: \
+             it has already been partially consumed",
+            decl.declaration_id
+        );
+    }
+    ledger.vintages.retain(|v| v.id != vintage_id);
+    Ok(())
+}
+
+fn sync_own_vintage(
+    ledger: &mut CarryforwardLedger,
+    decl: &Declaration,
+    input: &AssessmentInput,
+) -> Result<()> {
+    if decl.r#type != DeclarationType::Ppdg3r {
+        return Ok(());
+    }
+    let Some(recognized_loss) = input.recognized_capital_loss_rsd else {
+        return Ok(());
+    };
+    if recognized_loss <= Decimal::ZERO {
+        return remove_unconsumed_own_vintage(ledger, decl);
+    }
+
+    let vintage_id = format!("CF-{}", decl.declaration_id);
+    if let Some(v) = ledger.vintages.iter_mut().find(|v| v.id == vintage_id) {
+        if v.remaining_loss_rsd != v.recognized_loss_rsd {
+            bail!(
+                "cannot update assessment for {}: its carryforward vintage {} \
+                 has already been partially consumed",
+                decl.declaration_id,
+                vintage_id
+            );
+        }
+        v.recognized_loss_rsd = recognized_loss;
+        v.remaining_loss_rsd = recognized_loss;
+        if let Some(r) = &input.assessment_reference {
+            v.assessment_reference = Some(r.clone());
+        }
+        if let Some(n) = &input.assessment_notes {
+            v.notes = Some(n.clone());
+        }
+    } else {
+        ledger.vintages.push(CarryforwardVintage {
+            id: vintage_id,
+            origin_declaration_id: decl.declaration_id.clone(),
+            assessment_reference: input.assessment_reference.clone(),
+            origin_period_start: decl.period_start,
+            origin_period_end: decl.period_end,
+            recognized_loss_rsd: recognized_loss,
+            remaining_loss_rsd: recognized_loss,
+            created_at: Local::now().naive_local(),
+            expiration_tax_year: decl.period_end.year() + 5,
+            notes: input.assessment_notes.clone(),
+        });
+    }
+    Ok(())
+}
+
+fn reconcile_with_assessment(
+    ledger: &mut CarryforwardLedger,
+    decl: &mut Declaration,
+) -> Result<()> {
+    if decl.r#type != DeclarationType::Ppdg3r {
+        return Ok(());
+    }
+    if let Some(used) = prior_loss_use::established_by_assessment(decl) {
+        prior_loss_use::reconcile(ledger, decl, &used)?;
+        decl.metadata.insert(
+            prior_loss_use::ASSESSED_SOURCES_KEY.into(),
+            prior_loss_use::sources_to_json(&used),
+        );
+    } else {
+        let original = prior_loss_use::original_deductions(decl)?;
+        prior_loss_use::reconcile(ledger, decl, &original)?;
+        decl.metadata
+            .shift_remove(prior_loss_use::ASSESSED_SOURCES_KEY);
+    }
+    Ok(())
 }

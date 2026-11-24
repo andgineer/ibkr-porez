@@ -1,8 +1,8 @@
 use anyhow::{Context, Result, bail};
-use rust_decimal::Decimal;
 
 use crate::config;
-use crate::models::{CarryforwardSource, Declaration, DeclarationType, UserConfig};
+use crate::models::{Declaration, DeclarationType, UserConfig};
+use crate::prior_loss_use;
 use crate::storage::Storage;
 
 #[derive(Debug)]
@@ -60,70 +60,45 @@ pub fn plan_deletion(storage: &Storage, declaration_id: &str) -> Result<DeletePl
 pub fn execute_deletion(storage: &Storage, config: &UserConfig, plan: &DeletePlan) -> Result<()> {
     let decl = &plan.to_delete;
 
-    // 1. Reverse the carryforward this declaration consumed from other vintages.
-    let reversal = reversed_consumption(decl)?;
-    storage
-        .apply_carryforward_consumption(&reversal)
-        .with_context(|| storage.io_error_hint())?;
-
-    // 2. Remove the declaration's own vintage (created by `assess`). Re-check
-    //    the guard: since no later PPDG-3R exists it cannot have been consumed,
-    //    but a manually edited ledger might disagree — bail before mutating.
+    // 1. In one ledger write: return the prior-loss deductions the ledger still
+    //    reflects for this declaration, and remove its own vintage (created by
+    //    `assess`). The own-vintage guard is re-checked because a manually
+    //    edited ledger might disagree with the plan.
+    let mut ledger = storage.load_carryforward_ledger();
+    let before = ledger.clone();
+    prior_loss_use::reconcile(&mut ledger, decl, &[])?;
     let vintage_id = format!("CF-{}", decl.declaration_id);
-    if let Some(v) = storage.find_carryforward_vintage(&vintage_id) {
+    if let Some(v) = ledger.vintages.iter().find(|v| v.id == vintage_id) {
         if v.remaining_loss_rsd != v.recognized_loss_rsd {
             bail!(
                 "carryforward vintage {vintage_id} has been consumed; fix the ledger manually first"
             );
         }
+        ledger.vintages.retain(|v| v.id != vintage_id);
+    }
+    if ledger != before {
         storage
-            .remove_carryforward_vintage(&vintage_id)
+            .save_carryforward_ledger(&ledger)
             .with_context(|| storage.io_error_hint())?;
     }
 
-    // 3. Delete files (best-effort — missing files are not an error).
+    // 2. Delete files (best-effort — missing files are not an error).
     delete_declaration_files(storage, config, decl);
 
-    // 4. Delete the declaration record.
+    // 3. Delete the declaration record.
     storage.delete_declaration(&decl.declaration_id)?;
 
-    Ok(())
-}
+    // 4. The ledger's record of this declaration is now obsolete.
+    let mut ledger = storage.load_carryforward_ledger();
+    let before = ledger.clone();
+    prior_loss_use::forget(&mut ledger, decl);
+    if ledger != before {
+        storage
+            .save_carryforward_ledger(&ledger)
+            .with_context(|| storage.io_error_hint())?;
+    }
 
-/// Parse the target's `carryforward_sources` metadata and negate each
-/// `amount_used`, producing the reversal to feed to
-/// `apply_carryforward_consumption`. Absent metadata yields no reversal;
-/// malformed metadata bails before any ledger mutation, since silently
-/// dropping an entry would leave the ledger under-restored.
-fn reversed_consumption(decl: &Declaration) -> Result<Vec<CarryforwardSource>> {
-    let Some(sources) = decl.metadata.get("carryforward_sources") else {
-        return Ok(Vec::new());
-    };
-    let Some(arr) = sources.as_array() else {
-        bail!(
-            "declaration {} has malformed carryforward_sources metadata (expected an array)",
-            decl.declaration_id
-        );
-    };
-    arr.iter()
-        .map(|s| {
-            let vintage_id = s
-                .get("vintage_id")
-                .and_then(serde_json::Value::as_str)
-                .ok_or_else(|| anyhow::anyhow!("carryforward_sources entry missing vintage_id"))?
-                .to_string();
-            let amount = s
-                .get("amount_used")
-                .and_then(serde_json::Value::as_str)
-                .ok_or_else(|| anyhow::anyhow!("carryforward_sources entry missing amount_used"))?
-                .parse::<Decimal>()
-                .with_context(|| "carryforward_sources amount_used is not a decimal")?;
-            Ok(CarryforwardSource {
-                vintage_id,
-                amount_used: -amount,
-            })
-        })
-        .collect()
+    Ok(())
 }
 
 fn delete_declaration_files(storage: &Storage, config: &UserConfig, decl: &Declaration) {

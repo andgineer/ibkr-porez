@@ -460,7 +460,8 @@ impl Storage {
     // Carryforward
     // =======================================================================
 
-    fn load_carryforward_ledger(&self) -> CarryforwardLedger {
+    #[must_use]
+    pub fn load_carryforward_ledger(&self) -> CarryforwardLedger {
         if !self.capital_losses_file.exists() {
             return CarryforwardLedger::default();
         }
@@ -470,9 +471,13 @@ impl Storage {
         }
     }
 
-    fn save_carryforward_ledger(&self, ledger: &CarryforwardLedger) -> Result<()> {
+    /// Balances and reflected-deduction records must land together, so a torn
+    /// write is avoided by writing a sibling file and renaming it over.
+    pub fn save_carryforward_ledger(&self, ledger: &CarryforwardLedger) -> Result<()> {
         let json = serde_json::to_string_pretty(ledger)?;
-        std::fs::write(&self.capital_losses_file, &json)?;
+        let tmp = self.capital_losses_file.with_extension("json.tmp");
+        std::fs::write(&tmp, &json)?;
+        std::fs::rename(&tmp, &self.capital_losses_file)?;
         Ok(())
     }
 

@@ -6,6 +6,7 @@ use console::style;
 
 use super::{load_config_or_exit, make_storage, output, tables};
 use ibkr_porez::models::{DeclarationType, IncomeDeclarationEntry, TaxReportEntry};
+use ibkr_porez::prior_loss_use::{ASSESSED_SOURCES_KEY, ORIGINAL_SOURCES_KEY};
 
 #[allow(clippy::unnecessary_wraps)]
 pub fn run(declaration_id: &str) -> Result<()> {
@@ -115,7 +116,7 @@ const METADATA_KEY_ORDER: &[&str] = &[
     "assessment_notes",
 ];
 
-const CARRYFORWARD_SOURCES_KEY: &str = "carryforward_sources";
+const SOURCE_TABLE_KEYS: &[&str] = &[ORIGINAL_SOURCES_KEY, ASSESSED_SOURCES_KEY];
 
 fn print_metadata(metadata: &indexmap::IndexMap<String, serde_json::Value>) {
     println!();
@@ -126,13 +127,13 @@ fn print_metadata(metadata: &indexmap::IndexMap<String, serde_json::Value>) {
 
     let mut ordered_keys: Vec<&str> = METADATA_KEY_ORDER
         .iter()
-        .filter(|k| **k != CARRYFORWARD_SOURCES_KEY && metadata.contains_key(**k))
+        .filter(|k| !SOURCE_TABLE_KEYS.contains(k) && metadata.contains_key(**k))
         .copied()
         .collect();
     let mut extras: Vec<&str> = metadata
         .keys()
         .map(String::as_str)
-        .filter(|k| *k != CARRYFORWARD_SOURCES_KEY && !ordered_keys.contains(k))
+        .filter(|k| !SOURCE_TABLE_KEYS.contains(k) && !ordered_keys.contains(k))
         .collect();
     extras.sort_unstable();
     ordered_keys.extend(extras);
@@ -145,11 +146,33 @@ fn print_metadata(metadata: &indexmap::IndexMap<String, serde_json::Value>) {
     }
     println!("{table}");
 
-    print_carryforward_sources(metadata);
+    print_carryforward_sources(metadata, ORIGINAL_SOURCES_KEY, "Amount Used (RSD)");
+    print_assessed_sources(metadata);
 }
 
-fn print_carryforward_sources(metadata: &indexmap::IndexMap<String, serde_json::Value>) {
-    let Some(serde_json::Value::Array(sources)) = metadata.get(CARRYFORWARD_SOURCES_KEY) else {
+fn print_assessed_sources(metadata: &indexmap::IndexMap<String, serde_json::Value>) {
+    match metadata.get(ASSESSED_SOURCES_KEY) {
+        Some(serde_json::Value::Array(sources)) if sources.is_empty() => {
+            println!(
+                "\n{} none (the assessment used no prior loss)",
+                style("Assessed prior-loss use:").bold()
+            );
+        }
+        Some(_) => print_carryforward_sources(
+            metadata,
+            ASSESSED_SOURCES_KEY,
+            "Amount Used per Assessment (RSD)",
+        ),
+        None => {}
+    }
+}
+
+fn print_carryforward_sources(
+    metadata: &indexmap::IndexMap<String, serde_json::Value>,
+    key: &str,
+    amount_header: &str,
+) {
+    let Some(serde_json::Value::Array(sources)) = metadata.get(key) else {
         return;
     };
     if sources.is_empty() {
@@ -163,7 +186,7 @@ fn print_carryforward_sources(metadata: &indexmap::IndexMap<String, serde_json::
         .apply_modifier(UTF8_ROUND_CORNERS)
         .set_header(vec![
             Cell::new("Vintage").fg(Color::Cyan),
-            Cell::new("Amount Used (RSD)").fg(Color::Cyan),
+            Cell::new(amount_header).fg(Color::Cyan),
         ]);
 
     for source in sources {

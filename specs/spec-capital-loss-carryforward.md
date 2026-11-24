@@ -81,6 +81,30 @@ declaration currently being created. Re-running sync for a period that
 already has a saved declaration does not consume carryforward again
 (idempotent).
 
+## Reconciling Prior-Loss Use with the Assessment
+
+A declaration's carryforward snapshot is a provisional estimate: the tax
+authority decides how much prior loss the declaration actually used. The
+original estimate stays recorded unchanged; the prior-loss use established by
+the assessment is recorded separately, per originating vintage, and
+`show` displays both.
+
+- An assessment establishes zero prior-loss use when the period has no gain to
+  offset: the recognized gain is zero or a capital loss is recognized. The
+  provisional deductions are then returned to the vintages they came from.
+- A tax amount alone (even zero) or a positive recognized gain does not
+  establish how much prior loss was used — an earlier loss may have covered a
+  gain — so the ledger keeps the provisional deductions. Correcting an
+  assessment so that it no longer establishes zero use reapplies them.
+- The ledger always tracks which deductions of each declaration its balances
+  reflect, written together with the balances. Recording an assessment again,
+  or retrying after a failed write, applies only the difference between the
+  reflected and the established deductions, never the same correction twice.
+- A correction that would push a vintage's remaining balance below zero or
+  above its recognized amount is refused and nothing is changed.
+- Reverting an assessed declaration to draft reapplies its original
+  deductions and discards the established prior-loss use.
+
 ## Declaring Carryforward in the PPDG-3R XML
 
 The official PPDG-3R form has a dedicated part 7 (kapitalni gubici) where the
@@ -110,8 +134,11 @@ captured from an XML saved off the portal with part 7 filled in manually.
 ## Deletion
 
 A declaration can be deleted, which restores the ledger to the state before it
-existed. Deleting a PPDG-3R returns the carryforward balances it consumed to
-their vintages, and removes its own recognized-loss vintage (if any). To rebuild
+existed. Deleting a PPDG-3R returns to their vintages the carryforward
+deductions the ledger still reflects for it (the assessed ones once an
+assessment has reconciled them, otherwise the original estimate), and removes
+its own recognized-loss vintage (if any). An interrupted deletion can be
+retried without returning anything twice. To rebuild
 a deleted declaration, `sync` regenerates it from the locally stored
 transactions.
 

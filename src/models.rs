@@ -592,4 +592,16 @@ pub struct PriorRecognizedLoss {
 pub struct CarryforwardLedger {
     #[serde(default)]
     pub vintages: Vec<CarryforwardVintage>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub reflected_deductions: Vec<ReflectedDeductions>,
+}
+
+/// Prior-loss deductions of one declaration that the ledger balances reflect,
+/// once they differ from what the declaration originally deducted. Keyed by
+/// creation time too, because declaration ids are reused after deletion.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ReflectedDeductions {
+    pub declaration_id: String,
+    pub declaration_created_at: NaiveDateTime,
+    pub sources: Vec<CarryforwardSource>,
 }

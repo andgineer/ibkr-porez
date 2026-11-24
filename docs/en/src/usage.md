@@ -303,6 +303,12 @@ created (or updated) in the
 The carryforward is always based on the loss recognized by the tax authority,
 not the calculated one.
 
+If the declaration provisionally used earlier carried-forward losses and the
+assessment shows the period had no gain to offset (`--gain 0` or a `--loss`
+greater than zero), that provisional use is returned to the earlier losses.
+`show` keeps the original estimate next to the assessed use. Running the same
+`assess` again changes nothing further.
+
 > ⚠️ Once a carried-forward loss has been at least partially used by a
 > subsequent declaration, the recognized loss can no longer be changed via
 > `assess` — the command will return an error.
